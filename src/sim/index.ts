@@ -36,5 +36,6 @@ export type {
   Vec3,
 } from './state';
 export { PLACEHOLDER_MOVE_SPEED_MPS, stepGame } from './step';
+export type { GameEvent, GameEventSink, MistakeKind, RunGrade } from './events';
 export { runHeadless } from './runner';
 export type { HeadlessRunOptions } from './runner';
