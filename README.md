@@ -33,17 +33,30 @@ TypeScript, Vite, three.js (version pinned), Vitest. No backend: it's a static s
 
 ## Getting started
 
-> These commands become accurate once milestone M0 (scaffold) is complete.
+Requires Node 24 (see `.nvmrc`; minimum 22.13).
 
 ```bash
 npm install
-npm run dev        # local dev server
-npm run test       # unit tests (Vitest)
-npm run typecheck  # TypeScript checks
-npm run lint       # ESLint
-npm run build      # production build into dist/
-npm run preview    # serve the production build locally
+npm run dev           # local dev server
+npm run test          # unit tests (Vitest)
+npm run typecheck     # TypeScript checks
+npm run lint          # ESLint
+npm run format        # format with Prettier
+npm run format:check  # check formatting
+npm run build         # production build into dist/
+npm run preview       # serve the production build locally
 ```
+
+Because Vite `base` is `/court-vision/`, `npm run dev` serves at `http://localhost:5173/court-vision/`.
+
+### Project layout
+
+`src/` has eight layers:
+
+- `sim`, `content`, `ai`: headless, no three.js or DOM
+- `input`, `render`, `ui`, `audio`, `app`: browser-facing
+
+`npm run lint` fails if `src/sim`, `src/content` or `src/ai` import three.js or the browser layers (including dynamic `import()`), or use a listed set of common DOM globals (`window`, `document`, `navigator`, `requestAnimationFrame`, `addEventListener`, `fetch`, DOM event and element types, WebGL and audio contexts, and similar; see `DOM_GLOBALS` in `eslint.config.js`). The list is not exhaustive, so unlisted browser globals are not caught.
 
 ## Deployment
 
