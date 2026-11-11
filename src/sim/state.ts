@@ -2,7 +2,7 @@
 // deep-compares, serializes, and a snapshot fully determines the future.
 //
 // Coordinates: meters on the floor plane { x, z }, origin at the court centre, -z toward the basket,
-// y up (ball only). This matches src/render/helloCourt.ts.
+// y up (ball only). Court dimensions live in ./court.ts.
 
 import { createRng } from './rng';
 import type { RngState } from './rng';
