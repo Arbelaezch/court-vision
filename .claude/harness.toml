@@ -1,0 +1,22 @@
+# Harness config for Court Vision. Plugin defaults (providers, pricing, loop limits) live in
+# /Users/christianarbelaez/code/software-factory/scripts/defaults.toml; anything set here overrides them for this project only.
+
+[project]
+name = "Court Vision"
+description = "Court Vision: a new project; the repo is empty and the stack is not chosen yet. Update this once the stack is decided."
+# Extra things the reviewers should check in this codebase:
+review_focus = []
+
+[accounts]
+claude = "personal"
+github = "Arbelaezch"
+# git_email = "you@example.com"  # doctor warns if a repo commits as someone else
+
+[git]
+mode = "commit"
+base_branch = "main"
+
+[repos.app]
+path = "."
+description = "unknown stack"
+# gates = [ { name = "tests", kind = "jest", cmd = "npx jest --ci" } ]   # none detected
