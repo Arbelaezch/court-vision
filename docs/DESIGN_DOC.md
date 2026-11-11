@@ -2,7 +2,7 @@
 
 > A cartoon basketball game that teaches people who have never played basketball how to move, space the floor, and make the right read, one position and one play at a time.
 
-This document is the **design spec and source of truth** for Court Vision (the [README](../README.md) is the short overview). It is written to be read by an automated software factory that will break it into issues and build the game. It describes the *vision and behavior* in detail and prescribes implementation only where a decision is important. **Where this document is silent, use your best judgment in service of the vision and the design pillars below, and record significant decisions in `docs/decisions.md`.**
+This document is the **design spec and source of truth** for Court Vision (the [README](../README.md) is the short overview). It is written to be read by an automated software factory that will break it into issues and build the game. It describes the *vision and behavior* in detail and prescribes implementation only where a decision is important. **Where this document is silent, use your best judgment in service of the vision and the design pillars below, and record significant decisions in `.factory/decisions.md`.**
 
 ---
 
@@ -43,7 +43,7 @@ Use these terms consistently in code, UI, issues and docs.
 | **Look** | The quality of a shot opportunity (how open, how close, how well-positioned). Rated Great / Good / Bad. |
 | **Cue** | A guidance element shown to the player (floor arrow, target ring, "do this now" prompt). |
 | **Practice** | Mode: one play, **no defenders** (cones mark where defenders would be), heavy guidance. |
-| **Scrimmage** | Mode: one play, **5-on-5 with live defenders**, heavy guidance, slightly slower pace, reads matter. |
+| **Scrimmage** | Mode: one play, **5-on-5 with live defenders**, Reduced cues, slightly slower pace, reads matter. |
 | **Live Play** *(later)* | Mode: same per-play structure as Scrimmage, but **no cues**. The player reads everything. Still a practice mode. |
 | **Free Play** *(later)* | Mode: an open, flowing game simulation. The player picks a position and difficulty, calls plays in real time, and plays offense **and** defense. |
 | **Mastery** | Per play per mode, a count of successful runs. At a threshold (default 10) the play is marked "Mastered". |
@@ -409,7 +409,7 @@ Title / Main Menu, then **Tutorial**, **Practice**, **Scrimmage**, **Settings**,
 ### HUD
 
 - Mode label, play name, a short objective line, stamina meter (for sprint), shot clock (Scrimmage), and the cue layer.
-- Result banner at the end of a run. Brief red text on mistakes.
+- Result banner at the end of a run. Brief red text on mistakes (optional; may slip to v1.1).
 - Keep it minimal and uncluttered: the court is the focus.
 
 ### Settings
@@ -471,14 +471,14 @@ Issues should roughly follow this order, each delivering something runnable.
 7. **M6, Scrimmage:** live defenders, coverage selection, reduced cues, slower pace, shot clock. Give-and-Go in Scrimmage.
 8. **M7, Remaining plays:** Drive-and-Kick, Dribble Handoff, High Pick-and-Roll, Horns, with all coverages, plus the correct-read and wrong-read bot tests.
 9. **M8, Menus and meta:** main menu, play select with blurbs and bot-driven previews, tutorial and glossary, settings, progress and mastery with persistence.
-10. **M9, Audio and polish:** SFX, music, mistake text, result banners, accessibility, performance pass.
-11. **M10, Release readiness:** documentation (`README.md`, `docs/adding-a-play.md`, `docs/decisions.md`, `docs/assets.md`), final deploy checks.
+10. **M9, Audio and polish:** SFX, music, result banners, accessibility, performance pass.
+11. **M10, Release readiness:** documentation (`README.md`, `docs/adding-a-play.md`, `.factory/decisions.md`, `docs/assets.md`), final deploy checks.
 
 ---
 
 ## 16. Where the Factory Has Latitude
 
-The factory should decide, and document in `docs/decisions.md`:
+The factory should decide, and document in `.factory/decisions.md`:
 
 - Exact attribute values, tuning constants and thresholds (keep them in a single config).
 - Exact animation and visual details within the style guidelines.

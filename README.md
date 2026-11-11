@@ -22,8 +22,8 @@ v1 ships five point guard plays: Give-and-Go, Drive-and-Kick, Dribble Handoff, H
 
 | Doc | Purpose |
 |---|---|
-| [`docs/DESIGN.md`](docs/DESIGN.md) | **The design spec and source of truth.** Vision, terminology, scope, mechanics, plays, data system, testing, milestones. |
-| [`docs/decisions.md`](docs/decisions.md) | Log of significant decisions made during implementation. |
+| [`docs/DESIGN_DOC.md`](docs/DESIGN_DOC.md) | **The design spec and source of truth.** Vision, terminology, scope, mechanics, plays, data system, testing, milestones. |
+| [`.factory/decisions.md`](.factory/decisions.md) | Log of significant decisions made during implementation. |
 | [`docs/adding-a-play.md`](docs/adding-a-play.md) | How to add a new play or role *(written during M10)*. |
 | [`docs/assets.md`](docs/assets.md) | Licenses and sources for any third-party assets *(created when needed)*. |
 
@@ -51,10 +51,10 @@ Pushes to `main` build and deploy to GitHub Pages through GitHub Actions. The Vi
 
 ## For the software factory
 
-1. **Read [`docs/DESIGN.md`](docs/DESIGN.md) in full before creating issues.** It is the source of truth. This README is only an overview.
+1. **Read [`docs/DESIGN_DOC.md`](docs/DESIGN_DOC.md) in full before creating issues.** It is the source of truth. This README is only an overview.
 2. Break the work into issues following the milestones in section 15 of the design doc (M0 to M10). Each milestone should leave the project in a runnable, deployable state.
 3. Respect the fixed constraints in section 16 ("Where the Factory Has Latitude"): terminology, v1 scope, move philosophy, tactical camera, layered architecture with a headless simulation, and the data-driven play system.
-4. Where the design doc is silent, use your judgment in service of its vision and design pillars, and record significant choices in [`docs/decisions.md`](docs/decisions.md).
+4. Where the design doc is silent, use your judgment in service of its vision and design pillars, and record significant choices in [`.factory/decisions.md`](.factory/decisions.md).
 5. Treat the testing strategy (design doc section 13) as part of the product, especially the correct-read and wrong-read play bots.
 
 ## License
