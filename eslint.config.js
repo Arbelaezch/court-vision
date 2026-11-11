@@ -7,6 +7,18 @@ import tseslint from 'typescript-eslint';
 const HEADLESS_MSG =
   'src/sim, src/content and src/ai must run headless (no three.js, DOM or browser-layer imports). See docs/DESIGN_DOC.md section 4.';
 
+const DETERMINISM_MSG =
+  'src/sim, src/content and src/ai must be deterministic: use the seeded RNG (src/sim/rng.ts) and fixed-step ticks, not Math.random, wall-clock time or timers. See docs/DESIGN_DOC.md section 4.';
+
+const NONDETERMINISTIC_GLOBALS = [
+  'performance',
+  'setTimeout',
+  'setInterval',
+  'setImmediate',
+  'requestIdleCallback',
+  'crypto',
+];
+
 const DOM_GLOBALS = [
   'window',
   'self',
@@ -101,6 +113,20 @@ export default defineConfig(
           selector: "ImportExpression:not([source.type='Literal'])",
           message: `${HEADLESS_MSG} Dynamic imports must use a literal specifier so layer boundaries can be checked.`,
         },
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length=0]",
+          message: DETERMINISM_MSG,
+        },
+        {
+          selector: "CallExpression[callee.name='Date']",
+          message: DETERMINISM_MSG,
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        { object: 'Math', property: 'random', message: DETERMINISM_MSG },
+        { object: 'Date', property: 'now', message: DETERMINISM_MSG },
+        { object: 'performance', property: 'now', message: DETERMINISM_MSG },
       ],
       'no-restricted-imports': [
         'error',
@@ -115,6 +141,7 @@ export default defineConfig(
       'no-restricted-globals': [
         'error',
         ...DOM_GLOBALS.map((name) => ({ name, message: HEADLESS_MSG })),
+        ...NONDETERMINISTIC_GLOBALS.map((name) => ({ name, message: DETERMINISM_MSG })),
       ],
     },
   },
