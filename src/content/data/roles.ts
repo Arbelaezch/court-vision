@@ -1,0 +1,80 @@
+// Role data: which archetype each of the five roles uses by default, their moves, and which
+// role the user can play. Archetype tuning values live in data/archetypes.ts.
+
+export const ROLES_FILE = 'src/content/data/roles.ts';
+
+export const ROLES_DATA = {
+  PG: {
+    name: 'Point Guard',
+    number: 1,
+    bodyType: 'guard',
+    defaultArchetype: 'floorGeneral',
+    playable: true,
+    moves: [
+      'move',
+      'sprint',
+      'pivot',
+      'chestPass',
+      'bouncePass',
+      'lob',
+      'handOff',
+      'shoot',
+      'floater',
+      'callForScreen',
+    ],
+  },
+  SG: {
+    name: 'Shooting Guard',
+    number: 2,
+    bodyType: 'guard',
+    defaultArchetype: 'sharpshooter',
+    playable: false,
+    moves: [
+      'move',
+      'sprint',
+      'pivot',
+      'chestPass',
+      'bouncePass',
+      'lob',
+      'handOff',
+      'shoot',
+      'floater',
+      'setScreen',
+    ],
+  },
+  SF: {
+    name: 'Small Forward',
+    number: 3,
+    bodyType: 'wing',
+    defaultArchetype: 'twoWayWing',
+    playable: false,
+    moves: [
+      'move',
+      'sprint',
+      'pivot',
+      'chestPass',
+      'bouncePass',
+      'lob',
+      'handOff',
+      'shoot',
+      'floater',
+      'setScreen',
+    ],
+  },
+  PF: {
+    name: 'Power Forward',
+    number: 4,
+    bodyType: 'big',
+    defaultArchetype: 'stretchForward',
+    playable: false,
+    moves: ['move', 'sprint', 'pivot', 'chestPass', 'bouncePass', 'handOff', 'shoot', 'setScreen'],
+  },
+  C: {
+    name: 'Center',
+    number: 5,
+    bodyType: 'big',
+    defaultArchetype: 'rimProtector',
+    playable: false,
+    moves: ['move', 'sprint', 'pivot', 'chestPass', 'bouncePass', 'handOff', 'shoot', 'setScreen'],
+  },
+};
