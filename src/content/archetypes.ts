@@ -2,6 +2,7 @@
 // themselves live in data/archetypes.ts.
 
 import {
+  ID_PATTERN,
   childPath,
   fail,
   getField,
@@ -48,7 +49,6 @@ const ARCHETYPE_KEYS = [
   'defensiveAwareness',
 ] as const;
 const SHOOTING_KEYS = ['rim', 'midRange', 'three'] as const;
-const ID_PATTERN = /^[a-z][A-Za-z0-9]*$/;
 
 const rating = { min: 0, max: 100, integer: true } as const;
 
