@@ -51,7 +51,7 @@ function createHoop(): THREE.Group {
   return hoop;
 }
 
-export function createCourtScene(): {
+export function createCourtScene(opts: { topHeight?: number } = {}): {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
 } {
@@ -75,7 +75,7 @@ export function createCourtScene(): {
   sun.position.set(5, 12, 8);
   scene.add(sun);
 
-  const camera = createTacticalCamera(16 / 9);
+  const camera = createTacticalCamera(16 / 9, opts.topHeight);
 
   return { scene, camera };
 }

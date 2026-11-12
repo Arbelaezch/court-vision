@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { RIM_CENTER, RIM_HEIGHT, THREE_POINT_RADIUS } from '../sim';
 import {
   FIT_NDC_LIMIT,
+  PLAYER_HEAD_HEIGHT,
   TACTICAL_FOV_DEG,
   TACTICAL_PITCH_DEG,
   createTacticalCamera,
@@ -56,5 +57,27 @@ describe('fitTacticalCamera', () => {
 
   it('createTacticalCamera returns a fitted camera', () => {
     expect(createTacticalCamera(16 / 9).aspect).toBe(16 / 9);
+  });
+
+  it('keeps the default top height at head height', () => {
+    const maxY = Math.max(...tacticalFitPoints().slice(0, 8).map((p) => p.y));
+    expect(maxY).toBe(PLAYER_HEAD_HEIGHT);
+  });
+
+  it.each([16 / 9, 1, 9 / 16])('fits a taller top height at aspect %f', (aspect) => {
+    const camera = new THREE.PerspectiveCamera();
+    fitTacticalCamera(camera, aspect, 2.9);
+    for (const point of tacticalFitPoints(2.9)) {
+      const ndc = point.clone().project(camera);
+      expect(Math.abs(ndc.x)).toBeLessThanOrEqual(FIT_NDC_LIMIT + 1e-3);
+      expect(Math.abs(ndc.y)).toBeLessThanOrEqual(FIT_NDC_LIMIT + 1e-3);
+    }
+  });
+
+  it('rejects invalid top heights', () => {
+    const camera = new THREE.PerspectiveCamera();
+    expect(() => fitTacticalCamera(camera, 1, -1)).toThrow();
+    expect(() => fitTacticalCamera(camera, 1, NaN)).toThrow();
+    expect(() => tacticalFitPoints(-0.1)).toThrow();
   });
 });

@@ -7,6 +7,8 @@ export { loadArchetypes } from './archetypes';
 export type { Archetype, ArchetypeId, ArchetypeTable, ShootingByZone } from './archetypes';
 export { BODY_TYPES, MOVE_IDS, loadRoles } from './roles';
 export type { BodyType, MoveId, Role, RoleTable } from './roles';
+export { loadBodyTypes } from './bodyTypes';
+export type { BodyTypeSpec, BodyTypeTable } from './bodyTypes';
 export { loadTeams } from './teams';
 export type { Team, TeamCast, TeamColors } from './teams';
 export { BUNDLED_CAST_SOURCES, loadCastContent } from './cast';

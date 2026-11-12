@@ -26,10 +26,17 @@ export const MAX_CAMERA_DISTANCE = 200;
 
 const BISECTION_ITERATIONS = 40;
 
+function assertTopHeight(topHeight: number): void {
+  if (!(Number.isFinite(topHeight) && topHeight >= 0)) {
+    throw new Error('Court Vision: camera top height must be a finite number >= 0');
+  }
+}
+
 /** Points that must stay inside the view: court corners, head-height points above them, backboard top. */
-export function tacticalFitPoints(): THREE.Vector3[] {
+export function tacticalFitPoints(topHeight = PLAYER_HEAD_HEIGHT): THREE.Vector3[] {
+  assertTopHeight(topHeight);
   const points: THREE.Vector3[] = [];
-  for (const y of [0, PLAYER_HEAD_HEIGHT]) {
+  for (const y of [0, topHeight]) {
     for (const x of [-SIDELINE_X, SIDELINE_X]) {
       for (const z of [BASELINE_Z, HALF_COURT_LINE_Z]) {
         points.push(new THREE.Vector3(x, y, z));
@@ -69,7 +76,11 @@ function fits(camera: THREE.PerspectiveCamera, points: THREE.Vector3[]): boolean
  * Keeps FOV and pitch fixed and dollies along the view axis to the closest
  * distance at which the whole half court fits. Smoothing and pan limits arrive with a follow target.
  */
-export function fitTacticalCamera(camera: THREE.PerspectiveCamera, aspect: number): void {
+export function fitTacticalCamera(
+  camera: THREE.PerspectiveCamera,
+  aspect: number,
+  topHeight = PLAYER_HEAD_HEIGHT,
+): void {
   if (!(Number.isFinite(aspect) && aspect > 0)) {
     throw new Error('Court Vision: camera aspect must be a positive finite number');
   }
@@ -79,7 +90,7 @@ export function fitTacticalCamera(camera: THREE.PerspectiveCamera, aspect: numbe
   camera.far = CAMERA_FAR;
   camera.updateProjectionMatrix();
 
-  const points = tacticalFitPoints();
+  const points = tacticalFitPoints(topHeight);
   let low = MIN_CAMERA_DISTANCE;
   let high = MAX_CAMERA_DISTANCE;
   for (let i = 0; i < BISECTION_ITERATIONS; i += 1) {
@@ -91,8 +102,11 @@ export function fitTacticalCamera(camera: THREE.PerspectiveCamera, aspect: numbe
   placeCamera(camera, high);
 }
 
-export function createTacticalCamera(aspect: number): THREE.PerspectiveCamera {
+export function createTacticalCamera(
+  aspect: number,
+  topHeight = PLAYER_HEAD_HEIGHT,
+): THREE.PerspectiveCamera {
   const camera = new THREE.PerspectiveCamera();
-  fitTacticalCamera(camera, aspect);
+  fitTacticalCamera(camera, aspect, topHeight);
   return camera;
 }
