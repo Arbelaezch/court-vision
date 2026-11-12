@@ -3,3 +3,8 @@ dist/
 coverage/
 *.local
 .DS_Store
+
+# factory run artifacts; decisions.md and docs.json are shared
+.factory/*
+!.factory/decisions.md
+!.factory/docs.json
