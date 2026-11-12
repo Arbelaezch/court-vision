@@ -4,7 +4,7 @@
 
 Court Vision is a browser game built with three.js. You control a single player (starting with the point guard) and run real basketball plays, first with no defenders and heavy guidance, then against defenders who react. Shot-making skill is de-emphasized. What matters is where you move, who you pass to, and whether you take a good look.
 
-**Play it:** `https://<your-github-username>.github.io/court-vision/` *(live once the first deploy completes)*
+**Play it:** `https://arbelaezch.github.io/court-vision/` *(live once the first deploy completes)*
 
 ## Modes
 
@@ -61,6 +61,12 @@ Because Vite `base` is `/court-vision/`, `npm run dev` serves at `http://localho
 ## Deployment
 
 Pushes to `main` build and deploy to GitHub Pages through GitHub Actions. The Vite `base` option must match the repository path (`/court-vision/`). If you deploy elsewhere (Cloudflare Pages, Netlify), change only `base`.
+
+The workflow is `.github/workflows/ci.yml`. Pull requests run typecheck, lint, test and build. Only pushes to `main` deploy.
+
+### One-time setup
+
+In the GitHub repo, go to **Settings > Pages > Build and deployment > Source** and choose **GitHub Actions**. Until this is set, the `deploy` job fails, while the typecheck, lint, test and build checks still run. After enabling it, re-run all jobs for the latest `main` run from the Actions tab (re-running only the failed `deploy` job works only within a day, before the build artifact expires), or push to `main`, to publish; a manual `workflow_dispatch` run does not deploy.
 
 ## For the software factory
 
