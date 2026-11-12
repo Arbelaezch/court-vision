@@ -66,7 +66,7 @@ The workflow is `.github/workflows/ci.yml`. Pull requests run typecheck, lint, t
 
 ### One-time setup
 
-In the GitHub repo, go to **Settings > Pages > Build and deployment > Source** and choose **GitHub Actions**. Until this is set, the `deploy` job fails, while the typecheck, lint, test and build checks still run.
+In the GitHub repo, go to **Settings > Pages > Build and deployment > Source** and choose **GitHub Actions**. Until this is set, the `deploy` job fails, while the typecheck, lint, test and build checks still run. After enabling it, re-run all jobs for the latest `main` run from the Actions tab (re-running only the failed `deploy` job works only within a day, before the build artifact expires), or push to `main`, to publish; a manual `workflow_dispatch` run does not deploy.
 
 ## For the software factory
 
