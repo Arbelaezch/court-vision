@@ -123,6 +123,17 @@ export function readArray(value: unknown, at: FieldPath): unknown[] {
   return value as unknown[];
 }
 
+// camelCase content ids (archetypes, plays, phases, coverages, decisions, options).
+export const ID_PATTERN = /^[a-z][A-Za-z0-9]*$/;
+
+export function readId(value: unknown, at: FieldPath): string {
+  const id = readString(value, at);
+  if (!ID_PATTERN.test(id)) {
+    return fail(at, `expected id matching ${String(ID_PATTERN)}, got ${describeValue(id)}`);
+  }
+  return id;
+}
+
 export function readHexColor(value: unknown, at: FieldPath): string {
   if (typeof value !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(value)) {
     return fail(at, `expected #rrggbb color, got ${describeValue(value)}`);

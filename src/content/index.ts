@@ -1,7 +1,7 @@
 // Content/data layer: plays, roles, archetypes, coverages, scenarios and tutorial content as
 // validated data, loaded at startup. Invalid data must fail loudly with a helpful error.
 // Headless: no three.js, no DOM, no imports from render/ui/input/audio/app (enforced by ESLint).
-export { ContentValidationError } from './validate';
+export { ContentValidationError, ID_PATTERN, readId } from './validate';
 export type { ContentSource, FieldPath } from './validate';
 export { loadArchetypes } from './archetypes';
 export type { Archetype, ArchetypeId, ArchetypeTable, ShootingByZone } from './archetypes';
@@ -11,3 +11,38 @@ export { loadTeams } from './teams';
 export type { Team, TeamCast, TeamColors } from './teams';
 export { BUNDLED_CAST_SOURCES, loadCastContent } from './cast';
 export type { CastContent, CastSources } from './cast';
+export {
+  CUE_KINDS,
+  CUE_LEVELS,
+  DECISION_GRADES,
+  DEFENDER_ACTIONS,
+  PASS_MOVES,
+  TARGETED_TRACK_ACTIONS,
+  TRACK_ACTIONS,
+  TRIGGER_KINDS,
+  readPlay,
+} from './plays';
+export type {
+  Coverage,
+  CoverageStep,
+  Cue,
+  CueKind,
+  CueLevel,
+  DecisionGrade,
+  DecisionOption,
+  DecisionPoint,
+  DefenderAction,
+  DefenderStep,
+  Phase,
+  PhaseCues,
+  PhaseTransition,
+  PhaseTrigger,
+  PlayScenario,
+  PlaySetup,
+  TrackAction,
+  TrackStep,
+  TriggerKind,
+} from './plays';
+export { BUNDLED_PLAY_SOURCES, loadPlaybook } from './playbook';
+export { SCENARIO_KINDS, loadScenario, loadScenarios } from './scenarios';
+export type { Scenario, ScenarioKind, ScenarioTable } from './scenarios';
