@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { BODY_TYPES } from '../content';
 import type { BodyTypeSpec, BodyTypeTable, CastContent } from '../content';
 import type { CourtPoint, RoleId, TeamSide } from '../sim';
+import { createAnimator, MOVING_SPEED_MPS, resolveAnimState, stepAnimator } from './animation';
+import type { AnimState, Animator, BodyPose } from './animation';
 import { disposeObject3D } from './dispose';
 import type { LabelAtlas, LabelCell } from './labelAtlas';
 import { createOutlineMaterial, createToonMaterial, outlineScale } from './toon';
@@ -16,11 +18,12 @@ export interface CharacterPose {
   id: number;
   pos: CourtPoint;
   vel: CourtPoint;
+  anim?: AnimState;
 }
 
 export interface CharacterLayer {
   readonly object: THREE.Group;
-  sync(players: readonly CharacterPose[], controlledPlayerId: number | null): void;
+  sync(players: readonly CharacterPose[], controlledPlayerId: number | null, dtSec?: number): void;
   dispose(): void;
 }
 
@@ -51,7 +54,6 @@ const MARKER_GAP_M = 0.25;
 const MARKER_RADIUS_M = 0.22;
 const MARKER_HEIGHT_M = 0.4;
 const MARKER_OUTLINE_SCALE = 1.2;
-const MOVING_SPEED_MPS = 0.1;
 
 // Fixed shared ratios: all variation between body types comes from the spec (content data).
 export function bodyProportions(spec: BodyTypeSpec): BodyProportions {
@@ -91,6 +93,25 @@ interface Slot {
   index: number;
   props: BodyProportions;
   jersey: THREE.Mesh;
+  animator: Animator | null;
+}
+
+/**
+ * How far to lower the root so the lower foot stays planted. A leg whose axis has vertical
+ * component a = cos(swing) * cos(spread) has its lowest point (the tilted foot disc's rim) at
+ * hip - len * a - radius * sqrt(1 - a^2); we drop by the smaller of the two legs' heights.
+ */
+function plantDrop(props: BodyProportions, body: BodyPose): number {
+  const legLen = props.legLength - body.crouchM;
+  const hipY = props.hipY - body.crouchM;
+  const lowest = (swing: number, spread: number): number => {
+    const a = Math.cos(swing) * Math.cos(spread);
+    return hipY - legLen * a - props.legRadius * Math.sqrt(Math.max(0, 1 - a * a));
+  };
+  return Math.min(
+    lowest(body.legRSwingRad, body.legRSpreadRad),
+    lowest(body.legLSwingRad, body.legLSpreadRad),
+  );
 }
 
 function createJerseyGeometry(props: BodyProportions, cell: LabelCell): THREE.BufferGeometry {
@@ -195,7 +216,7 @@ export function createCharacterLayer(opts: {
     jersey.visible = false;
     group.add(jersey);
 
-    const slot = { entry, index, props, jersey };
+    const slot: Slot = { entry, index, props, jersey, animator: null };
     slots.push(slot);
     slotById.set(entry.id, slot);
   });
@@ -221,6 +242,7 @@ export function createCharacterLayer(opts: {
   const part = new THREE.Matrix4();
   const hull = new THREE.Matrix4();
   const tmp = new THREE.Matrix4();
+  const rot = new THREE.Matrix4();
   const size = new THREE.Vector3();
   const extentVec = new THREE.Vector3();
   const grow = new THREE.Vector3();
@@ -248,7 +270,37 @@ export function createCharacterLayer(opts: {
     outline.setMatrixAt(index, hull);
   }
 
-  function sync(players: readonly CharacterPose[], controlledPlayerId: number | null): void {
+  // part = base * T(hinge) * Rz(side * spread) * Rx(-swing) * T(0, -length / 2, 0) * S(r, length, r)
+  function setLimb(
+    mesh: THREE.InstancedMesh,
+    outline: THREE.InstancedMesh,
+    index: number,
+    base: THREE.Matrix4,
+    hinge: Triple,
+    side: -1 | 1,
+    swingRad: number,
+    spreadRad: number,
+    length: number,
+    radius: number,
+  ): void {
+    size.set(radius, length, radius);
+    part
+      .copy(base)
+      .multiply(tmp.makeTranslation(...hinge))
+      .multiply(rot.makeRotationZ(side * spreadRad))
+      .multiply(rot.makeRotationX(-swingRad))
+      .multiply(tmp.makeTranslation(0, -length / 2, 0))
+      .scale(size);
+    mesh.setMatrixAt(index, part);
+    hull.copy(part).scale(outlineScale(extentVec.set(2 * radius, length, 2 * radius), grow));
+    outline.setMatrixAt(index, hull);
+  }
+
+  function sync(
+    players: readonly CharacterPose[],
+    controlledPlayerId: number | null,
+    dtSec = 0,
+  ): void {
     for (const pose of players) {
       const slot = slotById.get(pose.id);
       if (!slot) continue;
@@ -261,38 +313,56 @@ export function createCharacterLayer(opts: {
             ? Math.PI
             : 0;
 
-      root.compose(pos.set(pose.pos.x, 0, pose.pos.z), euler.setFromAxisAngle(axisY, yaw), one);
+      const state = resolveAnimState(pose.anim, speed);
+      slot.animator ??= createAnimator(state);
+      const body = stepAnimator(slot.animator, state, speed, dtSec);
+
+      root.compose(
+        pos.set(pose.pos.x, body.jumpM - plantDrop(props, body), pose.pos.z),
+        euler.setFromAxisAngle(axisY, yaw),
+        one,
+      );
+      const hipY = props.hipY - body.crouchM;
+      const legLen = props.legLength - body.crouchM;
       upper
         .copy(root)
-        .multiply(tmp.makeTranslation(0, props.hipY, 0))
-        .multiply(tmp.makeRotationFromQuaternion(euler.setFromAxisAngle(axisX, props.leanRad)));
+        .multiply(tmp.makeTranslation(0, hipY, 0))
+        .multiply(
+          tmp.makeRotationFromQuaternion(
+            euler.setFromAxisAngle(axisX, props.leanRad + body.torsoPitchRad),
+          ),
+        );
 
       const legX = 0.25 * props.torsoWidth;
       const armX = props.torsoWidth / 2 + props.armRadius;
-      const armY = props.shoulderY - props.armLength / 2;
 
       const headR = props.headRadius;
       const legR = props.legRadius;
       const armR = props.armRadius;
       const headDims: Triple = [headR, headR, headR];
-      const legDims: Triple = [legR, props.legLength, legR];
-      const armDims: Triple = [armR, props.armLength, armR];
       const torsoDims: Triple = [props.torsoWidth, props.torsoHeight, props.torsoDepth];
       const hipsDims: Triple = [props.torsoWidth * 0.95, props.hipsHeight, props.torsoDepth * 1.05];
       const l = index * 4;
 
       const headExt: Triple = [2 * headR, 2 * headR, 2 * headR];
-      const legExt: Triple = [2 * legR, props.legLength, 2 * legR];
-      const armExt: Triple = [2 * armR, props.armLength, 2 * armR];
 
       const headOff: Triple = [0, props.headCenterY - props.hipY, 0];
       setPart(heads, headsOutline, index, upper, headOff, headDims, headExt);
       setPart(bodies, bodiesOutline, index * 2, upper, [0, props.torsoCenterY, 0], torsoDims);
-      setPart(bodies, bodiesOutline, index * 2 + 1, root, [0, props.hipY, 0], hipsDims);
-      setPart(limbs, limbsOutline, l, root, [-legX, props.legLength / 2, 0], legDims, legExt);
-      setPart(limbs, limbsOutline, l + 1, root, [legX, props.legLength / 2, 0], legDims, legExt);
-      setPart(limbs, limbsOutline, l + 2, upper, [-armX, armY, 0], armDims, armExt);
-      setPart(limbs, limbsOutline, l + 3, upper, [armX, armY, 0], armDims, armExt);
+      setPart(bodies, bodiesOutline, index * 2 + 1, root, [0, hipY, 0], hipsDims);
+      const { legRSwingRad, legRSpreadRad, legLSwingRad, legLSpreadRad } = body;
+      const { armRSwingRad, armRSpreadRad, armLSwingRad, armLSpreadRad } = body;
+      const sy = props.shoulderY;
+      const al = props.armLength;
+      const legRHinge: Triple = [-legX, hipY, 0];
+      const legLHinge: Triple = [legX, hipY, 0];
+      const armRHinge: Triple = [-armX, sy, 0];
+      const armLHinge: Triple = [armX, sy, 0];
+      const lo = limbsOutline;
+      setLimb(limbs, lo, l, root, legRHinge, -1, legRSwingRad, legRSpreadRad, legLen, legR);
+      setLimb(limbs, lo, l + 1, root, legLHinge, 1, legLSwingRad, legLSpreadRad, legLen, legR);
+      setLimb(limbs, lo, l + 2, upper, armRHinge, -1, armRSwingRad, armRSpreadRad, al, armR);
+      setLimb(limbs, lo, l + 3, upper, armLHinge, 1, armLSwingRad, armLSpreadRad, al, armR);
 
       slot.jersey.visible = true;
       slot.jersey.matrix.copy(upper);
@@ -306,9 +376,11 @@ export function createCharacterLayer(opts: {
       controlledPlayerId === null ? undefined : players.find((p) => p.id === controlledPlayerId);
     const controlledSlot = controlled ? slotById.get(controlled.id) : undefined;
     if (controlled && controlledSlot) {
+      const cur = controlledSlot.animator?.current;
+      const lift = cur ? cur.jumpM - cur.crouchM - plantDrop(controlledSlot.props, cur) : 0;
       marker.position.set(
         controlled.pos.x,
-        controlledSlot.props.heightM + MARKER_GAP_M + MARKER_HEIGHT_M / 2,
+        controlledSlot.props.heightM + MARKER_GAP_M + MARKER_HEIGHT_M / 2 + lift,
         controlled.pos.z,
       );
       marker.visible = true;

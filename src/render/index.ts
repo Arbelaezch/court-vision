@@ -11,10 +11,22 @@ export {
   createCharacterLayer,
 } from './characters';
 export type { CharacterLayer, CharacterPose, CharacterRosterEntry } from './characters';
+export {
+  ANIM_STATES,
+  ANIM_BLEND_S,
+  MOVING_SPEED_MPS,
+  createAnimator,
+  locomotionCycleHz,
+  neutralPose,
+  resolveAnimState,
+  samplePose,
+  stepAnimator,
+} from './animation';
+export type { AnimState, Animator, BodyPose } from './animation';
 export { createPracticeCones } from './cones';
 export type { ConeSpot } from './cones';
 export { collectCastLabels, createLabelAtlas, layoutLabelAtlas } from './labelAtlas';
 export type { LabelAtlas, LabelCell } from './labelAtlas';
 export { countDrawCalls } from './drawCalls';
-export { createDevScene, parseDevView } from './devView';
+export { ANIM_DEV_HOLD_S, createDevScene, parseDevView } from './devView';
 export type { DevView } from './devView';

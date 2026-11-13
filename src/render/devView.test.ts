@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { loadCastContent } from '../content';
 import { BASELINE_Z, HALF_COURT_LINE_Z, SIDELINE_X } from '../sim';
 import { characterFitHeight } from './characters';
-import { createDevScene, parseDevView } from './devView';
+import { ANIM_STATES } from './animation';
+import { ANIM_DEV_HOLD_S, createDevScene, parseDevView } from './devView';
 import type { DevView } from './devView';
 import { countDrawCalls } from './drawCalls';
 
@@ -21,6 +22,7 @@ describe('parseDevView', () => {
   it('accepts exact view names only', () => {
     expect(parseDevView('characters')).toBe('characters');
     expect(parseDevView('practice')).toBe('practice');
+    expect(parseDevView('animations')).toBe('animations');
     expect(parseDevView(null)).toBeNull();
     expect(parseDevView('x')).toBeNull();
   });
@@ -47,11 +49,13 @@ describe('createDevScene', () => {
     expect(names(scene).filter((n) => n.startsWith('jersey-'))).toHaveLength(5);
   });
 
-  it.each<DevView>(['characters', 'practice'])('%s stays under the draw call budget', (view) => {
+  const VIEWS: DevView[] = ['characters', 'practice', 'animations'];
+
+  it.each(VIEWS)('%s stays under the draw call budget', (view) => {
     expect(countDrawCalls(build(view).scene)).toBeLessThan(100);
   });
 
-  it.each<DevView>(['characters', 'practice'])('%s fits the marker top in view', (view) => {
+  it.each(VIEWS)('%s fits the marker top in view', (view) => {
     const { scene, camera, topHeight } = build(view);
     expect(topHeight).toBe(characterFitHeight(loadCastContent().bodyTypes));
     scene.updateMatrixWorld(true);
@@ -66,7 +70,44 @@ describe('createDevScene', () => {
     }
   });
 
-  it.each<DevView>(['characters', 'practice'])('%s disposes cleanly', (view) => {
+  it.each(VIEWS)('%s disposes cleanly', (view) => {
     expect(() => build(view).dispose()).not.toThrow();
+  });
+
+  it('animations view holds ten players, no cones, and starts idle', () => {
+    const { scene, status } = build('animations');
+    const all = names(scene);
+    expect(all.filter((n) => n.startsWith('jersey-'))).toHaveLength(10);
+    expect(all).not.toContain('practice-cones');
+    expect(status()).toBe('idle');
+  });
+
+  it('animations view cycles through every state and wraps', () => {
+    const { update, status } = build('animations');
+    for (let k = 1; k < ANIM_STATES.length; k++) {
+      update(ANIM_DEV_HOLD_S);
+      expect(status()).toBe(ANIM_STATES[k]);
+    }
+    update(ANIM_DEV_HOLD_S);
+    expect(status()).toBe('idle');
+  });
+
+  it.each(ANIM_STATES.map((s, k) => [s, k] as const))('animations plays %s visibly', (state, k) => {
+    const { scene, update, status } = build('animations');
+    update(k * ANIM_DEV_HOLD_S + 0.5);
+    const limbs = scene.getObjectByName('character-limbs') as THREE.InstancedMesh;
+    const before = Array.from(limbs.instanceMatrix.array);
+    update(0.1);
+    expect(Array.from(limbs.instanceMatrix.array)).not.toEqual(before);
+    expect(status()).toBe(state);
+  });
+
+  it('characters view plays idle on update and has no status', () => {
+    const { scene, update, status } = build('characters');
+    const limbs = scene.getObjectByName('character-limbs') as THREE.InstancedMesh;
+    const before = Array.from(limbs.instanceMatrix.array);
+    update(0.5);
+    expect(Array.from(limbs.instanceMatrix.array)).not.toEqual(before);
+    expect(status()).toBeNull();
   });
 });
