@@ -16,6 +16,7 @@
 
 import { BASELINE_Z, HALF_COURT_LINE_Z, SIDELINE_X } from './court';
 import type { GameEvent } from './events';
+import { contestingOpponents } from './opponents';
 import { nextRange } from './rng';
 import { PASS_TYPES } from './state';
 import type {
@@ -102,10 +103,6 @@ function defenderContest(
   };
 }
 
-function opponentsById(state: GameState, side: PlayerState['side']): PlayerState[] {
-  return state.players.filter((p) => p.side !== side).sort((a, b) => a.id - b.id);
-}
-
 /** Where the receiver will be after `ticks` steps at their current velocity, clamped to the court. */
 function predictArrivalSpot(receiver: PlayerState, ticks: number): CourtPoint {
   const seconds = ticks * FIXED_DT;
@@ -158,7 +155,7 @@ function resolveLaneInterception(
 
   // Defenders run in ascending id, so a strict `<` keeps the lowest id on equal progress.
   let best: Threat | null = null;
-  for (const defender of opponentsById(next, passer.side)) {
+  for (const defender of contestingOpponents(next, passer.side)) {
     const along = projectionFraction(passer.pos, arrival, defender.pos);
     if (along <= 0 || along >= 1) {
       continue;
@@ -212,7 +209,7 @@ function resolveCatchInterception(
   const receiverRating = profiles[receiver.role].ballSecurity;
   let winner: number | null = null;
   // Every defender in the zone draws, in ascending id; the lowest intercepting id wins.
-  for (const defender of opponentsById(next, receiver.side)) {
+  for (const defender of contestingOpponents(next, receiver.side)) {
     const { inBand, ratingTerm } = defenderContest(tuning, profiles[defender.role]);
     const catchDistance = horizontalDistance(defender.pos, receiver.pos);
     if (inBand(flight.catchHeightM) && catchDistance < flight.catchRadiusM) {
@@ -237,15 +234,21 @@ function resolveCatchInterception(
 }
 
 /**
- * Starts a pass from the controlled player. Throws on caller bugs (unknown pass type, invalid
- * target, no passing setup); ignores the pass when the controlled player does not hold the ball or
- * a hand-off target is out of range.
+ * Starts a pass from `passerId` (default: the controlled player; AI teammates pass through a
+ * `pass` PlayerCommand). Throws on caller bugs (unknown pass type, unknown passer, invalid target,
+ * no passing setup); ignores the pass when the passer does not hold the ball or a hand-off target
+ * is out of range.
  */
-export function startPass(next: GameState, passType: PassType, targetId: number): void {
+export function startPass(
+  next: GameState,
+  passType: PassType,
+  targetId: number,
+  passerId: number = next.controlledPlayerId,
+): void {
   if (!(PASS_TYPES as readonly unknown[]).includes(passType)) {
     throw new Error(`Court Vision: unknown pass type ${String(passType)}`);
   }
-  const passer = findPlayer(next, next.controlledPlayerId);
+  const passer = findPlayer(next, passerId);
   if (!Number.isInteger(targetId)) {
     throw new Error(`Court Vision: pass targetId must be an integer, got ${targetId}`);
   }

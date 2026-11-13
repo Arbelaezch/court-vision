@@ -50,4 +50,8 @@ describe('soundForEvent', () => {
       }),
     ).toBeNull();
   });
+
+  it('plays nothing for an automatic screen being set', () => {
+    expect(soundForEvent({ type: 'screenSet', tick: 10, screenerId: 4, targetId: 0 })).toBeNull();
+  });
 });

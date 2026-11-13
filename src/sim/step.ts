@@ -1,15 +1,17 @@
 // One fixed simulation step. stepGame is pure: it clones the state and never mutates its inputs,
 // so the renderer can keep the previous and current states and interpolate between them.
-// Actions set the controlled player's inputs (move intent, held sprint and pivot); every player
-// then moves kinematically with acceleration, sprint and stamina (./movement.ts). A pass action
+// Commands act on players other than the controlled one (AI teammates, Practice cones): steer sets
+// the move intent, place teleports, pass releases a pass from that player. They apply in order,
+// before the actions. Actions set the controlled player's inputs (move intent, held sprint and
+// pivot); every player then moves kinematically with acceleration, sprint and stamina (./movement.ts). A pass action
 // releases the ball, which then flies to the receiver over later steps (./passing.ts). A shoot or
 // floater action resolves the shot instantly, before movement, from the positions the step starts
 // with (./takeShot.ts); its events are kept in this step's events.
 
-import { BASELINE_Z, HALF_COURT_LINE_Z, SIDELINE_X } from './court';
+import { BASELINE_Z, HALF_COURT_LINE_Z, SIDELINE_X, isInBounds } from './court';
 import { stepPlayerMovement } from './movement';
 import { advanceBallFlight, startPass } from './passing';
-import type { CourtPoint, GameState, PlayerState, SimAction } from './state';
+import type { CourtPoint, GameState, PlayerCommand, PlayerState, SimAction } from './state';
 import { takeShot } from './takeShot';
 
 function clampToUnitLength(x: number, z: number): CourtPoint {
@@ -98,11 +100,80 @@ function applyAction(next: GameState, action: SimAction, eventTick: number): voi
   }
 }
 
-export function stepGame(state: GameState, actions: readonly SimAction[]): GameState {
+/** The non-controlled player a command targets; throws on a caller bug. */
+function commandedPlayer(next: GameState, command: PlayerCommand): PlayerState {
+  const { playerId } = command;
+  if (!Number.isInteger(playerId)) {
+    throw new Error(
+      `Court Vision: ${command.type} command playerId must be an integer, got ${String(playerId)}`,
+    );
+  }
+  if (playerId === next.controlledPlayerId) {
+    throw new Error(
+      `Court Vision: ${command.type} command cannot target the controlled player ${playerId}`,
+    );
+  }
+  const player = next.players.find((p) => p.id === playerId);
+  if (player === undefined) {
+    throw new Error(`Court Vision: ${command.type} command player ${playerId} not found`);
+  }
+  return player;
+}
+
+function requireFinitePoint(command: { type: string; x: number; z: number }): void {
+  if (!Number.isFinite(command.x) || !Number.isFinite(command.z)) {
+    throw new Error(`Court Vision: ${command.type} command needs finite x and z`);
+  }
+}
+
+function applyCommand(next: GameState, command: PlayerCommand): void {
+  switch (command.type) {
+    case 'steer': {
+      const player = commandedPlayer(next, command);
+      requireFinitePoint(command);
+      player.moveIntent = clampToUnitLength(command.x, command.z);
+      return;
+    }
+    case 'place': {
+      const player = commandedPlayer(next, command);
+      requireFinitePoint(command);
+      const spot = { x: command.x, z: command.z };
+      if (!isInBounds(spot)) {
+        throw new Error(
+          `Court Vision: place command spot (${command.x}, ${command.z}) is out of bounds`,
+        );
+      }
+      player.pos = spot;
+      player.vel = { x: 0, z: 0 };
+      player.moveIntent = { x: 0, z: 0 };
+      return;
+    }
+    case 'pass': {
+      const player = commandedPlayer(next, command);
+      startPass(next, command.passType, command.targetId, player.id);
+      return;
+    }
+    default: {
+      const unhandled: never = command;
+      throw new Error(
+        `Court Vision: unknown player command ${String((unhandled as { type: unknown }).type)}`,
+      );
+    }
+  }
+}
+
+export function stepGame(
+  state: GameState,
+  actions: readonly SimAction[],
+  commands: readonly PlayerCommand[] = [],
+): GameState {
   const next = structuredClone(state);
   const eventTick = state.tick + 1;
 
   next.events = [];
+  for (const command of commands) {
+    applyCommand(next, command);
+  }
   for (const action of actions) {
     applyAction(next, action, eventTick);
   }

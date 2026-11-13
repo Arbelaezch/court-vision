@@ -16,6 +16,7 @@
 // order above).
 
 import { RIM_CENTER, isBeyondArc } from './court';
+import { contestingOpponents } from './opponents';
 import type {
   CourtPoint,
   GameState,
@@ -73,10 +74,6 @@ function requireShooting(state: GameState): NonNullable<GameState['shooting']> {
     throw new Error('Court Vision: rating a shot needs a game created with a shooting setup');
   }
   return state.shooting;
-}
-
-function opponentsById(state: GameState, side: PlayerState['side']): PlayerState[] {
-  return state.players.filter((p) => p.side !== side).sort((a, b) => a.id - b.id);
 }
 
 function isJumpShot(type: ShotType): boolean {
@@ -188,7 +185,7 @@ export function rateLook(
   const zone = shotZoneAt(shooter.pos, tuning);
   const zoneRating = profiles[shooter.role].shooting[zone];
   const releaseHeight = shotReleaseHeight(shotType, tuning);
-  const opponents = opponentsById(state, shooter.side);
+  const opponents = contestingOpponents(state, shooter.side);
 
   const penalties: Record<PenaltyKey, number> = {
     contested: 0,
