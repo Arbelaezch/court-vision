@@ -2,16 +2,21 @@
 
 import { DEFAULT_BINDINGS, mouseButtonCode } from './bindings';
 import { createInputMapper } from './mapper';
+import { mountGamepad } from './mountGamepad';
+import type { MountedGamepad, MountGamepadOptions } from './mountGamepad';
 import type { InputMapper, InputMapperOptions } from './mapper';
 
 const INPUT_EVENTS = ['keydown', 'keyup', 'mousedown', 'mouseup', 'blur', 'contextmenu'] as const;
 
 export interface MountInputOptions extends InputMapperOptions {
   target?: EventTarget;
+  /** Gamepad adapter options; `false` disables gamepad support. Enabled by default. */
+  gamepad?: Omit<MountGamepadOptions, 'target'> | false;
 }
 
 export interface MountedInput {
   input: InputMapper;
+  gamepad: MountedGamepad | null;
   unmount: () => void;
 }
 
@@ -38,7 +43,10 @@ function hasShortcutModifier(e: Event): boolean {
 export function mountInput(options: MountInputOptions = {}): MountedInput {
   const target = options.target ?? window;
   const bindings = options.bindings ?? DEFAULT_BINDINGS;
-  const input = createInputMapper(options);
+  const { gamepad: gamepadOptions, ...mapperOptions } = options;
+  const input = createInputMapper(mapperOptions);
+  const gamepad =
+    gamepadOptions === false ? null : mountGamepad(input, { ...gamepadOptions, target });
   const boundInputs = new Set(bindings.map((b) => b.input));
   let mounted = true;
 
@@ -85,12 +93,14 @@ export function mountInput(options: MountInputOptions = {}): MountedInput {
 
   return {
     input,
+    gamepad,
     unmount: () => {
       if (!mounted) return;
       mounted = false;
       for (const name of INPUT_EVENTS) {
         target.removeEventListener(name, onEvent);
       }
+      gamepad?.unmount();
       input.dispose();
     },
   };
