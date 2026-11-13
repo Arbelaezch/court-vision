@@ -125,6 +125,107 @@ export interface PassingSetup {
   tuning: PassTuning;
 }
 
+export type ShotType = 'layup' | 'jumper' | 'three' | 'pullUp' | 'catchAndShoot' | 'floater';
+export const SHOT_TYPES: readonly ShotType[] = [
+  'layup',
+  'jumper',
+  'three',
+  'pullUp',
+  'catchAndShoot',
+  'floater',
+];
+/** Geometric shot zone; it picks the shooter's zone rating. */
+export type ShotZone = 'rim' | 'midRange' | 'three';
+export const SHOT_ZONES: readonly ShotZone[] = ['rim', 'midRange', 'three'];
+export type LookQuality = 'great' | 'good' | 'bad';
+export const LOOK_QUALITIES: readonly LookQuality[] = ['great', 'good', 'bad'];
+
+/** Per-role shooting numbers, filled by content. Ratings are 0-100 (higher is better), reachM in m. */
+export interface ShotProfile {
+  /** Shooting rating by zone, 0-100. */
+  shooting: { rim: number; midRange: number; three: number };
+  /** Defensive awareness, 0-100. */
+  defensiveAwareness: number;
+  /** Standing reach, m. */
+  reachM: number;
+}
+
+/** Global shooting numbers shared by every player. */
+export interface ShotTuning {
+  /** Within this distance of the rim centre the zone is `rim` and shoot picks a layup, m. */
+  rimZoneRadiusM: number;
+  /** A floater farther than this from the rim centre is ignored, m. */
+  floaterMaxDistanceM: number;
+  /** A shot farther than this from the rim centre is out of range, m. */
+  maxRangeM: number;
+  /** A zone rating below this (0-100) makes the shot out of range. */
+  rangeRatingFloor: number;
+  /** Ball height at release for a layup, m. */
+  layupReleaseHeightM: number;
+  /** Ball height at release for jumper, three, pull-up and catch-and-shoot, m. */
+  jumpShotReleaseHeightM: number;
+  /** Ball height at release for a floater, m. */
+  floaterReleaseHeightM: number;
+  /** The nearest defender contests when closer than this to the shooter, m. */
+  contestRadiusM: number;
+  /** Contest penalty at zero distance, look-score units (0-1). */
+  contestWeight: number;
+  /** A closing defender's distance is cut by closing speed times this, s. */
+  closingLeadS: number;
+  /** Contest and closing-out multiplier when the nearest defender is beaten, in [0, 1]. */
+  beatenDefenderFactor: number;
+  /** Defenders within this distance of the shooter contest at the rim (layup, floater), m. */
+  rimContestRadiusM: number;
+  /** Largest rim-contest penalty, look-score units (0-1). */
+  rimContestWeight: number;
+  /** Height span over which the rim contest ramps from 0 to full, m. */
+  rimContestSpanM: number;
+  /** Extra height above reachM a defender reaches by jumping, m. */
+  contestJumpM: number;
+  /** A shooter faster than this is off balance (jump shots only), m/s. */
+  offBalanceSpeedMps: number;
+  /** Off-balance penalty, look-score units (0-1). */
+  offBalancePenalty: number;
+  /** Out-of-range penalty, look-score units (0-1). */
+  outOfRangePenalty: number;
+  /** Fixed floater penalty, look-score units (0-1). */
+  floaterPenalty: number;
+  /** A look score at or above this is Great, in (goodMinScore, 1]. */
+  greatMinScore: number;
+  /** A look score at or above this is Good, in (0, 1]. */
+  goodMinScore: number;
+  /** A ball holder faster than this is dribbling (shoot picks a pull-up), m/s. */
+  dribbleSpeedMps: number;
+  /** A set catch at most this many ticks before the shot is catch-and-shoot, ticks (integer). */
+  catchAndShootWindowTicks: number;
+  /** Base make chance of a Great look, probability (0-1). */
+  greatMakeChance: number;
+  /** Base make chance of a Good look, probability (0-1). */
+  goodMakeChance: number;
+  /** Base make chance of a Bad look, probability (0-1). */
+  badMakeChance: number;
+  /** Make-chance shift per (zone rating - 50) / 100, probability units. */
+  zoneRatingWeight: number;
+  /** Lowest make chance after the rating shift, probability (0-1). */
+  minMakeChance: number;
+  /** Highest make chance after the rating shift, probability (0-1). */
+  maxMakeChance: number;
+  /** Defenders within this distance of the shooter (arm's reach) may block, m. */
+  blockRadiusM: number;
+  /** A block draw at or above this blocks, in (0, 1]. */
+  blockThreshold: number;
+  /** Weight of the (defensiveAwareness - shooter zone rating) / 100 block term. */
+  blockRatingWeight: number;
+  /** Half-width of the seeded random term added to each block score. */
+  blockJitter: number;
+}
+
+export interface ShootingSetup {
+  /** Both sides use the role's profile. */
+  profiles: Record<RoleId, ShotProfile>;
+  tuning: ShotTuning;
+}
+
 /**
  * A lane interception decided at release, applied when the flight reaches atTick. Catch-zone
  * interceptions are decided on the arrival tick instead (./passing.ts).
@@ -158,7 +259,9 @@ export type BallState =
       elapsedTicks: number;
       flightTicks: number;
       interception: PassInterception | null;
-    };
+    }
+  /** After a shot that was not blocked. Rebounds and inbounds come later; no one holds the ball. */
+  | { kind: 'dead'; shooterId: number; made: boolean };
 
 export interface GameState {
   seed: number;
@@ -172,7 +275,12 @@ export interface GameState {
   movementTuning: MovementTuning;
   /** Passing numbers, or null when the game was created without them (pass actions then throw). */
   passing: PassingSetup | null;
-  /** The last completed catch, or null (none yet, or the last pass was intercepted). */
+  /** Shooting numbers, or null when the game was created without them. */
+  shooting: ShootingSetup | null;
+  /**
+   * The last completed catch, or null (none yet, the last pass was intercepted, or a shot was
+   * taken since: it is cleared after every shot).
+   */
   lastCatch: CatchRecord | null;
   /**
    * Events produced by the step that created this state; the caller forwards them to its
@@ -189,7 +297,9 @@ export type SimAction =
   | { type: 'move'; x: number; z: number }
   | { type: 'sprint'; held: boolean }
   | { type: 'pivot'; held: boolean }
-  | { type: 'pass'; passType: PassType; targetId: number };
+  | { type: 'pass'; passType: PassType; targetId: number }
+  | { type: 'shoot' }
+  | { type: 'floater' };
 
 export interface SimInput {
   tick: number;
@@ -203,6 +313,8 @@ export interface CreateGameOptions {
   movement: MovementSetup;
   /** Passing numbers, built from content by the caller (see content `loadSimPassing`). */
   passing?: PassingSetup;
+  /** Shooting numbers, built from content by the caller (see content `loadSimShooting`). */
+  shooting?: ShootingSetup;
 }
 
 // Placeholder offense spots in ROLE_ORDER (meters). Plays set real spots later.
@@ -318,6 +430,115 @@ function validatePassing(setup: PassingSetup): void {
   );
 }
 
+const NON_NEGATIVE_SHOT_TUNING_KEYS = [
+  'closingLeadS',
+  'rimContestRadiusM',
+  'contestJumpM',
+  'offBalanceSpeedMps',
+  'dribbleSpeedMps',
+  'contestWeight',
+  'rimContestWeight',
+  'zoneRatingWeight',
+  'blockRatingWeight',
+  'offBalancePenalty',
+  'outOfRangePenalty',
+  'floaterPenalty',
+  'blockJitter',
+] as const;
+
+const POSITIVE_SHOT_TUNING_KEYS = [
+  'rimZoneRadiusM',
+  'floaterMaxDistanceM',
+  'maxRangeM',
+  'contestRadiusM',
+  'rimContestSpanM',
+  'blockRadiusM',
+  'layupReleaseHeightM',
+  'jumpShotReleaseHeightM',
+  'floaterReleaseHeightM',
+] as const;
+
+const UNIT_INTERVAL_SHOT_TUNING_KEYS = [
+  'beatenDefenderFactor',
+  'greatMakeChance',
+  'goodMakeChance',
+  'badMakeChance',
+  'minMakeChance',
+  'maxMakeChance',
+] as const;
+
+function validateShooting(setup: ShootingSetup): void {
+  for (const role of ROLE_ORDER) {
+    const profile = setup.profiles[role] as ShotProfile | undefined;
+    if (profile === undefined) {
+      throw new Error(`Court Vision: shooting setup has no profile for role ${role}`);
+    }
+    for (const zone of SHOT_ZONES) {
+      requireNumber(
+        `${role} shooting.${zone}`,
+        profile.shooting[zone],
+        (v) => v >= 0 && v <= 100,
+        'in [0, 100]',
+      );
+    }
+    requireNumber(
+      `${role} defensiveAwareness`,
+      profile.defensiveAwareness,
+      (v) => v >= 0 && v <= 100,
+      'in [0, 100]',
+    );
+    requireNumber(`${role} reachM`, profile.reachM, (v) => v > 0, '> 0');
+  }
+  const { tuning } = setup;
+  for (const key of NON_NEGATIVE_SHOT_TUNING_KEYS) {
+    requireNumber(key, tuning[key], (v) => v >= 0, '>= 0');
+  }
+  for (const key of POSITIVE_SHOT_TUNING_KEYS) {
+    requireNumber(key, tuning[key], (v) => v > 0, '> 0');
+  }
+  for (const key of UNIT_INTERVAL_SHOT_TUNING_KEYS) {
+    requireNumber(key, tuning[key], (v) => v >= 0 && v <= 1, 'in [0, 1]');
+  }
+  requireNumber(
+    'rangeRatingFloor',
+    tuning.rangeRatingFloor,
+    (v) => v >= 0 && v <= 100,
+    'in [0, 100]',
+  );
+  requireNumber('blockThreshold', tuning.blockThreshold, (v) => v > 0 && v <= 1, 'in (0, 1]');
+  requireNumber('goodMinScore', tuning.goodMinScore, (v) => v > 0 && v <= 1, 'in (0, 1]');
+  requireNumber(
+    'greatMinScore',
+    tuning.greatMinScore,
+    (v) => v > tuning.goodMinScore && v <= 1,
+    'in (goodMinScore, 1]',
+  );
+  requireNumber(
+    'goodMakeChance',
+    tuning.goodMakeChance,
+    (v) => v <= tuning.greatMakeChance,
+    '<= greatMakeChance',
+  );
+  requireNumber(
+    'badMakeChance',
+    tuning.badMakeChance,
+    (v) => v <= tuning.goodMakeChance,
+    '<= goodMakeChance',
+  );
+  requireNumber(
+    'minMakeChance',
+    tuning.minMakeChance,
+    (v) => v <= tuning.maxMakeChance,
+    '<= maxMakeChance',
+  );
+  requireNumber(
+    'catchAndShootWindowTicks',
+    tuning.catchAndShootWindowTicks,
+    (v) => Number.isInteger(v) && v >= 0,
+    'that is an integer >= 0',
+  );
+}
+
 function createPlayers(profiles: Readonly<Record<RoleId, MovementProfile>>): PlayerState[] {
   const players: PlayerState[] = [];
   const sides: readonly TeamSide[] = ['offense', 'defense'];
@@ -353,10 +574,14 @@ export function createGame({
   shotClockSeconds = null,
   movement,
   passing,
+  shooting,
 }: CreateGameOptions): GameState {
   validateMovement(movement);
   if (passing !== undefined) {
     validatePassing(passing);
+  }
+  if (shooting !== undefined) {
+    validateShooting(shooting);
   }
   let shotClockTicks: number | null = null;
   if (shotClockSeconds !== null) {
@@ -382,6 +607,7 @@ export function createGame({
       staminaRefillS: movement.tuning.staminaRefillS,
     },
     passing: passing === undefined ? null : structuredClone(passing),
+    shooting: shooting === undefined ? null : structuredClone(shooting),
     lastCatch: null,
     events: [],
   };

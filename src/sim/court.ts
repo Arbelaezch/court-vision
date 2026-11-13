@@ -43,3 +43,11 @@ export const CENTER_CIRCLE_RADIUS = 1.8;
 export function isInBounds(p: CourtPoint): boolean {
   return Math.abs(p.x) <= SIDELINE_X && p.z >= BASELINE_Z && p.z <= HALF_COURT_LINE_Z;
 }
+
+/** True when the point is on or beyond the three-point line (corner straights, then the arc). */
+export function isBeyondArc(p: CourtPoint): boolean {
+  if (p.z <= THREE_POINT_CORNER_END_Z) {
+    return Math.abs(p.x) >= THREE_POINT_CORNER_X;
+  }
+  return Math.hypot(p.x - RIM_CENTER.x, p.z - RIM_CENTER.z) >= THREE_POINT_RADIUS;
+}

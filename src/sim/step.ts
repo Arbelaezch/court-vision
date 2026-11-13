@@ -2,12 +2,15 @@
 // so the renderer can keep the previous and current states and interpolate between them.
 // Actions set the controlled player's inputs (move intent, held sprint and pivot); every player
 // then moves kinematically with acceleration, sprint and stamina (./movement.ts). A pass action
-// releases the ball, which then flies to the receiver over later steps (./passing.ts).
+// releases the ball, which then flies to the receiver over later steps (./passing.ts). A shoot or
+// floater action resolves the shot instantly, before movement, from the positions the step starts
+// with (./takeShot.ts); its events are kept in this step's events.
 
 import { BASELINE_Z, HALF_COURT_LINE_Z, SIDELINE_X } from './court';
 import { stepPlayerMovement } from './movement';
 import { advanceBallFlight, startPass } from './passing';
 import type { CourtPoint, GameState, PlayerState, SimAction } from './state';
+import { takeShot } from './takeShot';
 
 function clampToUnitLength(x: number, z: number): CourtPoint {
   const len = Math.hypot(x, z);
@@ -54,7 +57,7 @@ function controlledPlayer(next: GameState): PlayerState {
   return player;
 }
 
-function applyAction(next: GameState, action: SimAction): void {
+function applyAction(next: GameState, action: SimAction, eventTick: number): void {
   switch (action.type) {
     case 'move': {
       if (!Number.isFinite(action.x) || !Number.isFinite(action.z)) {
@@ -81,6 +84,11 @@ function applyAction(next: GameState, action: SimAction): void {
       startPass(next, action.passType, action.targetId);
       return;
     }
+    case 'shoot':
+    case 'floater': {
+      next.events.push(...takeShot(next, action.type, eventTick));
+      return;
+    }
     default: {
       const unhandled: never = action;
       throw new Error(
@@ -92,12 +100,14 @@ function applyAction(next: GameState, action: SimAction): void {
 
 export function stepGame(state: GameState, actions: readonly SimAction[]): GameState {
   const next = structuredClone(state);
-
-  for (const action of actions) {
-    applyAction(next, action);
-  }
+  const eventTick = state.tick + 1;
 
   next.events = [];
+  for (const action of actions) {
+    applyAction(next, action, eventTick);
+  }
+
+  // The post-action holder: a dead ball (after a shot) has none, so it cannot go out of bounds.
   const holderId = next.ball.kind === 'held' ? next.ball.holderId : null;
   const holderBefore = holderId === null ? undefined : state.players.find((p) => p.id === holderId);
   const holderWasPastLine = holderBefore !== undefined && isPastSideOrBaseline(holderBefore.pos);

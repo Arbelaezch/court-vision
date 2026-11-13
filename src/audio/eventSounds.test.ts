@@ -33,4 +33,21 @@ describe('soundForEvent', () => {
       }),
     ).toBeNull();
   });
+
+  it('plays nothing for a resolved shot (a block whistles through its mistake event)', () => {
+    expect(
+      soundForEvent({
+        type: 'shotResolved',
+        tick: 10,
+        shooterId: 0,
+        shotType: 'jumper',
+        zone: 'midRange',
+        look: 'bad',
+        makeChance: 0.15,
+        made: false,
+        blockerId: 5,
+        reason: 'Contested shot',
+      }),
+    ).toBeNull();
+  });
 });

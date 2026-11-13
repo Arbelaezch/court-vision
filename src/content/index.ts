@@ -9,6 +9,8 @@ export { BUNDLED_MOVEMENT_TUNING_SOURCE, loadMovementTuning } from './movement';
 export type { MovementTuningSpec } from './movement';
 export { BUNDLED_PASS_TUNING_SOURCE, loadPassTuning } from './passing';
 export type { PassTuningSpec } from './passing';
+export { BUNDLED_SHOT_TUNING_SOURCE, loadShotTuning } from './shooting';
+export type { ShotTuningSpec } from './shooting';
 export { BODY_TYPES, MOVE_IDS, loadRoles } from './roles';
 export type { BodyType, MoveId, Role, RoleTable } from './roles';
 export { loadBodyTypes } from './bodyTypes';
@@ -19,6 +21,7 @@ export { BUNDLED_CAST_SOURCES, loadCastContent } from './cast';
 export type { CastContent, CastSources } from './cast';
 export { loadSimMovement, simMovementSetup } from './simMovement';
 export { loadSimPassing, simPassingSetup } from './simPassing';
+export { loadSimShooting, simShootingSetup } from './simShooting';
 export {
   CUE_KINDS,
   CUE_LEVELS,
