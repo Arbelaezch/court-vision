@@ -100,6 +100,21 @@ describe('mountInput', () => {
     expect(mounted.input.isHeld('sprint')).toBe(false);
   });
 
+  it('pointermove records the pointer without preventing default', () => {
+    const { mounted, actions, fire } = setup();
+    const e = fire('pointermove', { clientX: 100, clientY: 50 });
+    expect(mounted.input.pointer()).toEqual({ x: 100, y: 50 });
+    expect(e.defaultPrevented).toBe(false);
+    expect(actions).toEqual([]);
+  });
+
+  it('pointermove has no effect after unmount', () => {
+    const { mounted, fire } = setup();
+    mounted.unmount();
+    fire('pointermove', { clientX: 100, clientY: 50 });
+    expect(mounted.input.pointer()).toBeNull();
+  });
+
   it('unmount stops listening and is safe twice', () => {
     const { mounted, actions, fire } = setup();
     mounted.unmount();

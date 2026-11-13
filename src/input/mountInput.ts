@@ -6,7 +6,15 @@ import { mountGamepad } from './mountGamepad';
 import type { MountedGamepad, MountGamepadOptions } from './mountGamepad';
 import type { InputMapper, InputMapperOptions } from './mapper';
 
-const INPUT_EVENTS = ['keydown', 'keyup', 'mousedown', 'mouseup', 'blur', 'contextmenu'] as const;
+const INPUT_EVENTS = [
+  'keydown',
+  'keyup',
+  'mousedown',
+  'mouseup',
+  'pointermove',
+  'blur',
+  'contextmenu',
+] as const;
 
 export interface MountInputOptions extends InputMapperOptions {
   target?: EventTarget;
@@ -26,6 +34,15 @@ function readCode(e: Event): string | null {
 
 function readButton(e: Event): number | null {
   return 'button' in e && typeof e.button === 'number' ? e.button : null;
+}
+
+function readClient(e: Event): { x: number; y: number } | null {
+  return 'clientX' in e &&
+    typeof e.clientX === 'number' &&
+    'clientY' in e &&
+    typeof e.clientY === 'number'
+    ? { x: e.clientX, y: e.clientY }
+    : null;
 }
 
 function readRepeat(e: Event): boolean {
@@ -76,6 +93,11 @@ export function mountInput(options: MountInputOptions = {}): MountedInput {
       case 'mouseup': {
         const button = readButton(e);
         if (button !== null) input.release(mouseButtonCode(button));
+        return;
+      }
+      case 'pointermove': {
+        const p = readClient(e);
+        if (p !== null) input.setPointer(p.x, p.y);
         return;
       }
       case 'blur':

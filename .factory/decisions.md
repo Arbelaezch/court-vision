@@ -191,3 +191,8 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Gamepad inputs are strings in Binding.input: GamepadButton<N>, GamepadAxis<N>+/-; standard layout defaults (left stick move, A chest, B bounce, Y lob, X shoot, RB floater, LB screen, RT sprint, LT pivot, Start pause, dpad targets 1-4); dead zone 0.15 radial
 - Decided by: assumed on 2026-11-13
 - Why: Spec names no gamepad format; low-impact and reversible data
+
+## What does aimSensitivity mean for pass targeting, and which input wins in Both mode?
+- Kind: product
+- Decision: Cone of 45 x sensitivity degrees, falling back to the closest angle when the cone is empty; a number key always wins in Both
+- Decided by: user on 2026-11-13

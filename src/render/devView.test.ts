@@ -39,6 +39,16 @@ describe('createDevScene', () => {
     expect(all).not.toContain('practice-cones');
   });
 
+  it('characters view shows four visible pass-target badges', () => {
+    const { scene } = build('characters');
+    const group = scene.getObjectByName('pass-target-badges');
+    expect(group).toBeDefined();
+    const visible = group?.children.filter(
+      (c) => c.name.startsWith('pass-target-badge-') && c.visible,
+    );
+    expect(visible).toHaveLength(4);
+  });
+
   it('practice view holds offense players and five cones', () => {
     const { scene } = build('practice');
     const cones = scene.getObjectByName('practice-cones');

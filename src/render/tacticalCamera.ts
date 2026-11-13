@@ -8,6 +8,7 @@ import {
   HALF_COURT_LINE_Z,
   SIDELINE_X,
 } from '../sim';
+import type { CourtPoint } from '../sim';
 
 export const TACTICAL_FOV_DEG = 45;
 /** Camera elevation above horizontal, looking toward -z. */
@@ -109,4 +110,37 @@ export function createTacticalCamera(
   const camera = new THREE.PerspectiveCamera();
   fitTacticalCamera(camera, aspect, topHeight);
   return camera;
+}
+
+/** Converts client pixel coordinates to normalised device coordinates for the given canvas rect. */
+export function clientToNdc(
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number; width: number; height: number },
+): { x: number; y: number } {
+  const sized =
+    Number.isFinite(rect.width) &&
+    rect.width > 0 &&
+    Number.isFinite(rect.height) &&
+    rect.height > 0;
+  if (!sized) {
+    throw new Error('Court Vision: pointer rect must have a finite positive width and height');
+  }
+  return {
+    x: ((clientX - rect.left) / rect.width) * 2 - 1,
+    y: 1 - ((clientY - rect.top) / rect.height) * 2,
+  };
+}
+
+const FLOOR_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+/** Casts a ray through the NDC point and returns where it hits the floor (y = 0), or null if it misses. */
+export function screenToCourt(
+  camera: THREE.Camera,
+  ndc: { x: number; y: number },
+): CourtPoint | null {
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
+  const hit = raycaster.ray.intersectPlane(FLOOR_PLANE, new THREE.Vector3());
+  return hit ? { x: hit.x, z: hit.z } : null;
 }
