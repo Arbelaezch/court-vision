@@ -9,6 +9,7 @@ import {
   THREE_POINT_CORNER_END_Z,
   THREE_POINT_CORNER_X,
   THREE_POINT_RADIUS,
+  isBeyondArc,
   isInBounds,
 } from './court';
 
@@ -62,5 +63,21 @@ describe('isInBounds', () => {
     expect(isInBounds({ x: -SIDELINE_X - 0.01, z: 0 })).toBe(false);
     expect(isInBounds({ x: 0, z: BASELINE_Z - 0.01 })).toBe(false);
     expect(isInBounds({ x: 0, z: HALF_COURT_LINE_Z + 0.01 })).toBe(false);
+  });
+});
+
+describe('isBeyondArc', () => {
+  it('is false at the rim and inside the arc', () => {
+    expect(isBeyondArc(RIM_CENTER)).toBe(false);
+    expect(isBeyondArc({ x: 0, z: -1 })).toBe(false);
+  });
+
+  it('is true beyond the arc at the top', () => {
+    expect(isBeyondArc({ x: 0, z: 1.5 })).toBe(true);
+  });
+
+  it('uses the corner straight below the arc join', () => {
+    expect(isBeyondArc({ x: 7.0, z: -6 })).toBe(true);
+    expect(isBeyondArc({ x: 6.5, z: -6 })).toBe(false);
   });
 });

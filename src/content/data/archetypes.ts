@@ -1,6 +1,8 @@
 // The single tuning file for archetype attributes and the global movement and pass tuning. All
 // archetype tuning values live here.
 // Pass tuning (PASS_TUNING_DATA): heights and radii in m, speeds in m/s, the rest unitless.
+// Shot tuning (SHOT_TUNING_DATA): distances and heights in m, speeds in m/s, closingLeadS in s,
+// catchAndShootWindowTicks in ticks, rangeRatingFloor a 0-100 rating, the rest unitless.
 // Movement tuning (MOVEMENT_TUNING_DATA): sprintSpeedMultiplier and brakingMultiplier are unitless
 // multipliers, sprintDurationS and staminaRefillS are in seconds.
 // Units: speedMps in m/s, accelerationMps2 in m/s^2, reachM is standing reach in meters.
@@ -115,4 +117,42 @@ export const PASS_TUNING_DATA = {
   ratingWeight: 0.2, // unitless, how much the 0-100 rating gap moves the score
   jitter: 0.1, // unitless, bound of the seeded random term added to a score
   setSpeedMps: 0.5, // m/s, a receiver at or below this speed counts as set
+};
+
+// Shot tuning shared by every player. Distances and heights are in m, speeds in m/s, times in s,
+// catchAndShootWindowTicks in sim ticks, rangeRatingFloor is a 0-100 rating, the rest unitless.
+export const SHOT_TUNING_DATA = {
+  rimZoneRadiusM: 1.5, // m, within this of the rim a shot is a layup in the rim zone
+  floaterMaxDistanceM: 4.5, // m, farthest from the rim a floater can be taken
+  maxRangeM: 8.5, // m, beyond this distance from the rim a shot is out of range
+  rangeRatingFloor: 40, // rating (0-100), a zone rating below this is out of range
+  layupReleaseHeightM: 2.8, // m, ball height at release of a layup
+  jumpShotReleaseHeightM: 2.6, // m, ball height at release of a jump shot
+  floaterReleaseHeightM: 3.6, // m, ball height at release of a floater
+  contestRadiusM: 2.0, // m, a defender nearer than this contests the shot
+  contestWeight: 0.6, // unitless, look penalty of a defender at point-blank range
+  closingLeadS: 0.3, // s, how far ahead a closing defender's approach is counted
+  beatenDefenderFactor: 0.5, // unitless, contest multiplier when the defender is beaten
+  rimContestRadiusM: 1.5, // m, how near a defender must be to contest at the rim
+  rimContestWeight: 0.4, // unitless, largest look penalty from a rim contest
+  rimContestSpanM: 1.0, // m, reach gap over which a rim contest goes from none to full
+  contestJumpM: 0.3, // m, extra height a defender gains by jumping, above their reach
+  offBalanceSpeedMps: 2.5, // m/s, shooter faster than this is off balance
+  offBalancePenalty: 0.3, // unitless, look penalty for an off-balance jump shot
+  outOfRangePenalty: 0.6, // unitless, look penalty for an out-of-range shot
+  floaterPenalty: 0.1, // unitless, fixed look penalty for taking a floater
+  greatMinScore: 0.8, // unitless score (0-1) at or above which a look is Great
+  goodMinScore: 0.5, // unitless score (0-1) at or above which a look is Good
+  dribbleSpeedMps: 0.5, // m/s, a ball holder faster than this is dribbling
+  catchAndShootWindowTicks: 30, // ticks, how long after a set catch a shot is catch-and-shoot
+  greatMakeChance: 0.65, // probability (0-1) of making a Great look at a 50 rating
+  goodMakeChance: 0.45, // probability (0-1) of making a Good look at a 50 rating
+  badMakeChance: 0.15, // probability (0-1) of making a Bad look at a 50 rating
+  zoneRatingWeight: 0.4, // unitless, how much the 0-100 zone rating moves the make chance
+  minMakeChance: 0.02, // probability (0-1), lowest make chance
+  maxMakeChance: 0.98, // probability (0-1), highest make chance
+  blockRadiusM: 1.0, // m, a defender must be within this to block
+  blockThreshold: 0.5, // unitless score (0-1) at which a defender blocks
+  blockRatingWeight: 0.2, // unitless, how much the 0-100 rating gap moves the block score
+  blockJitter: 0.1, // unitless, bound of the seeded random term added to a block score
 };

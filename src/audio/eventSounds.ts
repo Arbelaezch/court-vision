@@ -16,6 +16,9 @@ export function soundForEvent(event: GameEvent): SoundId | null {
     // A completed pass never whistles; pass sounds are a later audio issue.
     case 'passCompleted':
       return null;
+    // Shot sounds are a later audio issue; a blocked shot whistles through its `mistake` event.
+    case 'shotResolved':
+      return null;
     default: {
       const unhandled: never = event;
       throw new Error(`Court Vision: unknown game event ${JSON.stringify(unhandled)}`);

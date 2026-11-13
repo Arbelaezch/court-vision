@@ -2,7 +2,14 @@
 // stepper's speed multiplier does not affect it. Same seed and inputs always give the same result.
 
 import { createGame } from './state';
-import type { GameState, MovementSetup, PassingSetup, SimAction, SimInput } from './state';
+import type {
+  GameState,
+  MovementSetup,
+  PassingSetup,
+  ShootingSetup,
+  SimAction,
+  SimInput,
+} from './state';
 import { stepGame } from './step';
 
 export interface HeadlessRunOptions {
@@ -14,6 +21,8 @@ export interface HeadlessRunOptions {
   movement: MovementSetup;
   /** Passing numbers; without them pass inputs throw. */
   passing?: PassingSetup;
+  /** Shooting numbers; without them shot inputs throw. */
+  shooting?: ShootingSetup;
 }
 
 function validateTimeline(ticks: number, inputs: readonly SimInput[]): void {
@@ -43,10 +52,11 @@ export function runHeadless({
   shotClockSeconds = null,
   movement,
   passing,
+  shooting,
 }: HeadlessRunOptions): GameState {
   validateTimeline(ticks, inputs);
 
-  let state = createGame({ seed, shotClockSeconds, movement, passing });
+  let state = createGame({ seed, shotClockSeconds, movement, passing, shooting });
   let nextInput = 0;
   for (let t = 0; t < ticks; t++) {
     const actions: SimAction[] = [];

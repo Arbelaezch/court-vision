@@ -22,13 +22,23 @@ export {
   stepperSimSeconds,
 } from './stepper';
 export type { StepperState } from './stepper';
-export { PASS_TYPES, PLAYER_COUNT, ROLE_ORDER, createGame, gameSimSeconds } from './state';
+export {
+  LOOK_QUALITIES,
+  PASS_TYPES,
+  PLAYER_COUNT,
+  ROLE_ORDER,
+  SHOT_TYPES,
+  SHOT_ZONES,
+  createGame,
+  gameSimSeconds,
+} from './state';
 export type {
   BallState,
   CatchRecord,
   CourtPoint,
   CreateGameOptions,
   GameState,
+  LookQuality,
   MovementProfile,
   MovementSetup,
   MovementTuning,
@@ -40,6 +50,11 @@ export type {
   PassingSetup,
   PlayerState,
   RoleId,
+  ShootingSetup,
+  ShotProfile,
+  ShotTuning,
+  ShotType,
+  ShotZone,
   SimAction,
   SimInput,
   TeamSide,
@@ -47,6 +62,16 @@ export type {
 } from './state';
 export { stepGame } from './step';
 export { PASS_TURNOVER_REASONS, passHeightAt } from './passing';
+export {
+  SHOT_REASONS,
+  chooseShotType,
+  rateLook,
+  shotMakeChance,
+  shotReleaseHeight,
+  shotZoneAt,
+} from './shooting';
+export type { LookRating } from './shooting';
+export { takeShot } from './takeShot';
 export type { GameEvent, GameEventSink, MistakeKind, RunGrade } from './events';
 export {
   BACKBOARD_BOTTOM_HEIGHT,
@@ -72,6 +97,7 @@ export {
   THREE_POINT_CORNER_FROM_SIDELINE,
   THREE_POINT_CORNER_X,
   THREE_POINT_RADIUS,
+  isBeyondArc,
   isInBounds,
 } from './court';
 export { runHeadless } from './runner';
