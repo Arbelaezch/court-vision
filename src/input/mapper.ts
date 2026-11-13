@@ -20,6 +20,8 @@ export interface InputMapperOptions {
 export interface InputMapper {
   press(input: InputCode): void;
   release(input: InputCode): void;
+  /** Sets an analog magnitude (clamped to [0, 1]) for an input; 0 clears it. Never emits actions. */
+  setAnalog(input: InputCode, value: number): void;
   releaseAll(): void;
   isHeld(action: HeldAction): boolean;
   moveAxes(): { x: number; y: number };
@@ -45,6 +47,7 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
   }
 
   const pressed = new Set<InputCode>();
+  const analog = new Map<InputCode, number>();
   const pending = new Map<InputCode, () => void>();
   const listeners = new Set<(action: PressAction) => void>();
   let disposed = false;
@@ -71,10 +74,25 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
     pending.clear();
   };
 
-  const isHeld = (action: HeldAction): boolean =>
+  const digitalHeld = (action: HeldAction): boolean =>
     bindings.some(
       (b) => b.action === action && (b.gesture ?? 'single') === 'single' && pressed.has(b.input),
     );
+
+  const analogLevel = (action: HeldAction): number => {
+    let level = 0;
+    for (const b of bindings) {
+      if (b.action === action && (b.gesture ?? 'single') === 'single') {
+        level = Math.max(level, analog.get(b.input) ?? 0);
+      }
+    }
+    return level;
+  };
+
+  const isHeld = (action: HeldAction): boolean => digitalHeld(action) || analogLevel(action) > 0;
+
+  const dir = (action: HeldAction): number =>
+    Math.max(digitalHeld(action) ? 1 : 0, analogLevel(action));
 
   return {
     press(input) {
@@ -100,14 +118,21 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
     release(input) {
       pressed.delete(input);
     },
+    setAnalog(input, value) {
+      if (disposed) return;
+      const v = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+      if (v === 0) analog.delete(input);
+      else analog.set(input, v);
+    },
     releaseAll() {
       pressed.clear();
+      analog.clear();
       cancelAllPending();
     },
     isHeld,
     moveAxes() {
-      const x = (isHeld('moveRight') ? 1 : 0) - (isHeld('moveLeft') ? 1 : 0);
-      const y = (isHeld('moveUp') ? 1 : 0) - (isHeld('moveDown') ? 1 : 0);
+      const x = dir('moveRight') - dir('moveLeft');
+      const y = dir('moveUp') - dir('moveDown');
       const len = Math.hypot(x, y);
       return len > 1 ? { x: x / len, y: y / len } : { x, y };
     },
@@ -122,6 +147,7 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
       disposed = true;
       cancelAllPending();
       pressed.clear();
+      analog.clear();
       listeners.clear();
     },
   };

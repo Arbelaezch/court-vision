@@ -185,3 +185,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Run a fix round for R1-1..R1-3 and re-review before the PR
 - Decided by: assumed on 2026-11-12
 - Why: Earlier user decision chose a fix round for a should_fix; R1-3 affects an API the next issue builds on
+
+## Gamepad binding format and default layout for #10?
+- Kind: implementation
+- Decision: Gamepad inputs are strings in Binding.input: GamepadButton<N>, GamepadAxis<N>+/-; standard layout defaults (left stick move, A chest, B bounce, Y lob, X shoot, RB floater, LB screen, RT sprint, LT pivot, Start pause, dpad targets 1-4); dead zone 0.15 radial
+- Decided by: assumed on 2026-11-13
+- Why: Spec names no gamepad format; low-impact and reversible data
