@@ -1,5 +1,6 @@
-// The single tuning file for archetype attributes and the global movement tuning. All archetype
-// tuning values live here.
+// The single tuning file for archetype attributes and the global movement and pass tuning. All
+// archetype tuning values live here.
+// Pass tuning (PASS_TUNING_DATA): heights and radii in m, speeds in m/s, the rest unitless.
 // Movement tuning (MOVEMENT_TUNING_DATA): sprintSpeedMultiplier and brakingMultiplier are unitless
 // multipliers, sprintDurationS and staminaRefillS are in seconds.
 // Units: speedMps in m/s, accelerationMps2 in m/s^2, reachM is standing reach in meters.
@@ -76,4 +77,42 @@ export const MOVEMENT_TUNING_DATA = {
   sprintDurationS: 4,
   // Seconds to refill stamina from empty to full when not sprinting.
   staminaRefillS: 5,
+};
+
+// Pass tuning shared by every player. Heights and radii are in m, speeds in m/s, the rest unitless.
+export const PASS_TUNING_DATA = {
+  chestPass: {
+    speedMps: 12, // m/s
+    releaseHeightM: 1.3, // m
+    catchHeightM: 1.3, // m
+    catchRadiusM: 0.5, // m
+  },
+  bouncePass: {
+    speedMps: 9, // m/s
+    releaseHeightM: 0.9, // m
+    catchHeightM: 0.9, // m
+    catchRadiusM: 0.5, // m
+    bounceAtFraction: 0.65, // fraction of the path (0-1) where the ball hits the floor
+  },
+  lob: {
+    speedMps: 7, // m/s
+    releaseHeightM: 2.1, // m
+    catchHeightM: 2.3, // m
+    catchRadiusM: 1.5, // m
+    apexHeightM: 4.2, // m, ball height at mid-flight
+  },
+  handOff: {
+    speedMps: 4, // m/s
+    releaseHeightM: 1.1, // m
+    catchHeightM: 1.1, // m
+    catchRadiusM: 0.3, // m
+    maxDistanceM: 1.5, // m, farthest a hand-off can be made
+  },
+  laneRadiusM: 0.9, // m, how near a defender must be to the passing lane to threaten it
+  contestLowM: 0.7, // m, lowest ball height a defender can touch
+  contestJumpM: 0.3, // m, extra height a defender gains by jumping, above their reach
+  interceptThreshold: 0.5, // unitless score (0-1) at which a threat intercepts
+  ratingWeight: 0.2, // unitless, how much the 0-100 rating gap moves the score
+  jitter: 0.1, // unitless, bound of the seeded random term added to a score
+  setSpeedMps: 0.5, // m/s, a receiver at or below this speed counts as set
 };

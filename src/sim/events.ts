@@ -5,6 +5,8 @@
 // in the same animation frame as the step that produced it. Sinks act immediately and must not
 // queue, so feedback such as the mistake whistle lands within one frame of the event.
 
+import type { PassType } from './state';
+
 export type MistakeKind = 'wrongTeammate' | 'offScript' | 'turnover';
 export type RunGrade = 'perfect' | 'good';
 
@@ -13,10 +15,20 @@ export type RunGrade = 'perfect' | 'good';
  * shot"): only `mistake` whistles. A mistake is a pass to the wrong teammate, an off-script action,
  * or a turnover (interception, out of bounds, shot-clock violation, blocked shot), and it resets the
  * run. A Bad look is `runUnsuccessful`: no whistle and no mistake reset. The producer decides which
- * outcomes are mistakes.
+ * outcomes are mistakes. A completed pass (`passCompleted`) is not a mistake and does not whistle;
+ * an intercepted pass is a `mistake` with kind `turnover`.
  */
 export type GameEvent =
   | { type: 'mistake'; tick: number; kind: MistakeKind; reason: string }
+  | {
+      type: 'passCompleted';
+      tick: number;
+      passType: PassType;
+      passerId: number;
+      receiverId: number;
+      /** Whether the receiver was set (nearly stationary) on the catch. */
+      receiverSet: boolean;
+    }
   | { type: 'runSuccess'; tick: number; grade: RunGrade }
   | { type: 'runUnsuccessful'; tick: number; reason: string };
 

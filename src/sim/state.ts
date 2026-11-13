@@ -72,9 +72,93 @@ export interface PlayerState {
   protecting: boolean;
 }
 
+export type PassType = 'chestPass' | 'bouncePass' | 'lob' | 'handOff';
+export const PASS_TYPES: readonly PassType[] = ['chestPass', 'bouncePass', 'lob', 'handOff'];
+
+/** Per-role passing numbers, filled by content. Ratings are 0-100 (higher is better), reachM in m. */
+export interface PassProfile {
+  passing: number;
+  ballSecurity: number;
+  defensiveAwareness: number;
+  /** Standing reach, m. */
+  reachM: number;
+}
+
+export interface PassFlightTuning {
+  /** Horizontal ball speed, m/s. */
+  speedMps: number;
+  /** Ball height at release, m. */
+  releaseHeightM: number;
+  /** Ball height on arrival at the receiver, m. */
+  catchHeightM: number;
+  /** Defenders within this horizontal distance of the receiver contest the catch, m. */
+  catchRadiusM: number;
+}
+
+export interface PassTuning {
+  chestPass: PassFlightTuning;
+  /** bounceAtFraction: path fraction in (0, 1) where the ball touches the floor (y = 0). */
+  bouncePass: PassFlightTuning & { bounceAtFraction: number };
+  /** apexHeightM: ball height at mid-flight, m. */
+  lob: PassFlightTuning & { apexHeightM: number };
+  /** maxDistanceM: a hand-off to a teammate farther than this is ignored, m. */
+  handOff: PassFlightTuning & { maxDistanceM: number };
+  /** Defenders within this horizontal distance of the ball path contest the lane, m. */
+  laneRadiusM: number;
+  /** Lowest ball height a defender can contest, m. */
+  contestLowM: number;
+  /** Extra height above reachM a defender can contest by jumping, m. */
+  contestJumpM: number;
+  /** A threat intercepts when its score is >= this, in (0, 1]. */
+  interceptThreshold: number;
+  /** Weight of the (defensiveAwareness - passer or receiver rating) / 100 term. */
+  ratingWeight: number;
+  /** Half-width of the seeded random term added to each threat score. */
+  jitter: number;
+  /** A receiver at or below this speed on the catch counts as set, m/s. */
+  setSpeedMps: number;
+}
+
+export interface PassingSetup {
+  /** Both sides use the role's profile. */
+  profiles: Record<RoleId, PassProfile>;
+  tuning: PassTuning;
+}
+
+/**
+ * A lane interception decided at release, applied when the flight reaches atTick. Catch-zone
+ * interceptions are decided on the arrival tick instead (./passing.ts).
+ */
+export interface PassInterception {
+  defenderId: number;
+  /** Flight tick (1-based elapsedTicks) at which the defender takes the ball. */
+  atTick: number;
+  reason: string;
+}
+
+/** The last completed catch, kept for catch-and-shoot. */
+export interface CatchRecord {
+  playerId: number;
+  passType: PassType;
+  tick: number;
+  /** True when the receiver was (nearly) stationary on the catch. */
+  set: boolean;
+}
+
 export type BallState =
   | { kind: 'held'; holderId: number }
-  | { kind: 'inFlight'; pos: Vec3; vel: Vec3; fromId: number; targetId: number | null };
+  | {
+      kind: 'inFlight';
+      pos: Vec3;
+      vel: Vec3;
+      fromId: number;
+      targetId: number;
+      passType: PassType;
+      origin: Vec3;
+      elapsedTicks: number;
+      flightTicks: number;
+      interception: PassInterception | null;
+    };
 
 export interface GameState {
   seed: number;
@@ -86,6 +170,10 @@ export interface GameState {
   /** Remaining shot clock in ticks, or null when the mode has no shot clock. */
   shotClockTicks: number | null;
   movementTuning: MovementTuning;
+  /** Passing numbers, or null when the game was created without them (pass actions then throw). */
+  passing: PassingSetup | null;
+  /** The last completed catch, or null (none yet, or the last pass was intercepted). */
+  lastCatch: CatchRecord | null;
   /**
    * Events produced by the step that created this state; the caller forwards them to its
    * GameEventSinks. Empty after createGame.
@@ -100,7 +188,8 @@ export interface GameState {
 export type SimAction =
   | { type: 'move'; x: number; z: number }
   | { type: 'sprint'; held: boolean }
-  | { type: 'pivot'; held: boolean };
+  | { type: 'pivot'; held: boolean }
+  | { type: 'pass'; passType: PassType; targetId: number };
 
 export interface SimInput {
   tick: number;
@@ -112,6 +201,8 @@ export interface CreateGameOptions {
   shotClockSeconds?: number | null;
   /** Movement numbers, built from content by the caller (see content `loadSimMovement`). */
   movement: MovementSetup;
+  /** Passing numbers, built from content by the caller (see content `loadSimPassing`). */
+  passing?: PassingSetup;
 }
 
 // Placeholder offense spots in ROLE_ORDER (meters). Plays set real spots later.
@@ -160,6 +251,73 @@ function validateMovement(movement: MovementSetup): void {
   }
 }
 
+const NON_NEGATIVE_PASS_TUNING_KEYS = [
+  'contestLowM',
+  'contestJumpM',
+  'ratingWeight',
+  'jitter',
+  'setSpeedMps',
+] as const;
+
+function requireNumber(
+  name: string,
+  value: number,
+  ok: (v: number) => boolean,
+  rule: string,
+): void {
+  if (typeof value !== 'number' || !Number.isFinite(value) || !ok(value)) {
+    throw new Error(`Court Vision: ${name} must be a finite number ${rule}, got ${String(value)}`);
+  }
+}
+
+function validatePassing(setup: PassingSetup): void {
+  for (const role of ROLE_ORDER) {
+    const profile = setup.profiles[role] as PassProfile | undefined;
+    if (profile === undefined) {
+      throw new Error(`Court Vision: passing setup has no profile for role ${role}`);
+    }
+    for (const key of ['passing', 'ballSecurity', 'defensiveAwareness'] as const) {
+      requireNumber(`${role} ${key}`, profile[key], (v) => v >= 0 && v <= 100, 'in [0, 100]');
+    }
+    requireNumber(`${role} reachM`, profile.reachM, (v) => v > 0, '> 0');
+  }
+  const { tuning } = setup;
+  for (const type of PASS_TYPES) {
+    const flight = tuning[type] as PassFlightTuning | undefined;
+    if (flight === undefined) {
+      throw new Error(`Court Vision: passing tuning has no entry for pass type ${type}`);
+    }
+    for (const key of ['speedMps', 'releaseHeightM', 'catchHeightM'] as const) {
+      requireNumber(`${type}.${key}`, flight[key], (v) => v > 0, '> 0');
+    }
+    requireNumber(`${type}.catchRadiusM`, flight.catchRadiusM, (v) => v >= 0, '>= 0');
+  }
+  requireNumber(
+    'bouncePass.bounceAtFraction',
+    tuning.bouncePass.bounceAtFraction,
+    (v) => v > 0 && v < 1,
+    'in (0, 1)',
+  );
+  const { lob } = tuning;
+  requireNumber(
+    'lob.apexHeightM',
+    lob.apexHeightM,
+    (v) => v > lob.releaseHeightM && v > lob.catchHeightM,
+    'above the lob release and catch heights',
+  );
+  requireNumber('handOff.maxDistanceM', tuning.handOff.maxDistanceM, (v) => v > 0, '> 0');
+  requireNumber('laneRadiusM', tuning.laneRadiusM, (v) => v > 0, '> 0');
+  for (const key of NON_NEGATIVE_PASS_TUNING_KEYS) {
+    requireNumber(key, tuning[key], (v) => v >= 0, '>= 0');
+  }
+  requireNumber(
+    'interceptThreshold',
+    tuning.interceptThreshold,
+    (v) => v > 0 && v <= 1,
+    'in (0, 1]',
+  );
+}
+
 function createPlayers(profiles: Readonly<Record<RoleId, MovementProfile>>): PlayerState[] {
   const players: PlayerState[] = [];
   const sides: readonly TeamSide[] = ['offense', 'defense'];
@@ -194,8 +352,12 @@ export function createGame({
   seed,
   shotClockSeconds = null,
   movement,
+  passing,
 }: CreateGameOptions): GameState {
   validateMovement(movement);
+  if (passing !== undefined) {
+    validatePassing(passing);
+  }
   let shotClockTicks: number | null = null;
   if (shotClockSeconds !== null) {
     if (!Number.isFinite(shotClockSeconds) || shotClockSeconds <= 0) {
@@ -219,6 +381,8 @@ export function createGame({
       sprintDurationS: movement.tuning.sprintDurationS,
       staminaRefillS: movement.tuning.staminaRefillS,
     },
+    passing: passing === undefined ? null : structuredClone(passing),
+    lastCatch: null,
     events: [],
   };
 }

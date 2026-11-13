@@ -7,6 +7,8 @@ export { loadArchetypes } from './archetypes';
 export type { Archetype, ArchetypeId, ArchetypeTable, ShootingByZone } from './archetypes';
 export { BUNDLED_MOVEMENT_TUNING_SOURCE, loadMovementTuning } from './movement';
 export type { MovementTuningSpec } from './movement';
+export { BUNDLED_PASS_TUNING_SOURCE, loadPassTuning } from './passing';
+export type { PassTuningSpec } from './passing';
 export { BODY_TYPES, MOVE_IDS, loadRoles } from './roles';
 export type { BodyType, MoveId, Role, RoleTable } from './roles';
 export { loadBodyTypes } from './bodyTypes';
@@ -16,6 +18,7 @@ export type { Team, TeamCast, TeamColors } from './teams';
 export { BUNDLED_CAST_SOURCES, loadCastContent } from './cast';
 export type { CastContent, CastSources } from './cast';
 export { loadSimMovement, simMovementSetup } from './simMovement';
+export { loadSimPassing, simPassingSetup } from './simPassing';
 export {
   CUE_KINDS,
   CUE_LEVELS,
