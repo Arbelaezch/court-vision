@@ -14,6 +14,7 @@
 
 import { RIM_CENTER } from './court';
 import type { GameEvent } from './events';
+import { contestingOpponents } from './opponents';
 import { nextFloat, nextRange } from './rng';
 import {
   SHOT_REASONS,
@@ -36,10 +37,6 @@ function findPlayer(state: GameState, id: number): PlayerState {
   return player;
 }
 
-function opponentsById(state: GameState, side: PlayerState['side']): PlayerState[] {
-  return state.players.filter((p) => p.side !== side).sort((a, b) => a.id - b.id);
-}
-
 /** Every eligible defender draws once, in ascending id; returns the lowest blocking id or null. */
 function resolveBlock(
   next: GameState,
@@ -51,7 +48,7 @@ function resolveBlock(
   const { profiles, tuning } = shooting;
   const releaseHeight = shotReleaseHeight(shotType, tuning);
   let blocker: number | null = null;
-  for (const defender of opponentsById(next, shooter.side)) {
+  for (const defender of contestingOpponents(next, shooter.side)) {
     const profile = profiles[defender.role];
     const d = horizontalDistance(defender.pos, shooter.pos);
     if (

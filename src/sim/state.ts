@@ -12,6 +12,13 @@ import { SIM_HZ } from './stepper';
 export type TeamSide = 'offense' | 'defense';
 export type RoleId = 'PG' | 'SG' | 'SF' | 'PF' | 'C';
 
+/**
+ * How the defense players take part. 'live': they intercept, contest and block. 'cones': they are
+ * Practice cones (scripted, non-interactive) and never intercept, contest or block.
+ */
+export const DEFENSE_MODES = ['live', 'cones'] as const;
+export type DefenseMode = (typeof DEFENSE_MODES)[number];
+
 export const PLAYER_COUNT = 10;
 export const ROLE_ORDER: readonly RoleId[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 
@@ -282,6 +289,8 @@ export interface GameState {
    * taken since: it is cleared after every shot).
    */
   lastCatch: CatchRecord | null;
+  /** 'cones': defense players are Practice cones and never intercept, contest or block. */
+  defenseMode: DefenseMode;
   /**
    * Events produced by the step that created this state; the caller forwards them to its
    * GameEventSinks. Empty after createGame.
@@ -301,6 +310,17 @@ export type SimAction =
   | { type: 'shoot' }
   | { type: 'floater' };
 
+/**
+ * Commands for players other than the controlled one (AI teammates, Practice cones), applied by
+ * stepGame before the actions. `steer` sets the move intent (clamped to length <= 1, like a move
+ * action); `place` teleports the player and zeroes its velocity and intent; `pass` releases a pass
+ * or hand-off from that player (ignored unless it holds the ball, as for the human).
+ */
+export type PlayerCommand =
+  | { type: 'steer'; playerId: number; x: number; z: number }
+  | { type: 'place'; playerId: number; x: number; z: number }
+  | { type: 'pass'; playerId: number; passType: PassType; targetId: number };
+
 export interface SimInput {
   tick: number;
   action: SimAction;
@@ -315,6 +335,8 @@ export interface CreateGameOptions {
   passing?: PassingSetup;
   /** Shooting numbers, built from content by the caller (see content `loadSimShooting`). */
   shooting?: ShootingSetup;
+  /** Default 'live'; anything else throws. */
+  defenseMode?: DefenseMode;
 }
 
 // Placeholder offense spots in ROLE_ORDER (meters). Plays set real spots later.
@@ -575,7 +597,13 @@ export function createGame({
   movement,
   passing,
   shooting,
+  defenseMode = 'live',
 }: CreateGameOptions): GameState {
+  if (!(DEFENSE_MODES as readonly unknown[]).includes(defenseMode)) {
+    throw new Error(
+      `Court Vision: defenseMode must be one of ${DEFENSE_MODES.join(', ')}, got ${String(defenseMode)}`,
+    );
+  }
   validateMovement(movement);
   if (passing !== undefined) {
     validatePassing(passing);
@@ -609,6 +637,7 @@ export function createGame({
     passing: passing === undefined ? null : structuredClone(passing),
     shooting: shooting === undefined ? null : structuredClone(shooting),
     lastCatch: null,
+    defenseMode,
     events: [],
   };
 }

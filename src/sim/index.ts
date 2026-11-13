@@ -23,6 +23,7 @@ export {
 } from './stepper';
 export type { StepperState } from './stepper';
 export {
+  DEFENSE_MODES,
   LOOK_QUALITIES,
   PASS_TYPES,
   PLAYER_COUNT,
@@ -37,6 +38,7 @@ export type {
   CatchRecord,
   CourtPoint,
   CreateGameOptions,
+  DefenseMode,
   GameState,
   LookQuality,
   MovementProfile,
@@ -48,6 +50,7 @@ export type {
   PassTuning,
   PassType,
   PassingSetup,
+  PlayerCommand,
   PlayerState,
   RoleId,
   ShootingSetup,

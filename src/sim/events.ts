@@ -45,6 +45,11 @@ export type GameEvent =
       blockerId: number | null;
       reason: string;
     }
+  /**
+   * Emitted by the play-run layer (src/ai) when an AI screener is set at its screen spot (decision
+   * g4: screens are automatic). Not a mistake; never whistles.
+   */
+  | { type: 'screenSet'; tick: number; screenerId: number; targetId: number }
   | { type: 'runSuccess'; tick: number; grade: RunGrade }
   | { type: 'runUnsuccessful'; tick: number; reason: string };
 

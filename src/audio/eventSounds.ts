@@ -19,6 +19,9 @@ export function soundForEvent(event: GameEvent): SoundId | null {
     // Shot sounds are a later audio issue; a blocked shot whistles through its `mistake` event.
     case 'shotResolved':
       return null;
+    // An automatic screen (decision g4) is not a mistake and never whistles.
+    case 'screenSet':
+      return null;
     default: {
       const unhandled: never = event;
       throw new Error(`Court Vision: unknown game event ${JSON.stringify(unhandled)}`);
