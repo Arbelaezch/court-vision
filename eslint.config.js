@@ -10,6 +10,9 @@ const HEADLESS_MSG =
 const DETERMINISM_MSG =
   'src/sim, src/content and src/ai must be deterministic: use the seeded RNG (src/sim/rng.ts) and fixed-step ticks, not Math.random, wall-clock time or timers. See docs/DESIGN_DOC.md section 4.';
 
+const RENDER_READONLY_MSG =
+  'src/render reads simulation state and never steps or writes it (issue #17). Use the ../sim barrel for read-only helpers.';
+
 const NONDETERMINISTIC_GLOBALS = [
   'performance',
   'setTimeout',
@@ -148,6 +151,26 @@ export default defineConfig(
   {
     files: ['tests/**/*.ts', 'vite.config.ts', 'eslint.config.js'],
     languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['src/render/**/*.{ts,tsx,mts,cts,js,mjs,cjs}'],
+    ignores: ['src/render/**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: '../sim', importNames: ['stepGame', 'takeShot'], message: RENDER_READONLY_MSG },
+          ],
+          patterns: [
+            {
+              group: ['**/sim/step', '**/sim/takeShot', '**/sim/passing', '**/sim/movement'],
+              message: RENDER_READONLY_MSG,
+            },
+          ],
+        },
+      ],
+    },
   },
   eslintConfigPrettier,
 );

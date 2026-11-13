@@ -120,5 +120,5 @@ export {
   isBeyondArc,
   isInBounds,
 } from './court';
-export { runHeadless } from './runner';
-export type { HeadlessRunOptions } from './runner';
+export { recordHeadless, runHeadless } from './runner';
+export type { HeadlessRunOptions, SimCommandInput } from './runner';
