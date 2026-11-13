@@ -22,15 +22,22 @@ export {
   stepperSimSeconds,
 } from './stepper';
 export type { StepperState } from './stepper';
-export { PLAYER_COUNT, ROLE_ORDER, createGame, gameSimSeconds } from './state';
+export { PASS_TYPES, PLAYER_COUNT, ROLE_ORDER, createGame, gameSimSeconds } from './state';
 export type {
   BallState,
+  CatchRecord,
   CourtPoint,
   CreateGameOptions,
   GameState,
   MovementProfile,
   MovementSetup,
   MovementTuning,
+  PassFlightTuning,
+  PassInterception,
+  PassProfile,
+  PassTuning,
+  PassType,
+  PassingSetup,
   PlayerState,
   RoleId,
   SimAction,
@@ -39,6 +46,7 @@ export type {
   Vec3,
 } from './state';
 export { stepGame } from './step';
+export { PASS_TURNOVER_REASONS, passHeightAt } from './passing';
 export type { GameEvent, GameEventSink, MistakeKind, RunGrade } from './events';
 export {
   BACKBOARD_BOTTOM_HEIGHT,

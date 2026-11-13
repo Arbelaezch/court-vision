@@ -1,10 +1,12 @@
 // One fixed simulation step. stepGame is pure: it clones the state and never mutates its inputs,
 // so the renderer can keep the previous and current states and interpolate between them.
 // Actions set the controlled player's inputs (move intent, held sprint and pivot); every player
-// then moves kinematically with acceleration, sprint and stamina (./movement.ts).
+// then moves kinematically with acceleration, sprint and stamina (./movement.ts). A pass action
+// releases the ball, which then flies to the receiver over later steps (./passing.ts).
 
 import { BASELINE_Z, HALF_COURT_LINE_Z, SIDELINE_X } from './court';
 import { stepPlayerMovement } from './movement';
+import { advanceBallFlight, startPass } from './passing';
 import type { CourtPoint, GameState, PlayerState, SimAction } from './state';
 
 function clampToUnitLength(x: number, z: number): CourtPoint {
@@ -75,6 +77,10 @@ function applyAction(next: GameState, action: SimAction): void {
       controlledPlayer(next).pivotHeld = action.held;
       return;
     }
+    case 'pass': {
+      startPass(next, action.passType, action.targetId);
+      return;
+    }
     default: {
       const unhandled: never = action;
       throw new Error(
@@ -111,7 +117,11 @@ export function stepGame(state: GameState, actions: readonly SimAction[]): GameS
     });
   }
 
-  // Ball flight belongs to the passing issue; shot-clock violations are not simulated yet.
+  // An in-flight pass advances after movement, so it tracks the receiver's new position and the
+  // catch sees the receiver's velocity on this step (./passing.ts).
+  next.events.push(...advanceBallFlight(next, state.tick + 1));
+
+  // Shot-clock violations are not simulated yet.
   if (next.shotClockTicks !== null && next.shotClockTicks > 0) {
     next.shotClockTicks -= 1;
   }

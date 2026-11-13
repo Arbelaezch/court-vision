@@ -20,4 +20,17 @@ describe('soundForEvent', () => {
   it('plays nothing for an unsuccessful run (Bad look)', () => {
     expect(soundForEvent({ type: 'runUnsuccessful', tick: 10, reason: 'Bad look' })).toBeNull();
   });
+
+  it('does not whistle a completed pass', () => {
+    expect(
+      soundForEvent({
+        type: 'passCompleted',
+        tick: 10,
+        passType: 'chestPass',
+        passerId: 0,
+        receiverId: 1,
+        receiverSet: true,
+      }),
+    ).toBeNull();
+  });
 });
