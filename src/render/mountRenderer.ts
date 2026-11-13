@@ -27,8 +27,29 @@ export function mountRenderer(
   resize();
   window.addEventListener('resize', resize);
 
+  let overlay: HTMLDivElement | null = null;
+  if (devScene?.status() != null) {
+    overlay = document.createElement('div');
+    overlay.className = 'dev-status';
+    overlay.style.cssText =
+      'position: fixed; top: 8px; left: 8px; padding: 2px 6px; font: 14px monospace; color: #fff; background: rgba(0,0,0,0.6); pointer-events: none';
+    container.appendChild(overlay);
+  }
+  let shownStatus: string | null = null;
+
   let loggedDrawCalls = false;
-  const frame = (): void => {
+  let lastMs: number | null = null;
+  const frame = (timeMs: number): void => {
+    const dt = lastMs === null ? 0 : (timeMs - lastMs) / 1000;
+    lastMs = timeMs;
+    if (devScene) {
+      devScene.update(dt);
+      const status = devScene.status();
+      if (overlay && status !== shownStatus) {
+        shownStatus = status;
+        overlay.textContent = `animation: ${status}`;
+      }
+    }
     renderer.render(scene, camera);
     if (devScene && !loggedDrawCalls) {
       loggedDrawCalls = true;
@@ -39,12 +60,16 @@ export function mountRenderer(
     target: document,
     isHidden: () => document.hidden,
     onPause: () => renderer.setAnimationLoop(null),
-    onResume: () => renderer.setAnimationLoop(frame),
+    onResume: () => {
+      lastMs = null;
+      renderer.setAnimationLoop(frame);
+    },
   });
 
   return () => {
     unbindVisibility();
     renderer.setAnimationLoop(null);
+    overlay?.remove();
     window.removeEventListener('resize', resize);
     if (devScene) devScene.dispose();
     else disposeObject3D(scene);

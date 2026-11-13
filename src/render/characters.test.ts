@@ -8,7 +8,9 @@ import {
   createCharacterLayer,
   MARKER_TOP_OFFSET_M,
   type CharacterLayer,
+  type CharacterPose,
 } from './characters';
+import type { AnimState } from './animation';
 import { OUTLINE_THICKNESS_M } from './toon';
 import { countDrawCalls } from './drawCalls';
 import { collectCastLabels, createLabelAtlas } from './labelAtlas';
@@ -171,5 +173,123 @@ describe('character layer', () => {
     expect(() =>
       createCharacterLayer({ cast, roster: [roster[0]!, roster[0]!], labels }),
     ).toThrow(/duplicate/);
+  });
+});
+
+describe('character animation', () => {
+  const guard = bodyProportions(cast.bodyTypes[cast.roles[roster[0]!.role].bodyType]);
+  const limbsOf = (layer: CharacterLayer): THREE.InstancedMesh =>
+    find<THREE.InstancedMesh>(layer, 'character-limbs');
+  const withAnim = (anim: AnimState): CharacterPose[] =>
+    game.players.map((p, i) => (i === 0 ? { ...p, anim } : p));
+  const stepped = (anim: AnimState, steps: number, dt: number, controlled = 0): CharacterLayer => {
+    const layer = createCharacterLayer({ cast, roster, labels });
+    const poses = withAnim(anim);
+    layer.sync(poses, controlled, 0);
+    for (let i = 0; i < steps; i++) layer.sync(poses, controlled, dt);
+    return layer;
+  };
+
+  it('keeps legs vertical on the floor at the neutral pose', () => {
+    const layer = build();
+    const box = instanceBox(limbsOf(layer), 0);
+    expect(box.min.y).toBeCloseTo(0, 6);
+    expect(box.max.y).toBeCloseTo(guard.legLength, 6);
+
+    const other = createCharacterLayer({ cast, roster, labels });
+    other.sync(game.players, 0, 0);
+    for (const name of ['character-limbs', 'character-bodies']) {
+      expect(Array.from(find<THREE.InstancedMesh>(other, name).instanceMatrix.array)).toEqual(
+        Array.from(find<THREE.InstancedMesh>(layer, name).instanceMatrix.array),
+      );
+    }
+  });
+
+  it('advances with dt and holds still at dt 0', () => {
+    const layer = build();
+    const poses = game.players.map((p) => ({ ...p, vel: { x: 0, z: -5 }, anim: 'run' as const }));
+    layer.sync(poses, 0, 0);
+    const before = Array.from(limbsOf(layer).instanceMatrix.array);
+    layer.sync(poses, 0, 0.1);
+    const after = Array.from(limbsOf(layer).instanceMatrix.array);
+    expect(after).not.toEqual(before);
+    layer.sync(poses, 0, 0);
+    expect(Array.from(limbsOf(layer).instanceMatrix.array)).toEqual(after);
+  });
+
+  it('raises both arms above the head when celebrating', () => {
+    const layer = createCharacterLayer({ cast, roster, labels });
+    layer.sync(withAnim('celebrate'), 0, 0);
+    const headTop = instanceBox(find<THREE.InstancedMesh>(layer, 'character-heads'), 0).max.y;
+    expect(instanceBox(limbsOf(layer), 2).max.y).toBeGreaterThan(headTop);
+    expect(instanceBox(limbsOf(layer), 3).max.y).toBeGreaterThan(headTop);
+  });
+
+  it('keeps the outline twin of a rotated limb in lockstep', () => {
+    const layer = createCharacterLayer({ cast, roster, labels });
+    layer.sync(withAnim('celebrate'), 0, 0);
+    const a = instanceBox(limbsOf(layer), 3).getCenter(new THREE.Vector3());
+    const b = instanceBox(
+      find<THREE.InstancedMesh>(layer, 'character-limbs-outline'),
+      3,
+    ).getCenter(new THREE.Vector3());
+    expect(Math.abs(a.x - b.x)).toBeLessThan(1e-5);
+    expect(Math.abs(a.y - b.y)).toBeLessThan(1e-5);
+    expect(Math.abs(a.z - b.z)).toBeLessThan(1e-5);
+  });
+
+  it('moves the jersey with the torso', () => {
+    const layer = stepped('disappointed', 10, 0.05);
+    const jersey = find<THREE.Mesh>(layer, 'jersey-0');
+    const torso = new THREE.Matrix4();
+    find<THREE.InstancedMesh>(layer, 'character-bodies').getMatrixAt(0, torso);
+    const centre = new THREE.Vector3(0, guard.torsoCenterY, 0).applyMatrix4(jersey.matrix);
+    const want = new THREE.Vector3().setFromMatrixPosition(torso);
+    expect(centre.distanceTo(want)).toBeLessThan(1e-6);
+
+    const idle = build();
+    expect(Array.from(jersey.matrix.elements)).not.toEqual(
+      Array.from(find<THREE.Mesh>(idle, 'jersey-0').matrix.elements),
+    );
+  });
+
+  it('keeps feet on the floor while crouching', () => {
+    const layer = stepped('screen', 20, 0.05);
+    for (const i of [0, 1]) expect(instanceBox(limbsOf(layer), i).min.y).toBeGreaterThan(-1e-3);
+  });
+
+  it.each([
+    ['run', 5],
+    ['sprint', 8],
+  ] as const)('plants the lower foot while %s', (anim, speed) => {
+    const layer = createCharacterLayer({ cast, roster, labels });
+    const poses = game.players.map((p, i) =>
+      i === 0 ? { ...p, vel: { x: 0, z: -speed }, anim } : p,
+    );
+    layer.sync(poses, 0, 0);
+    for (let i = 0; i < 60; i++) {
+      layer.sync(poses, 0, 0.02);
+      const low = Math.min(
+        instanceBox(limbsOf(layer), 0).min.y,
+        instanceBox(limbsOf(layer), 1).min.y,
+      );
+      expect(low).toBeGreaterThan(-0.015);
+      expect(low).toBeLessThan(0.015);
+    }
+  });
+
+  it('keeps the marker at a fixed height above the hips while jumping', () => {
+    const layer = createCharacterLayer({ cast, roster, labels });
+    const poses = withAnim('shoot');
+    const marker = find<THREE.Mesh>(layer, 'controlled-marker');
+    const hips = find<THREE.InstancedMesh>(layer, 'character-bodies');
+    layer.sync(poses, 0, 0);
+    const gap = (): number =>
+      marker.position.y - instanceBox(hips, 1).getCenter(new THREE.Vector3()).y;
+    const first = gap();
+    for (let i = 0; i < 30; i++) {
+      layer.sync(poses, 0, 0.05);
+      expect(Math.abs(gap() - first)).toBeLessThan(1e-6);
+    }
   });
 });
