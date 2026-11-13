@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { loadCastContent } from '../content';
+import { loadCastContent, loadSimMovement } from '../content';
 import { createGame } from '../sim';
 import { createPracticeCones } from './cones';
 import type { ConeSpot } from './cones';
@@ -9,7 +9,7 @@ import { collectCastLabels, createLabelAtlas } from './labelAtlas';
 import { OUTLINE_THICKNESS_M } from './toon';
 
 const cast = loadCastContent();
-const game = createGame({ seed: 1 });
+const game = createGame({ seed: 1, movement: loadSimMovement() });
 const spots: ConeSpot[] = game.players
   .filter((p) => p.side === 'defense')
   .map((p) => ({ role: p.role, x: p.pos.x, z: p.pos.z }));

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { loadCastContent } from '../content';
+import { loadCastContent, loadSimMovement } from '../content';
 import type { CastContent } from '../content';
 import { createGame } from '../sim';
 import {
@@ -14,7 +14,7 @@ import { countDrawCalls } from './drawCalls';
 import { collectCastLabels, createLabelAtlas } from './labelAtlas';
 
 const cast = loadCastContent();
-const game = createGame({ seed: 1 });
+const game = createGame({ seed: 1, movement: loadSimMovement() });
 const roster = game.players.map((p) => ({ id: p.id, side: p.side, role: p.role }));
 const labels = createLabelAtlas(collectCastLabels(cast.teams), { texture: new THREE.Texture() });
 

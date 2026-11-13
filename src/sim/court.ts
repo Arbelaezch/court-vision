@@ -38,3 +38,8 @@ export const THREE_POINT_CORNER_END_Z =
   RIM_CENTER.z + Math.sqrt(THREE_POINT_RADIUS ** 2 - THREE_POINT_CORNER_X ** 2);
 
 export const CENTER_CIRCLE_RADIUS = 1.8;
+
+/** True when the point is on or inside the half-court lines. */
+export function isInBounds(p: CourtPoint): boolean {
+  return Math.abs(p.x) <= SIDELINE_X && p.z >= BASELINE_Z && p.z <= HALF_COURT_LINE_Z;
+}

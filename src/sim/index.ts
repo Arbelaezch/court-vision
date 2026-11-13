@@ -28,6 +28,9 @@ export type {
   CourtPoint,
   CreateGameOptions,
   GameState,
+  MovementProfile,
+  MovementSetup,
+  MovementTuning,
   PlayerState,
   RoleId,
   SimAction,
@@ -35,7 +38,7 @@ export type {
   TeamSide,
   Vec3,
 } from './state';
-export { PLACEHOLDER_MOVE_SPEED_MPS, stepGame } from './step';
+export { stepGame } from './step';
 export type { GameEvent, GameEventSink, MistakeKind, RunGrade } from './events';
 export {
   BACKBOARD_BOTTOM_HEIGHT,
@@ -61,6 +64,7 @@ export {
   THREE_POINT_CORNER_FROM_SIDELINE,
   THREE_POINT_CORNER_X,
   THREE_POINT_RADIUS,
+  isInBounds,
 } from './court';
 export { runHeadless } from './runner';
 export type { HeadlessRunOptions } from './runner';

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { loadCastContent } from '../content';
+import { loadCastContent, loadSimMovement } from '../content';
 import { createGame } from '../sim';
 import { characterFitHeight, createCharacterLayer } from './characters';
 import { createPracticeCones } from './cones';
@@ -24,7 +24,7 @@ export function createDevScene(
   dispose(): void;
 } {
   const cast = loadCastContent();
-  const game = createGame({ seed: 1 });
+  const game = createGame({ seed: 1, movement: loadSimMovement() });
   const labels = createLabelAtlas(collectCastLabels(cast.teams), { texture: opts.labelTexture });
   const topHeight = characterFitHeight(cast.bodyTypes);
   const { scene, camera } = createCourtScene({ topHeight });
