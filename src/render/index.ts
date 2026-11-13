@@ -42,3 +42,17 @@ export type { PassTargetBadgeLayer } from './passTargetBadges';
 export { countDrawCalls } from './drawCalls';
 export { ANIM_DEV_HOLD_S, createDevScene, parseDevView } from './devView';
 export type { DevView } from './devView';
+export { createBallLayer } from './ball';
+export type { BallLayer } from './ball';
+export { SIM_PLAYBACK_LOOP_HOLD_S, createSimPlayback } from './simPlayback';
+export type { SimFrame, SimPlayback } from './simPlayback';
+export {
+  BALL_RADIUS_M,
+  ballRenderPosition,
+  interpolatePlayers,
+  shotArcPosition,
+} from './simInterpolation';
+export type { ShotArc, SimSnapshot } from './simInterpolation';
+export { ANIM_ONE_SHOT_S, createSimAnimTracker } from './simAnimation';
+export type { SimAnimTracker } from './simAnimation';
+export { recordDevTimeline } from './devTimeline';
