@@ -38,6 +38,17 @@ describe('createLabelAtlas', () => {
     expect(() => atlas.cell('99')).toThrow(/not in the atlas/);
     expect(() => atlas.dispose()).not.toThrow();
   });
+
+  it('accepts a wide cell width without changing the UV cells', () => {
+    const atlas = createLabelAtlas(['1 SG'], { texture: new THREE.Texture(), cellWidthPx: 320 });
+    expect(atlas.cell('1 SG')).toEqual(layoutLabelAtlas(['1 SG']).cells.get('1 SG'));
+  });
+
+  it.each([0, NaN])('throws for cellWidthPx %s', (cellWidthPx) => {
+    expect(() =>
+      createLabelAtlas(['1 SG'], { texture: new THREE.Texture(), cellWidthPx }),
+    ).toThrow(/^Court Vision:/);
+  });
 });
 
 describe('collectCastLabels', () => {

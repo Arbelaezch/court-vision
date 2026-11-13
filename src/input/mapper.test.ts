@@ -192,6 +192,30 @@ describe('release and dispose', () => {
     expect(actions).toEqual([]);
   });
 
+  it('tracks the pointer without emitting actions', () => {
+    const { input, actions } = setup();
+    expect(input.pointer()).toBeNull();
+    input.setPointer(10, 20);
+    expect(input.pointer()).toEqual({ x: 10, y: 20 });
+    input.setPointer(Number.NaN, 5);
+    input.setPointer(5, Number.POSITIVE_INFINITY);
+    expect(input.pointer()).toEqual({ x: 10, y: 20 });
+    input.releaseAll();
+    expect(input.pointer()).toEqual({ x: 10, y: 20 });
+    input.clearPointer();
+    expect(input.pointer()).toBeNull();
+    expect(actions).toEqual([]);
+  });
+
+  it('clears the pointer on dispose and ignores later setPointer', () => {
+    const { input } = setup();
+    input.setPointer(1, 2);
+    input.dispose();
+    expect(input.pointer()).toBeNull();
+    input.setPointer(3, 4);
+    expect(input.pointer()).toBeNull();
+  });
+
   it('stops notifying an unsubscribed listener', () => {
     const { input } = setup();
     const got: PressAction[] = [];

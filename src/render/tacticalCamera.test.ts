@@ -6,8 +6,10 @@ import {
   PLAYER_HEAD_HEIGHT,
   TACTICAL_FOV_DEG,
   TACTICAL_PITCH_DEG,
+  clientToNdc,
   createTacticalCamera,
   fitTacticalCamera,
+  screenToCourt,
   tacticalFitPoints,
 } from './tacticalCamera';
 
@@ -79,5 +81,43 @@ describe('fitTacticalCamera', () => {
     expect(() => fitTacticalCamera(camera, 1, -1)).toThrow();
     expect(() => fitTacticalCamera(camera, 1, NaN)).toThrow();
     expect(() => tacticalFitPoints(-0.1)).toThrow();
+  });
+});
+
+describe('clientToNdc', () => {
+  const rect = { left: 10, top: 20, width: 200, height: 100 };
+
+  it('maps rect corners and centre', () => {
+    expect(clientToNdc(10, 20, rect)).toEqual({ x: -1, y: 1 });
+    expect(clientToNdc(210, 120, rect)).toEqual({ x: 1, y: -1 });
+    expect(clientToNdc(110, 70, rect)).toEqual({ x: 0, y: 0 });
+  });
+
+  it('throws for a degenerate rect', () => {
+    expect(() => clientToNdc(0, 0, { ...rect, width: 0 })).toThrow(/^Court Vision:/);
+    expect(() => clientToNdc(0, 0, { ...rect, height: Number.NaN })).toThrow(/^Court Vision:/);
+  });
+});
+
+describe('screenToCourt', () => {
+  it.each([
+    [2, -5],
+    [-4, -10],
+    [0, -1],
+  ])('round-trips floor point (%d, 0, %d)', (x, z) => {
+    const camera = createTacticalCamera(16 / 9);
+    const ndc = new THREE.Vector3(x, 0, z).project(camera);
+    const hit = screenToCourt(camera, { x: ndc.x, y: ndc.y });
+    expect(hit).not.toBeNull();
+    expect(hit?.x).toBeCloseTo(x, 5);
+    expect(hit?.z).toBeCloseTo(z, 5);
+  });
+
+  it('returns null when the ray misses the floor', () => {
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(0, 2, 0);
+    camera.lookAt(0, 10, 0);
+    camera.updateMatrixWorld(true);
+    expect(screenToCourt(camera, { x: 0, y: 0 })).toBeNull();
   });
 });

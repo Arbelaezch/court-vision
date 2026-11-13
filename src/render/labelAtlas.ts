@@ -46,9 +46,9 @@ export interface LabelAtlas {
   dispose(): void;
 }
 
-function drawAtlasCanvas(layout: LabelAtlasLayout): THREE.CanvasTexture {
+function drawAtlasCanvas(layout: LabelAtlasLayout, cellWidthPx: number): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
-  canvas.width = layout.columns * CELL_PX;
+  canvas.width = layout.columns * cellWidthPx;
   canvas.height = layout.rows * CELL_PX;
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Court Vision: 2D canvas is unavailable for the label atlas');
@@ -59,7 +59,7 @@ function drawAtlasCanvas(layout: LabelAtlasLayout): THREE.CanvasTexture {
   for (const [label, cell] of layout.cells) {
     const cx = ((cell.u0 + cell.u1) / 2) * canvas.width;
     const cy = (1 - (cell.v0 + cell.v1) / 2) * canvas.height;
-    ctx.fillText(label, cx, cy);
+    ctx.fillText(label, cx, cy, 0.9 * cellWidthPx);
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -70,10 +70,14 @@ function drawAtlasCanvas(layout: LabelAtlasLayout): THREE.CanvasTexture {
 // (no canvas in node).
 export function createLabelAtlas(
   labels: readonly string[],
-  opts: { texture?: THREE.Texture } = {},
+  opts: { texture?: THREE.Texture; cellWidthPx?: number } = {},
 ): LabelAtlas {
+  const cellWidthPx = opts.cellWidthPx ?? CELL_PX;
+  if (!Number.isFinite(cellWidthPx) || cellWidthPx <= 0) {
+    throw new Error('Court Vision: label atlas cellWidthPx must be a finite number above 0');
+  }
   const layout = layoutLabelAtlas(labels);
-  const texture = opts.texture ?? drawAtlasCanvas(layout);
+  const texture = opts.texture ?? drawAtlasCanvas(layout, cellWidthPx);
   return {
     texture,
     cell(label) {

@@ -6,6 +6,7 @@ import {
   validateBindings,
   type Binding,
 } from '../../input';
+import type { PassTargetingMode } from '../../sim';
 
 export type ProgressMode = 'practice' | 'scrimmage';
 
@@ -19,7 +20,7 @@ export interface ProgressSection {
   readonly plays: Readonly<Record<string, Partial<Record<ProgressMode, ModeProgress>>>>;
 }
 
-export type PassTargeting = 'numbered' | 'aim' | 'both';
+export type PassTargeting = PassTargetingMode;
 
 export interface SettingsSection {
   readonly passTargeting: PassTargeting;

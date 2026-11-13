@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { loadCastContent, loadSimMovement } from '../content';
-import { createGame } from '../sim';
+import { createGame, passTargetBadges } from '../sim';
 import { ANIM_STATES } from './animation';
 import type { AnimState } from './animation';
 import { characterFitHeight, createCharacterLayer } from './characters';
@@ -9,6 +9,7 @@ import { createPracticeCones } from './cones';
 import { createCourtScene } from './courtScene';
 import { disposeObject3D } from './dispose';
 import { collectCastLabels, createLabelAtlas } from './labelAtlas';
+import { createPassTargetBadgeAtlas, createPassTargetBadgeLayer } from './passTargetBadges';
 
 export type DevView = 'characters' | 'practice' | 'animations';
 
@@ -61,7 +62,12 @@ export function createDevScene(
   layer.sync(poses, game.controlledPlayerId, 0);
   scene.add(layer.object);
 
-  const disposables: Array<{ dispose(): void }> = [layer];
+  const badgeLabels = createPassTargetBadgeAtlas({ texture: opts.labelTexture });
+  const badges = createPassTargetBadgeLayer({ cast, labels: badgeLabels });
+  badges.sync(poses, passTargetBadges(game));
+  scene.add(badges.object);
+
+  const disposables: Array<{ dispose(): void }> = [layer, badges];
   if (view === 'practice') {
     const cones = createPracticeCones({
       teams: cast.teams,
@@ -85,6 +91,7 @@ export function createDevScene(
         fillPoses();
       }
       layer.sync(poses, game.controlledPlayerId, dtSec);
+      badges.sync(poses, passTargetBadges(game));
     },
     status() {
       return view === 'animations' ? state : null;
@@ -92,6 +99,7 @@ export function createDevScene(
     dispose() {
       for (const item of disposables) item.dispose();
       labels.dispose();
+      badgeLabels.dispose();
       disposeObject3D(scene);
     },
   };

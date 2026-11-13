@@ -23,6 +23,11 @@ export interface InputMapper {
   /** Sets an analog magnitude (clamped to [0, 1]) for an input; 0 clears it. Never emits actions. */
   setAnalog(input: InputCode, value: number): void;
   releaseAll(): void;
+  /** Records the pointer position in client pixels. Non-finite values are ignored. Never emits actions. */
+  setPointer(clientX: number, clientY: number): void;
+  clearPointer(): void;
+  /** Last pointer position in client pixels, or null if none since creation/clearPointer/dispose. */
+  pointer(): { x: number; y: number } | null;
   isHeld(action: HeldAction): boolean;
   moveAxes(): { x: number; y: number };
   /** True while a single press waits out the double-click window. */
@@ -50,6 +55,7 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
   const analog = new Map<InputCode, number>();
   const pending = new Map<InputCode, () => void>();
   const listeners = new Set<(action: PressAction) => void>();
+  let pointerPos: { x: number; y: number } | null = null;
   let disposed = false;
 
   const emit = (action: PressAction): void => {
@@ -129,6 +135,14 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
       analog.clear();
       cancelAllPending();
     },
+    setPointer(clientX, clientY) {
+      if (disposed || !Number.isFinite(clientX) || !Number.isFinite(clientY)) return;
+      pointerPos = { x: clientX, y: clientY };
+    },
+    clearPointer() {
+      pointerPos = null;
+    },
+    pointer: () => (pointerPos ? { ...pointerPos } : null),
     isHeld,
     moveAxes() {
       const x = dir('moveRight') - dir('moveLeft');
@@ -148,6 +162,7 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
       cancelAllPending();
       pressed.clear();
       analog.clear();
+      pointerPos = null;
       listeners.clear();
     },
   };

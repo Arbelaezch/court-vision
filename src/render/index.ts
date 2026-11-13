@@ -1,6 +1,11 @@
 // Rendering layer: reads simulation state and draws it, interpolating between fixed simulation steps.
 export { createCourtScene } from './courtScene';
-export { createTacticalCamera, fitTacticalCamera } from './tacticalCamera';
+export {
+  clientToNdc,
+  createTacticalCamera,
+  fitTacticalCamera,
+  screenToCourt,
+} from './tacticalCamera';
 export { bindVisibilityPause } from './visibilityPause';
 export type { VisibilityPauseOptions } from './visibilityPause';
 export { mountRenderer } from './mountRenderer';
@@ -27,6 +32,13 @@ export { createPracticeCones } from './cones';
 export type { ConeSpot } from './cones';
 export { collectCastLabels, createLabelAtlas, layoutLabelAtlas } from './labelAtlas';
 export type { LabelAtlas, LabelCell } from './labelAtlas';
+export {
+  BADGE_GAP_M,
+  BADGE_HEIGHT_M,
+  createPassTargetBadgeAtlas,
+  createPassTargetBadgeLayer,
+} from './passTargetBadges';
+export type { PassTargetBadgeLayer } from './passTargetBadges';
 export { countDrawCalls } from './drawCalls';
 export { ANIM_DEV_HOLD_S, createDevScene, parseDevView } from './devView';
 export type { DevView } from './devView';

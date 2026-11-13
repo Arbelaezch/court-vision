@@ -63,6 +63,23 @@ export type {
 export { stepGame } from './step';
 export { PASS_TURNOVER_REASONS, passHeightAt } from './passing';
 export {
+  AIM_CONE_HALF_ANGLE_DEG,
+  PASS_TARGETING_MODES,
+  PASS_TARGET_BADGE_LABELS,
+  PASS_TARGET_KEYS,
+  PASS_TARGET_KEY_ROLES,
+  passTargetBadgeLabel,
+  passTargetBadges,
+  resolvePassTarget,
+} from './passTargeting';
+export type {
+  PassTargetBadge,
+  PassTargetIntent,
+  PassTargetKey,
+  PassTargetingMode,
+  PassTargetingSettings,
+} from './passTargeting';
+export {
   SHOT_REASONS,
   chooseShotType,
   rateLook,
