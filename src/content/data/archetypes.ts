@@ -1,4 +1,7 @@
-// The single tuning file for archetype attributes. All archetype tuning values live here.
+// The single tuning file for archetype attributes and the global movement tuning. All archetype
+// tuning values live here.
+// Movement tuning (MOVEMENT_TUNING_DATA): sprintSpeedMultiplier and brakingMultiplier are unitless
+// multipliers, sprintDurationS and staminaRefillS are in seconds.
 // Units: speedMps in m/s, accelerationMps2 in m/s^2, reachM is standing reach in meters.
 // strength, shooting.{rim,midRange,three}, passing, ballSecurity and defensiveAwareness are
 // integer ratings 0-100, higher is better.
@@ -61,4 +64,16 @@ export const ARCHETYPES_DATA = {
     ballSecurity: 50,
     defensiveAwareness: 80,
   },
+};
+
+// Global movement tuning shared by every player.
+export const MOVEMENT_TUNING_DATA = {
+  // Sprint top speed = speedMps * this. Unitless multiplier, >= 1.
+  sprintSpeedMultiplier: 1.25,
+  // Braking rate = accelerationMps2 * this. Unitless multiplier, >= 1 (stopping is quicker than starting).
+  brakingMultiplier: 1.5,
+  // Seconds of continuous sprint from full to empty stamina.
+  sprintDurationS: 4,
+  // Seconds to refill stamina from empty to full when not sprinting.
+  staminaRefillS: 5,
 };

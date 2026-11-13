@@ -9,6 +9,7 @@ import {
   THREE_POINT_CORNER_END_Z,
   THREE_POINT_CORNER_X,
   THREE_POINT_RADIUS,
+  isInBounds,
 } from './court';
 
 describe('court constants', () => {
@@ -44,5 +45,22 @@ describe('court constants', () => {
 
   it('freezes the rim centre', () => {
     expect(Object.isFrozen(RIM_CENTER)).toBe(true);
+  });
+});
+
+describe('isInBounds', () => {
+  it('is true at the origin and on each line', () => {
+    expect(isInBounds({ x: 0, z: 0 })).toBe(true);
+    expect(isInBounds({ x: SIDELINE_X, z: 0 })).toBe(true);
+    expect(isInBounds({ x: -SIDELINE_X, z: 0 })).toBe(true);
+    expect(isInBounds({ x: 0, z: BASELINE_Z })).toBe(true);
+    expect(isInBounds({ x: 0, z: HALF_COURT_LINE_Z })).toBe(true);
+  });
+
+  it('is false just past the sideline, baseline and half-court line', () => {
+    expect(isInBounds({ x: SIDELINE_X + 0.01, z: 0 })).toBe(false);
+    expect(isInBounds({ x: -SIDELINE_X - 0.01, z: 0 })).toBe(false);
+    expect(isInBounds({ x: 0, z: BASELINE_Z - 0.01 })).toBe(false);
+    expect(isInBounds({ x: 0, z: HALF_COURT_LINE_Z + 0.01 })).toBe(false);
   });
 });
