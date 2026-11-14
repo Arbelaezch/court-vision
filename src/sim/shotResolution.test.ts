@@ -86,6 +86,13 @@ describe('shot resolution', () => {
     expect(farShot.blockerId).toBeNull();
   });
 
+  it('mentions spacing in the shot result reason when a teammate crowds the shooter', () => {
+    const s = game(1, { 0: { pos: { x: 0, z: -1 } }, 4: { pos: { x: 0, z: -3 } } });
+    const shot = shotEvent(stepGame(s, [{ type: 'shoot' }]).events);
+    expect(shot.look).toBe('good');
+    expect(shot.reason).toMatch(/spacing/i);
+  });
+
   it('makes Great looks clearly more often than Bad looks over 1000 seeds', () => {
     let greatMade = 0;
     let badMade = 0;

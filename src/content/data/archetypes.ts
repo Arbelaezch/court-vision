@@ -141,6 +141,9 @@ export const SHOT_TUNING_DATA = {
   offBalancePenalty: 0.3, // unitless, look penalty for an off-balance jump shot
   outOfRangePenalty: 0.6, // unitless, look penalty for an out-of-range shot
   floaterPenalty: 0.1, // unitless, fixed look penalty for taking a floater
+  crowdingRadiusM: 2.0, // m, a teammate nearer than this to the shooter crowds the shot
+  driveLaneHalfWidthM: 1.0, // m, half-width of the shooter's lane to the rim; a teammate inside it is in the way
+  spacingWeight: 0.25, // unitless, largest look penalty from a crowding or in-lane teammate
   greatMinScore: 0.8, // unitless score (0-1) at or above which a look is Great
   goodMinScore: 0.5, // unitless score (0-1) at or above which a look is Good
   dribbleSpeedMps: 0.5, // m/s, a ball holder faster than this is dribbling

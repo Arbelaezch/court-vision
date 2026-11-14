@@ -15,6 +15,13 @@ describe('loadShotTuning', () => {
     ['unknown key', (d: any) => (d.curve = 1), 'shooting.curve'],
     ['missing key', (d: any) => delete d.maxRangeM, 'shooting.maxRangeM'],
     ['contestWeight of 2', (d: any) => (d.contestWeight = 2), 'shooting.contestWeight'],
+    ['crowdingRadiusM of 0', (d: any) => (d.crowdingRadiusM = 0), 'shooting.crowdingRadiusM'],
+    [
+      'driveLaneHalfWidthM of 0',
+      (d: any) => (d.driveLaneHalfWidthM = 0),
+      'shooting.driveLaneHalfWidthM',
+    ],
+    ['spacingWeight of 2', (d: any) => (d.spacingWeight = 2), 'shooting.spacingWeight'],
     [
       'non-integer catchAndShootWindowTicks',
       (d: any) => (d.catchAndShootWindowTicks = 12.5),

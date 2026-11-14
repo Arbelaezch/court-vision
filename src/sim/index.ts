@@ -84,6 +84,7 @@ export type {
 } from './passTargeting';
 export {
   SHOT_REASONS,
+  SHOT_SPACING_NOTE,
   chooseShotType,
   rateLook,
   shotMakeChance,

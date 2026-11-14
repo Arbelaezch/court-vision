@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   SHOT_REASONS,
+  SHOT_SPACING_NOTE,
   chooseShotType,
   createGame,
   rateLook,
@@ -156,6 +157,116 @@ describe('look quality', () => {
   });
 });
 
+const PERIMETER: Record<number, Placement> = {
+  1: { pos: { x: -6.6, z: -6 } },
+  2: { pos: { x: 6.6, z: -6 } },
+  3: { pos: { x: -5, z: 1 } },
+  4: { pos: { x: 5, z: 1 } },
+};
+
+describe('teammate spacing', () => {
+  const SHOOTER: Placement = { pos: { x: 0, z: -1 } };
+
+  it('rates an uncontested layup Great with well-spaced teammates', () => {
+    const s = game(1, { 0: { pos: { x: 0, z: -4.5 } }, ...PERIMETER });
+    const rating = rateLook(s, 0, 'layup', TICK);
+    expect(rating.look).toBe('great');
+    expect(rating.score).toBeCloseTo(1, 6);
+    expect(rating.reason).toBe(SHOT_REASONS.open);
+  });
+
+  it("rates a jumper lower with a teammate in the shooter's lane to the rim", () => {
+    const baseline = rateLook(game(1, { 0: SHOOTER, ...PERIMETER }), 0, 'jumper', TICK);
+    expect(baseline.score).toBeCloseTo(1, 6);
+    expect(baseline.look).toBe('great');
+    expect(baseline.reason).toBe('Open shot');
+
+    const lane = rateLook(
+      game(1, { 0: SHOOTER, ...PERIMETER, 4: { pos: { x: 0, z: -3 } } }),
+      0,
+      'jumper',
+      TICK,
+    );
+    expect(lane.score).toBeLessThan(baseline.score);
+    expect(lane.score).toBeCloseTo(1 - TEST_SHOT_TUNING.spacingWeight, 6);
+    expect(lane.look).toBe('good');
+    expect(lane.reason).toBe(SHOT_REASONS.spacing);
+  });
+
+  it('rates a jumper lower with a teammate within the crowding radius', () => {
+    const baseline = rateLook(game(1, { 0: SHOOTER, ...PERIMETER }), 0, 'jumper', TICK);
+    const crowded = rateLook(
+      game(1, { 0: SHOOTER, ...PERIMETER, 4: { pos: { x: 1, z: -1 } } }),
+      0,
+      'jumper',
+      TICK,
+    );
+    expect(crowded.score).toBeCloseTo(1 - 0.5 * TEST_SHOT_TUNING.spacingWeight, 6);
+    expect(crowded.score).toBeLessThan(baseline.score);
+    expect(crowded.look).toBe('great');
+    expect(crowded.reason).toBe(`${SHOT_REASONS.open}, ${SHOT_SPACING_NOTE}`);
+    expect(crowded.reason).toMatch(/spacing/);
+  });
+
+  it('names spacing next to a larger penalty', () => {
+    const s = game(1, {
+      0: SHOOTER,
+      5: { pos: { x: 0, z: -2 } },
+      1: { pos: { x: 0, z: 0 } },
+    });
+    const rating = rateLook(s, 0, 'jumper', TICK);
+    expect(rating.score).toBeCloseTo(0.575, 6);
+    expect(rating.look).toBe('good');
+    expect(rating.reason).toBe('Contested shot, crowded spacing');
+  });
+
+  it('reads spacing from the tuning', () => {
+    const lanePlacement = { 0: SHOOTER, ...PERIMETER, 4: { pos: { x: 0, z: -3 } } };
+    const off = rateLook(
+      game(
+        1,
+        lanePlacement,
+        cloneSetup((s) => {
+          s.tuning.spacingWeight = 0;
+        }),
+      ),
+      0,
+      'jumper',
+      TICK,
+    );
+    expect(off.score).toBeCloseTo(1, 6);
+    expect(off.reason).toBe('Open shot');
+
+    const wide = rateLook(
+      game(
+        1,
+        { 0: SHOOTER, ...PERIMETER },
+        cloneSetup((s) => {
+          s.tuning.crowdingRadiusM = 7;
+        }),
+      ),
+      0,
+      'jumper',
+      TICK,
+    );
+    expect(wide.score).toBeLessThan(1);
+
+    const narrow = rateLook(
+      game(
+        1,
+        { 0: SHOOTER, ...PERIMETER, 4: { pos: { x: 0.75, z: -3 } } },
+        cloneSetup((s) => {
+          s.tuning.driveLaneHalfWidthM = 0.5;
+        }),
+      ),
+      0,
+      'jumper',
+      TICK,
+    );
+    expect(narrow.score).toBeCloseTo(1, 6);
+  });
+});
+
 describe('shot selection', () => {
   it('picks a layup at the rim even when moving', () => {
     const s = game(1, { 0: { pos: { x: 0, z: -4.5 }, vel: { x: 3, z: 0 } } });
@@ -255,6 +366,25 @@ describe('createGame shooting validation', () => {
       create(
         cloneSetup((s) => {
           s.tuning.catchAndShootWindowTicks = 30.5;
+        }),
+      ),
+    ).toThrow(/Court Vision/);
+  });
+
+  it('throws on invalid spacing tuning', () => {
+    for (const key of ['crowdingRadiusM', 'driveLaneHalfWidthM'] as const) {
+      expect(() =>
+        create(
+          cloneSetup((s) => {
+            s.tuning[key] = 0;
+          }),
+        ),
+      ).toThrow(/Court Vision/);
+    }
+    expect(() =>
+      create(
+        cloneSetup((s) => {
+          s.tuning.spacingWeight = -0.1;
         }),
       ),
     ).toThrow(/Court Vision/);
