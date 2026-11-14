@@ -34,14 +34,15 @@ function setup() {
     doc: doc as unknown as Document,
   });
   const root = container.children[0]!;
-  const [objective, meter, banner] = root.children as [FakeEl, FakeEl, FakeEl];
-  return { hud, root, objective, meter, fill: meter.children[0]!, banner };
+  const [objective, shotClock, meter, banner] = root.children as [FakeEl, FakeEl, FakeEl, FakeEl];
+  return { hud, root, objective, shotClock, meter, fill: meter.children[0]!, banner };
 }
 
 const model = (over: Partial<RunHudModel> = {}): RunHudModel => ({
   objective: 'Give and go',
   stamina: 1,
   banner: null,
+  shotClockSeconds: null,
   ...over,
 });
 
@@ -88,6 +89,22 @@ describe('run HUD', () => {
     root.children.forEach((c, i) => {
       expect(c).toBe(before[i]);
     });
+  });
+
+  it('shows, hides and write-on-changes the shot clock', () => {
+    const { hud, shotClock } = setup();
+    expect(shotClock.attrs['role']).toBe('timer');
+    expect(shotClock.attrs['aria-label']).toBe('Shot clock');
+    hud.update(model({ shotClockSeconds: 24 }));
+    expect(shotClock.textContent).toBe('24');
+    expect(shotClock.hidden).toBe(false);
+    shotClock.textContent = 'sentinel';
+    hud.update(model({ shotClockSeconds: 24 }));
+    expect(shotClock.textContent).toBe('sentinel');
+    hud.update(model({ shotClockSeconds: 23 }));
+    expect(shotClock.textContent).toBe('23');
+    hud.update(model({ shotClockSeconds: null }));
+    expect(shotClock.hidden).toBe(true);
   });
 
   it('hides everything on null', () => {

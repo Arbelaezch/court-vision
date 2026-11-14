@@ -124,6 +124,7 @@ export function buildTutorialFrame(
       objective: `Tutorial · Step ${state.stepIndex + 1} of ${state.steps.length}: ${step.title}`,
       stamina: Math.min(1, Math.max(0, controlled.stamina)),
       banner,
+      shotClockSeconds: null,
     },
   };
 }

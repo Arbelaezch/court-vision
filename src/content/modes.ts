@@ -5,6 +5,7 @@
 
 import { DEFENSE_MODES, type DefenseMode } from '../sim';
 import { PRACTICE_MODE_DATA, PRACTICE_MODE_FILE } from './data/modes/practice';
+import { SCRIMMAGE_MODE_DATA, SCRIMMAGE_MODE_FILE } from './data/modes/scrimmage';
 import { CUE_LEVELS, type CueLevel } from './plays';
 import {
   childPath,
@@ -36,15 +37,22 @@ export interface ModeConfig {
   readonly speedMultiplier: number;
   /** Seconds; null = no shot clock. */
   readonly shotClockSeconds: number | null;
+  /**
+   * Sim seconds after a phase starts before decision cues (target rings, prompts) show unless the
+   * target is already open; null = no gating.
+   */
+  readonly decisionCueDelaySeconds: number | null;
 }
 
 export const SPEED_MULTIPLIER_RANGE = { min: 0.25, max: 2 } as const;
 export const SHOT_CLOCK_SECONDS_RANGE = { min: 1, max: 60 } as const;
+export const DECISION_CUE_DELAY_SECONDS_RANGE = { min: 0, max: 10 } as const;
 
 export type ModeTable = Readonly<Record<ModeId, ModeConfig>>;
 
 export const BUNDLED_MODE_SOURCES: readonly ContentSource[] = [
   { file: PRACTICE_MODE_FILE, data: PRACTICE_MODE_DATA },
+  { file: SCRIMMAGE_MODE_FILE, data: SCRIMMAGE_MODE_DATA },
 ];
 
 const MODE_FIELDS = [
@@ -55,6 +63,7 @@ const MODE_FIELDS = [
   'defense',
   'speedMultiplier',
   'shotClockSeconds',
+  'decisionCueDelaySeconds',
 ] as const;
 
 export function readModeConfig(source: ContentSource): ModeConfig {
@@ -72,6 +81,7 @@ export function readModeConfig(source: ContentSource): ModeConfig {
   const defense = getField(obj, 'defense', at);
   const speed = getField(obj, 'speedMultiplier', at);
   const clock = getField(obj, 'shotClockSeconds', at);
+  const cueDelay = getField(obj, 'decisionCueDelaySeconds', at);
   return {
     id,
     name: readString(name.value, name.at),
@@ -81,6 +91,10 @@ export function readModeConfig(source: ContentSource): ModeConfig {
     speedMultiplier: readNumber(speed.value, speed.at, SPEED_MULTIPLIER_RANGE),
     shotClockSeconds:
       clock.value === null ? null : readNumber(clock.value, clock.at, SHOT_CLOCK_SECONDS_RANGE),
+    decisionCueDelaySeconds:
+      cueDelay.value === null
+        ? null
+        : readNumber(cueDelay.value, cueDelay.at, DECISION_CUE_DELAY_SECONDS_RANGE),
   };
 }
 

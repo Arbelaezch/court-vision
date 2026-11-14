@@ -13,7 +13,6 @@ import {
 const SCREEN_IDS: readonly ScreenId[] = [
   'mainMenu',
   'tutorial',
-  'scrimmage',
   'settings',
   'progress',
   'playSelect',
@@ -24,7 +23,6 @@ const SCREEN_IDS: readonly ScreenId[] = [
 const STATES: Record<ScreenId, ScreenState> = {
   mainMenu: { screen: 'mainMenu' },
   tutorial: { screen: 'tutorial' },
-  scrimmage: { screen: 'scrimmage' },
   settings: { screen: 'settings' },
   progress: { screen: 'progress' },
   playSelect: { screen: 'playSelect', modeId: 'practice' },
@@ -72,13 +70,37 @@ describe('transitionScreen', () => {
 
   it.each([
     ['openTutorial', 'tutorial'],
-    ['openScrimmage', 'scrimmage'],
     ['openSettings', 'settings'],
     ['openProgress', 'progress'],
   ] as const)('%s reaches %s and back returns to the main menu', (type, screen) => {
     const machine = createScreenMachine();
     expect(machine.send({ type })).toEqual({ ok: true, state: { screen } });
     expect(machine.send({ type: 'back' })).toEqual({ ok: true, state: { screen: 'mainMenu' } });
+  });
+
+  it('openScrimmage opens Play Select for scrimmage, which selects into a run and backs out', () => {
+    const machine = createScreenMachine();
+    expect(machine.send({ type: 'openScrimmage' })).toEqual({
+      ok: true,
+      state: { screen: 'playSelect', modeId: 'scrimmage' },
+    });
+    expect(machine.send({ type: 'selectPlay', playId: 'giveAndGo' })).toEqual({
+      ok: true,
+      state: { screen: 'inRun', modeId: 'scrimmage', playId: 'giveAndGo' },
+    });
+    const select: ScreenState = { screen: 'playSelect', modeId: 'scrimmage' };
+    expect(transitionScreen(select, { type: 'back' })).toEqual({
+      ok: true,
+      state: { screen: 'mainMenu' },
+    });
+  });
+
+  it('quit from a paused scrimmage run returns to scrimmage Play Select', () => {
+    const paused: ScreenState = { screen: 'paused', modeId: 'scrimmage', playId: 'giveAndGo' };
+    expect(transitionScreen(paused, { type: 'quit' })).toEqual({
+      ok: true,
+      state: { screen: 'playSelect', modeId: 'scrimmage' },
+    });
   });
 
   it('playSelect back returns to the main menu', () => {
@@ -145,7 +167,7 @@ describe('escapeEvent', () => {
     expect(escapeEvent('inRun')).toEqual({ type: 'pause' });
     expect(escapeEvent('paused')).toEqual({ type: 'resume' });
     expect(escapeEvent('mainMenu')).toBeNull();
-    for (const screen of ['playSelect', 'tutorial', 'scrimmage', 'settings', 'progress'] as const) {
+    for (const screen of ['playSelect', 'tutorial', 'settings', 'progress'] as const) {
       expect(escapeEvent(screen)).toEqual({ type: 'back' });
     }
   });

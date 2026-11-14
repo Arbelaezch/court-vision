@@ -1,7 +1,8 @@
 // What the renderer and HUD get each frame: the sim steps just run, the cues visible now, the
 // do-this-now prompt and the HUD model. Pure and DOM-free.
-import type { RunControllerState, RunControllerStep } from '../ai';
+import { isTeammateOpen, type RunControllerState, type RunControllerStep } from '../ai';
 import {
+  gateDecisionCues,
   phaseCues,
   promptForCues,
   type Cue,
@@ -9,6 +10,7 @@ import {
   type CueToggles,
   type PlayScenario,
 } from '../content';
+import { SIM_HZ } from '../sim';
 
 export interface RunBanner {
   readonly tone: 'success' | 'neutral';
@@ -20,6 +22,8 @@ export interface RunHudModel {
   /** Controlled player's sprint stamina, [0, 1]. */
   readonly stamina: number;
   readonly banner: RunBanner | null;
+  /** Whole sim seconds left on the shot clock (ceil), or null when the mode has none. */
+  readonly shotClockSeconds: number | null;
 }
 
 export interface RunFrame {
@@ -51,8 +55,16 @@ export function buildRunFrame(
 ): RunFrame {
   const cues =
     controller.status === 'playing'
-      ? phaseCues(play, controller.run.phaseId, controller.mode.cueLevel, cueToggles)
+      ? gateDecisionCues(
+          phaseCues(play, controller.run.phaseId, controller.mode.cueLevel, cueToggles),
+          {
+            phaseElapsedSeconds: (controller.game.tick - controller.run.phaseStartTick) / SIM_HZ,
+            delaySeconds: controller.mode.decisionCueDelaySeconds,
+            isOpen: (role) => isTeammateOpen(controller.game, role),
+          },
+        )
       : [];
+  const shotClockTicks = controller.game.shotClockTicks;
   const controlled = controller.game.players.find(
     (p) => p.id === controller.game.controlledPlayerId,
   );
@@ -61,6 +73,11 @@ export function buildRunFrame(
     steps,
     cues,
     prompt: promptForCues(cues),
-    hud: { objective: play.concept, stamina, banner: bannerFor(controller) },
+    hud: {
+      objective: play.concept,
+      stamina,
+      banner: bannerFor(controller),
+      shotClockSeconds: shotClockTicks === null ? null : Math.ceil(shotClockTicks / SIM_HZ),
+    },
   };
 }

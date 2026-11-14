@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadCastContent } from './cast';
 import {
   DEFAULT_CUE_TOGGLES,
+  gateDecisionCues,
   phaseCues,
   promptForCues,
   visibleCues,
@@ -95,6 +96,49 @@ describe('phaseCues', () => {
     expect(() => phaseCues(play, 'nope', 'full', DEFAULT_CUE_TOGGLES)).toThrow(
       /unknown phase "nope" in play "giveAndGo"/,
     );
+  });
+});
+
+describe('gateDecisionCues', () => {
+  const cues: readonly Cue[] = [
+    { kind: 'targetRing', role: 'SG' },
+    { kind: 'floorArrow', to: { x: 0, z: 0 } },
+    { kind: 'prompt', text: 'Pass', passTo: 'SG' },
+    { kind: 'prompt', text: 'Read the help' },
+    { kind: 'spotMarker', spot: { x: 1, z: 1 } },
+  ];
+  const closed = (): boolean => false;
+
+  it('returns the input for a null delay', () => {
+    const gate = { phaseElapsedSeconds: 0, delaySeconds: null, isOpen: closed };
+    expect(gateDecisionCues(cues, gate)).toBe(cues);
+  });
+
+  it('keeps only movement cues before the delay with nothing open', () => {
+    const out = gateDecisionCues(cues, {
+      phaseElapsedSeconds: 0,
+      delaySeconds: 1.5,
+      isOpen: closed,
+    });
+    expect(kinds(out)).toEqual(['floorArrow', 'spotMarker']);
+  });
+
+  it('keeps every cue once the delay has elapsed, in order', () => {
+    const out = gateDecisionCues(cues, {
+      phaseElapsedSeconds: 1.5,
+      delaySeconds: 1.5,
+      isOpen: closed,
+    });
+    expect(out).toEqual(cues);
+  });
+
+  it('reveals cues whose target is open, but not targetless prompts', () => {
+    const out = gateDecisionCues(cues, {
+      phaseElapsedSeconds: 0,
+      delaySeconds: 1.5,
+      isOpen: (role) => role === 'SG',
+    });
+    expect(out).toEqual([cues[0], cues[1], cues[2], cues[4]]);
   });
 });
 

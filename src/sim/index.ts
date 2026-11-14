@@ -63,7 +63,7 @@ export type {
   TeamSide,
   Vec3,
 } from './state';
-export { stepGame } from './step';
+export { SHOT_CLOCK_VIOLATION_REASON, stepGame } from './step';
 export { PASS_TURNOVER_REASONS, passHeightAt } from './passing';
 export {
   AIM_CONE_HALF_ANGLE_DEG,

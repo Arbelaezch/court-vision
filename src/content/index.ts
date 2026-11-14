@@ -59,13 +59,18 @@ export type {
 export {
   CUE_TOGGLE_FOR_KIND,
   DEFAULT_CUE_TOGGLES,
+  MOVEMENT_CUE_KINDS,
+  decisionCueTarget,
+  gateDecisionCues,
+  isDecisionCue,
   phaseCues,
   promptForCues,
   visibleCues,
 } from './cues';
-export type { CuePrompt, CueToggle, CueToggles } from './cues';
+export type { CuePrompt, CueToggle, CueToggles, DecisionCueGate } from './cues';
 export {
   BUNDLED_MODE_SOURCES,
+  DECISION_CUE_DELAY_SECONDS_RANGE,
   MODE_RULES,
   SHOT_CLOCK_SECONDS_RANGE,
   SPEED_MULTIPLIER_RANGE,

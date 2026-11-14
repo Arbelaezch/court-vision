@@ -105,6 +105,35 @@ describe('stepGame', () => {
     expect(stepGame(createGame({ seed: 3, movement }), []).shotClockTicks).toBeNull();
   });
 
+  it('emits one shot-clock turnover on the 1 -> 0 step and never again', () => {
+    let state = createGame({ seed: 3, shotClockSeconds: 2 / 60, movement });
+    state = stepGame(state, []);
+    expect(state.events.filter((e) => e.type === 'mistake')).toEqual([]);
+    state = stepGame(state, []);
+    expect(state.events.filter((e) => e.type === 'mistake')).toEqual([
+      { type: 'mistake', tick: 2, kind: 'turnover', reason: 'Shot clock' },
+    ]);
+    state = stepGame(state, []);
+    expect(state.events.filter((e) => e.type === 'mistake')).toEqual([]);
+    expect(state.shotClockTicks).toBe(0);
+  });
+
+  it('never emits a shot-clock mistake with a null shot clock', () => {
+    let state = createGame({ seed: 3, movement });
+    for (let i = 0; i < 5; i += 1) {
+      state = stepGame(state, []);
+      expect(state.events.filter((e) => e.type === 'mistake')).toEqual([]);
+    }
+  });
+
+  it('lets a released shot beat the buzzer', () => {
+    let state = createGame({ seed: 3, shotClockSeconds: 1 / 60, movement });
+    state.ball = { kind: 'dead', shooterId: 0, made: false };
+    state = stepGame(state, []);
+    expect(state.shotClockTicks).toBe(0);
+    expect(state.events.filter((e) => e.type === 'mistake')).toEqual([]);
+  });
+
   it('moves only the controlled player on a move action', () => {
     const state = createGame({ seed: 3, movement });
     const next = stepGame(state, [{ type: 'move', x: 1, z: 0 }]);

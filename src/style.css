@@ -242,6 +242,13 @@ body {
   border-radius: 6px;
 }
 
+.cv-shot-clock {
+  margin-top: 4px;
+  font: bold 32px sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+
 .cv-stamina {
   width: 120px;
   height: 8px;

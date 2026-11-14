@@ -19,6 +19,9 @@ export function createRunHud(opts: { container: HTMLElement; doc: Document }): R
 
   const root = el('div', 'cv-run-hud');
   const objective = el('div', 'cv-hud-objective');
+  const shotClock = el('div', 'cv-shot-clock');
+  shotClock.setAttribute('role', 'timer');
+  shotClock.setAttribute('aria-label', 'Shot clock');
   const meter = el('div', 'cv-stamina');
   meter.setAttribute('role', 'meter');
   meter.setAttribute('aria-label', 'Stamina');
@@ -29,14 +32,17 @@ export function createRunHud(opts: { container: HTMLElement; doc: Document }): R
   const banner = el('div', 'cv-result-banner');
   banner.setAttribute('role', 'status');
   root.appendChild(objective);
+  root.appendChild(shotClock);
   root.appendChild(meter);
   root.appendChild(banner);
   root.hidden = true;
   banner.hidden = true;
+  shotClock.hidden = true;
   container.appendChild(root);
 
   let lastObjective: string | null = null;
   let lastStamina: number | null = null;
+  let lastShotClock: number | null | undefined;
   let lastBannerKey: string | null = null;
 
   function update(hud: RunHudModel | null): void {
@@ -48,6 +54,16 @@ export function createRunHud(opts: { container: HTMLElement; doc: Document }): R
     if (hud.objective !== lastObjective) {
       objective.textContent = hud.objective;
       lastObjective = hud.objective;
+    }
+    if (hud.shotClockSeconds !== lastShotClock) {
+      lastShotClock = hud.shotClockSeconds;
+      if (hud.shotClockSeconds === null) {
+        shotClock.hidden = true;
+        shotClock.textContent = '';
+      } else {
+        shotClock.textContent = String(hud.shotClockSeconds);
+        shotClock.hidden = false;
+      }
     }
     const stamina = Math.min(1, Math.max(0, hud.stamina));
     if (stamina !== lastStamina) {

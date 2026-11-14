@@ -11,6 +11,18 @@ const PRACTICE = {
   defense: 'cones',
   speedMultiplier: 1,
   shotClockSeconds: null,
+  decisionCueDelaySeconds: null,
+};
+
+const SCRIMMAGE = {
+  id: 'scrimmage',
+  name: 'Scrimmage',
+  rules: 'scrimmage',
+  cueLevel: 'reduced',
+  defense: 'live',
+  speedMultiplier: 0.85,
+  shotClockSeconds: 24,
+  decisionCueDelaySeconds: 1.5,
 };
 
 const LIVE_PLAY = {
@@ -21,6 +33,7 @@ const LIVE_PLAY = {
   defense: 'live',
   speedMultiplier: 1,
   shotClockSeconds: 24,
+  decisionCueDelaySeconds: 1.5,
 };
 
 function source(data: unknown, file = 'src/content/data/modes/test.ts') {
@@ -28,8 +41,10 @@ function source(data: unknown, file = 'src/content/data/modes/test.ts') {
 }
 
 describe('bundled modes', () => {
-  it('loads exactly the Practice config', () => {
-    expect(loadModes()).toEqual({ practice: PRACTICE });
+  it('loads exactly the Practice and Scrimmage configs', () => {
+    expect(loadModes()).toStrictEqual({ practice: PRACTICE, scrimmage: SCRIMMAGE });
+    expect(loadMode('practice').decisionCueDelaySeconds).toBeNull();
+    expect(loadMode('scrimmage')).toStrictEqual(SCRIMMAGE);
   });
 
   it('registers every mode file, named after its id', () => {
@@ -67,6 +82,7 @@ describe('bundled modes', () => {
 });
 
 describe('mode validation', () => {
+  const CUE_DELAY_AT = /at practice\.decisionCueDelaySeconds/;
   const cases: [string, unknown, RegExp][] = [
     ['unknown field', { ...PRACTICE, extra: 1 }, /at practice\.extra/],
     ['bad rules', { ...PRACTICE, rules: 'freePlay' }, /at practice\.rules/],
@@ -80,6 +96,10 @@ describe('mode validation', () => {
       { ...PRACTICE, shotClockSeconds: undefined },
       /at practice\.shotClockSeconds/,
     ],
+    ['cue delay negative', { ...PRACTICE, decisionCueDelaySeconds: -1 }, CUE_DELAY_AT],
+    ['cue delay too high', { ...PRACTICE, decisionCueDelaySeconds: 11 }, CUE_DELAY_AT],
+    ['cue delay a string', { ...PRACTICE, decisionCueDelaySeconds: '1' }, CUE_DELAY_AT],
+    ['cue delay missing', { ...PRACTICE, decisionCueDelaySeconds: undefined }, CUE_DELAY_AT],
     ['bad id', { ...PRACTICE, id: 'Practice' }, /at mode\.id/],
   ];
 

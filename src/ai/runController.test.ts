@@ -21,6 +21,7 @@ import {
 import {
   RESULT_HOLD_SECONDS,
   RESULT_HOLD_STEPS,
+  coverageForRun,
   quitRunController,
   restartRunController,
   startPracticeRun,
@@ -45,6 +46,7 @@ const SCRIMMAGE_TEST: ModeConfig = {
   rules: 'scrimmage',
   cueLevel: 'reduced',
   defense: 'cones',
+  decisionCueDelaySeconds: 1.5,
 };
 
 const CUT_SPOT = { x: 0.8, z: -4 };
@@ -174,8 +176,51 @@ describe('startRunController', () => {
     expect(c.referee).toMatchObject({ mode: 'practice', coverageId: GIVE_AND_GO.practiceCoverage });
   });
 
-  it('throws for a Scrimmage config without a coverage', () => {
-    expect(() => start(1, SCRIMMAGE_TEST)).toThrow(/Court Vision:/);
+  it('picks a coverage for a Scrimmage config without one', () => {
+    const c = start(1, SCRIMMAGE_TEST);
+    expect(GIVE_AND_GO.coverages.map((cov) => cov.id)).toContain(c.referee.coverageId);
+  });
+
+  it('Scrimmage picks both coverages across runs, always 5-on-5 live', () => {
+    const mode: ModeConfig = { ...SCRIMMAGE_TEST, defense: 'live' };
+    let c = start(1, mode);
+    const seen = new Set<string | undefined>();
+    for (let run = 0; run < 20; run += 1) {
+      seen.add(c.referee.coverageId);
+      expect(c.game.players).toHaveLength(10);
+      expect(c.game.defenseMode).toBe('live');
+      c = restartRunController(GIVE_AND_GO, c);
+    }
+    expect(seen).toEqual(new Set(['ballWatch', 'helpOnCut']));
+  });
+
+  it('Scrimmage coverage picks are deterministic and match coverageForRun', () => {
+    const sequence = (): (string | undefined)[] => {
+      let c = start(7, SCRIMMAGE_TEST);
+      const ids: (string | undefined)[] = [];
+      for (let run = 0; run < 10; run += 1) {
+        ids.push(c.referee.coverageId);
+        expect(c.referee.coverageId).toBe(coverageForRun(GIVE_AND_GO, (7 + c.runIndex) >>> 0));
+        c = restartRunController(GIVE_AND_GO, c);
+      }
+      return ids;
+    };
+    expect(sequence()).toEqual(sequence());
+  });
+
+  it('a shot-clock violation is a turnover and the next run gets a full clock', () => {
+    const mode: ModeConfig = { ...SCRIMMAGE_TEST, defense: 'live', shotClockSeconds: 1 };
+    const c0 = start(1, mode, { coverageId: 'ballWatch' });
+    const run = advance(c0, SIM_HZ * 2, idle, (c) => c.status !== 'playing');
+    const last = run.steps[run.steps.length - 1] as RunControllerStep;
+    expect(last.attempt).toMatchObject({ success: false, outcome: { kind: 'mistake' } });
+    expect(last.events).toContainEqual(
+      expect.objectContaining({ type: 'mistake', kind: 'turnover', reason: 'Shot clock' }),
+    );
+    expect(run.controller.status).toBe('resetPending');
+    const next = stepOnce(run.controller, []);
+    expect(next.reset).toBe(true);
+    expect(next.controller.game.shotClockTicks).toBe(SIM_HZ);
   });
 
   it('stepRunController throws for another play', () => {

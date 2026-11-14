@@ -107,7 +107,8 @@ describe('createScreenMenus', () => {
       'Progress',
     ]);
     bs[1]!.click();
-    expect(events).toEqual([{ type: 'openPractice' }]);
+    bs[2]!.click();
+    expect(events).toEqual([{ type: 'openPractice' }, { type: 'openScrimmage' }]);
   });
 
   it('renders play select in label order and selects by id', () => {
@@ -236,17 +237,14 @@ describe('createScreenMenus', () => {
     expect(events).toEqual([{ type: 'back' }]);
   });
 
-  it.each(['scrimmage', 'settings'] as const)(
-    'renders a Back button on the %s placeholder',
-    (screen) => {
-      const { menus, root, events } = setup();
-      menus.show({ screen }, labels);
-      const bs = buttons(root);
-      expect(bs.map((b) => b.textContent)).toEqual(['Back']);
-      bs[0]!.click();
-      expect(events).toEqual([{ type: 'back' }]);
-    },
-  );
+  it('renders a Back button on the settings placeholder', () => {
+    const { menus, root, events } = setup();
+    menus.show({ screen: 'settings' }, labels);
+    const bs = buttons(root);
+    expect(bs.map((b) => b.textContent)).toEqual(['Back']);
+    bs[0]!.click();
+    expect(events).toEqual([{ type: 'back' }]);
+  });
 
   it('renders a status HUD with the play name and no buttons in run', () => {
     const { menus, root } = setup();

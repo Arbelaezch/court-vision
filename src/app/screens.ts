@@ -4,19 +4,11 @@
 import type { ModeId } from '../content';
 
 export type ScreenId =
-  | 'mainMenu'
-  | 'tutorial'
-  | 'scrimmage'
-  | 'settings'
-  | 'progress'
-  | 'playSelect'
-  | 'inRun'
-  | 'paused';
+  'mainMenu' | 'tutorial' | 'settings' | 'progress' | 'playSelect' | 'inRun' | 'paused';
 
 export type ScreenState =
   | { readonly screen: 'mainMenu' }
   | { readonly screen: 'tutorial' }
-  | { readonly screen: 'scrimmage' }
   | { readonly screen: 'settings' }
   | { readonly screen: 'progress' }
   | { readonly screen: 'playSelect'; readonly modeId: ModeId }
@@ -43,12 +35,12 @@ export type TransitionResult =
   | { readonly ok: false; readonly from: ScreenId; readonly event: ScreenEventType };
 
 export const PRACTICE_MODE_ID: ModeId = 'practice';
+export const SCRIMMAGE_MODE_ID: ModeId = 'scrimmage';
 export const INITIAL_SCREEN: ScreenState = { screen: 'mainMenu' };
 
 export const SCREEN_TRANSITIONS: Readonly<Record<ScreenId, readonly ScreenEventType[]>> = {
   mainMenu: ['openTutorial', 'openPractice', 'openScrimmage', 'openSettings', 'openProgress'],
   tutorial: ['back'],
-  scrimmage: ['back'],
   settings: ['back'],
   progress: ['back'],
   playSelect: ['back', 'selectPlay'],
@@ -70,7 +62,7 @@ export function transitionScreen(state: ScreenState, event: ScreenEvent): Transi
         case 'openPractice':
           return accept({ screen: 'playSelect', modeId: PRACTICE_MODE_ID });
         case 'openScrimmage':
-          return accept({ screen: 'scrimmage' });
+          return accept({ screen: 'playSelect', modeId: SCRIMMAGE_MODE_ID });
         case 'openSettings':
           return accept({ screen: 'settings' });
         case 'openProgress':
@@ -79,7 +71,6 @@ export function transitionScreen(state: ScreenState, event: ScreenEvent): Transi
           return reject;
       }
     case 'tutorial':
-    case 'scrimmage':
     case 'settings':
     case 'progress':
       return event.type === 'back' ? accept(INITIAL_SCREEN) : reject;
@@ -119,7 +110,6 @@ export function escapeEvent(screen: ScreenId): ScreenEvent | null {
       return { type: 'resume' };
     case 'playSelect':
     case 'tutorial':
-    case 'scrimmage':
     case 'settings':
     case 'progress':
       return { type: 'back' };
