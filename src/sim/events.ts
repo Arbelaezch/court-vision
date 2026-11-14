@@ -17,8 +17,9 @@ export type RunGrade = 'perfect' | 'good';
  * run. A Bad look is `runUnsuccessful`: no whistle and no mistake reset. The producer decides which
  * outcomes are mistakes. A completed pass (`passCompleted`) is not a mistake and does not whistle;
  * an intercepted pass is a `mistake` with kind `turnover`. Every resolved shot emits
- * `shotResolved`; a blocked shot also emits a `mistake` with kind `turnover`, and a Bad look that
- * was not blocked also emits `runUnsuccessful` (made or missed).
+ * `shotResolved`; a blocked shot also emits a `mistake` with kind `turnover`. `runSuccess` and
+ * `runUnsuccessful` are produced only by the run referee in `src/ai/referee.ts` (src/ai), never by
+ * the sim.
  */
 export type GameEvent =
   | { type: 'mistake'; tick: number; kind: MistakeKind; reason: string }
@@ -50,6 +51,7 @@ export type GameEvent =
    * g4: screens are automatic). Not a mistake; never whistles.
    */
   | { type: 'screenSet'; tick: number; screenerId: number; targetId: number }
+  // `grade` is 'perfect' for a Great run and 'good' for a Good run (g2).
   | { type: 'runSuccess'; tick: number; grade: RunGrade }
   | { type: 'runUnsuccessful'; tick: number; reason: string };
 

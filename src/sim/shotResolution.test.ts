@@ -151,20 +151,15 @@ describe('shot resolution', () => {
     expect(highMade).toBeGreaterThanOrEqual(lowMade + 50);
   });
 
-  it('emits runUnsuccessful after a Bad look that was not blocked, and no mistake', () => {
+  it('emits only shotResolved after a Bad look that was not blocked', () => {
     const s = game(3, {
       0: { pos: { x: 0, z: -1 } },
       5: { pos: { x: 0, z: -2.2 }, vel: { x: 0, z: 3 } },
     });
     const { events } = stepGame(s, [{ type: 'shoot' }]);
-    expect(events).toHaveLength(2);
-    const [shot, run] = events;
-    expect(shot).toMatchObject({ type: 'shotResolved', look: 'bad', tick: s.tick + 1 });
-    expect(run).toEqual({
-      type: 'runUnsuccessful',
-      tick: s.tick + 1,
-      reason: (shot as ShotEvent).reason,
-    });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ type: 'shotResolved', look: 'bad', tick: s.tick + 1 });
+    expect(events.some((e) => e.type === 'runUnsuccessful')).toBe(false);
     expect(events.some((e) => e.type === 'mistake')).toBe(false);
   });
 

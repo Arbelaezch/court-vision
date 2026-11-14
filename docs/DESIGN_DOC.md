@@ -239,7 +239,7 @@ Grades drive (a) the on-screen mistake text, (b) the end-of-run result banner, a
 - **Teammates:** AI teammates run their part of the play. The play advances in **phases, triggered by events** (player reached a spot, pass completed, screen set), not just by a timer, so a slow beginner never gets left behind.
 - **Cues:** `Full`.
 - **Clock:** none.
-- **Run ends:** after the player completes the play and takes the final shot (made or missed) or is graded on the final decision. The run counts as a **success** if the player followed the play and generated a Good or Great look. The result banner shows briefly, then the game resets for another attempt.
+- **Run ends:** after the player completes the play and takes the final shot (made or missed) or is graded on the final decision. The run counts as a **success** if the player followed the play's standard path (the best read for the Practice coverage) through the final shot, made or missed; Practice has no look grading (decision g1). The result banner shows briefly, then the game resets for another attempt.
 - **Mistakes:** a mistake (e.g. a wrong pass or turnover) gives the "bad" whistle sound, an optional short red text, then an **instant reset** to the half-court starting set.
 
 ### 8.2 Scrimmage
@@ -249,8 +249,8 @@ Grades drive (a) the on-screen mistake text, (b) the end-of-run result banner, a
 - **Pace:** slightly **slower game speed** than a real game (a configurable speed multiplier, default around 0.85x).
 - **Cues:** `Reduced`. Movement cues remain, and decision cues are subtler (e.g. a hint after a short delay, or a highlight on the open teammate only once the opening exists).
 - **Clock:** a generous shot clock (default 24 seconds, configurable). A violation is a mistake.
-- **Mistakes:** turnovers, bad looks, and shot-clock violations give the "bad" whistle, optional short red text, and an **instant reset** to the half-court start. Mistakes are meaningful but never harsh.
-- **Run ends/success:** same rule as Practice, with the extra requirement that the player made a read appropriate to the coverage faced.
+- **Mistakes:** turnovers (interceptions, out of bounds, blocked shots), passes to the wrong teammate, off-script actions and shot-clock violations give the "bad" whistle, optional short red text, and an **instant reset** to the half-court start. A bad look or a bad read is an unsuccessful run: no whistle and no mistake reset. Mistakes are meaningful but never harsh.
+- **Run ends/success:** same end rule as Practice. A run succeeds when every read was Great or Good for the coverage faced and the final look was not Bad; a Good read continues and counts as a success, shown as Good rather than Perfect (decision g2).
 
 ### 8.3 Mistake feedback (both modes)
 
