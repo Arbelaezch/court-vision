@@ -104,6 +104,41 @@ describe('classifyAction', () => {
   });
 });
 
+describe('best read per coverage (#22)', () => {
+  const coverageIds = GIVE_AND_GO.coverages.map((c) => c.id);
+
+  it.each([
+    ['ballWatch', shoot, null, 'layup'],
+    ['helpOnCut', chest, 'SF', 'kickToWing'],
+  ] as const)('%s: its best read is Great and not Great elsewhere', (own, action, role, id) => {
+    expect(classify(GIVE_AND_GO, 'finish', own, action, role)).toMatchObject({
+      kind: 'option',
+      optionId: id,
+      grade: 'great',
+    });
+    for (const other of coverageIds.filter((c) => c !== own)) {
+      const result = classify(GIVE_AND_GO, 'finish', other, action, role);
+      expect(result).toMatchObject({ kind: 'option', optionId: id });
+      expect(result).not.toMatchObject({ grade: 'great' });
+    }
+  });
+
+  it('every coverage has a Great option that is not Great in any other coverage', () => {
+    const decisions = GIVE_AND_GO.decisions.filter((d) => d.id === 'finishRead');
+    expect(decisions).toHaveLength(1);
+    const options = decisions.flatMap((d) => d.options);
+    for (const c of coverageIds) {
+      const great = options.filter((o) => o.grades[c] === 'great');
+      expect(great.length).toBeGreaterThan(0);
+      for (const o of great) {
+        for (const other of coverageIds.filter((x) => x !== c)) {
+          expect(o.grades[other]).not.toBe('great');
+        }
+      }
+    }
+  });
+});
+
 describe('findDecisionPoint', () => {
   it('finds the decision by role and phase', () => {
     expect(findDecisionPoint(GIVE_AND_GO, 'PG', 'entry')).toBeNull();

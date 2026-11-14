@@ -131,8 +131,10 @@ export function createDevScene(
     scene.add(cones.object);
     disposables.push(cones);
 
-    const play = loadPlaybook(cast.roles).giveAndGo;
-    if (!play) throw new Error('Court Vision: dev practice view needs the giveAndGo play');
+    const play = Object.values(loadPlaybook(cast.roles))[0];
+    if (!play || play.kind !== 'play') {
+      throw new Error('Court Vision: dev practice view needs a bundled play');
+    }
     const cueLevel = opts.cueLevel ?? MODE_CUE_LEVELS.practice;
     const cueToggles = opts.cueToggles ?? DEFAULT_CUE_TOGGLES;
     const humanRole = game.players.find((p) => p.id === game.controlledPlayerId)?.role;
@@ -147,7 +149,7 @@ export function createDevScene(
       cueElapsedS += Math.max(0, dtSec);
       const phase =
         play.phases[Math.floor(cueElapsedS / CUE_DEV_PHASE_HOLD_S) % play.phases.length];
-      if (!phase) throw new Error('Court Vision: giveAndGo has no phases');
+      if (!phase) throw new Error(`Court Vision: play ${play.id} has no phases`);
       const cues = phaseCues(play, phase.id, cueLevel, cueToggles);
       cueLayer.sync({ cues, offense, humanRole, dtSec });
       cuePrompt = promptForCues(cues);

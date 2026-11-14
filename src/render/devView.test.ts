@@ -148,13 +148,17 @@ describe('createDevScene', () => {
       }
     });
 
-    it('reduced level shows only the arrow in the cut phase', () => {
+    it('reduced level steps through the phases', () => {
       const d = buildCues({ cueLevel: 'reduced' });
-      expect(visibleCues(d.scene)).toEqual([]);
+      expect(visibleCues(d.scene)).toEqual(['cue-target-ring']);
       expect(d.prompt()).toBeNull();
       d.update(CUE_DEV_PHASE_HOLD_S);
       expect(visibleCues(d.scene)).toEqual(['cue-floor-arrow']);
       expect(d.prompt()).toBeNull();
+      d.update(CUE_DEV_PHASE_HOLD_S);
+      expect(visibleCues(d.scene)).toEqual([]);
+      expect(d.prompt()?.headline).toBe('Read the help');
+      expect(d.prompt()?.reason).toBeNull();
     });
 
     it('toggles hide only their own cue kind', () => {

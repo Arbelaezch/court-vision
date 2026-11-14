@@ -230,3 +230,24 @@ Questions about the product or its implementation and how they were settled. Rec
 - Kind: product
 - Decision: Option 1: open the PR as is. Do not file a follow-up issue; instead comment the R3-1 situation on the PR (guard lane-shift target can jump ~2.5 m when a lane angle crosses LANE_MIN_FACING, untested) and note it as something to test if guard movement gives issues
 - Decided by: user on 2026-11-14
+
+## Which coverage is Give-and-Go's Practice standard?
+- Kind: product
+- Decision: ballWatch (Ball-watching defender). Practice cones follow its script: in entry all five cones guard their men; in cut the PG's cone sags to (1.5, 0.5) watching the ball. The standard path is chest pass to SG, cut to (0.8, -4), take the return pass, shoot (layup). helpOnCut is Scrimmage-only.
+- Decided by: assumed on 2026-11-14
+- Why: the play's base lesson and the most standard placement (g1); helpOnCut is the counter read
+- Source: DESIGN_DOC.md:278-286; g1; issue #22; src/content/data/plays/giveAndGo.ts
+
+## Which Give-and-Go actions are graded decision points?
+- Kind: implementation
+- Decision: One decision point, finishRead (PG, finish phase) with layup, floater and kickToWing. The entry pass and the cut are the same in every coverage, so they stay track steps (entry pass to SG is on path, a pass to anyone else is a wrong-teammate whistle; the cut is movement) rather than decision points whose only option is Great everywhere.
+- Decided by: assumed on 2026-11-14
+- Why: a decision that is Great in every coverage teaches no read and would cap a bounce-pass entry at Good in Scrimmage; the coverages change the best read at the finish (DESIGN_DOC.md:274)
+- Source: DESIGN_DOC.md:272-285; issue #22
+
+## What are Give-and-Go's Reduced (Scrimmage) cues?
+- Kind: product
+- Decision: entry: target ring on SG; cut: floor arrow to the cut spot (0.8, -4); finish: the prompt 'Read the help' with no reason, so it marks the moment without naming the read.
+- Decided by: assumed on 2026-11-14
+- Why: movement cues remain and decision cues are subtler in Scrimmage; the schema has no delay field
+- Source: DESIGN_DOC.md:146,250; issue #22
