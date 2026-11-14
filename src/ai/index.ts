@@ -66,6 +66,13 @@ export type {
   RunControllerStep,
 } from './runController';
 export {
+  correctReadMove,
+  createCorrectReadBot,
+  createWrongReadBot,
+  wrongReadMove,
+} from './playBots';
+export type { BotMove, PlayBot, PlayBotView } from './playBots';
+export {
   TUTORIAL_FINISH_HOLD_STEPS,
   TUTORIAL_STEP_HOLD_STEPS,
   currentTutorialStep,
