@@ -140,7 +140,12 @@ describe('createSimAnimTracker', () => {
     const next = stepGame(game, []);
     const t = createSimAnimTracker();
     t.observe(game, next, [
-      { type: 'screenSet', tick: next.tick, screenerId: screener.id, targetId: game.controlledPlayerId },
+      {
+        type: 'screenSet',
+        tick: next.tick,
+        screenerId: screener.id,
+        targetId: game.controlledPlayerId,
+      },
     ]);
     expect(t.animFor(player(next, screener.id), next)).toBe('screen');
     t.reset();
@@ -152,7 +157,11 @@ describe('createSimAnimTracker', () => {
     const game = newGame();
     const sg = sgId(game);
     const states = run(game, 80, (i) =>
-      i === 0 ? [{ type: 'pass', passType: 'lob', targetId: sg }] : i === 70 ? [{ type: 'shoot' }] : [],
+      i === 0
+        ? [{ type: 'pass', passType: 'lob', targetId: sg }]
+        : i === 70
+          ? [{ type: 'shoot' }]
+          : [],
     );
     states.forEach((s) => deepFreeze(s));
     const t = createSimAnimTracker();

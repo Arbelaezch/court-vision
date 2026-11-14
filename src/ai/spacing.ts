@@ -1,13 +1,7 @@
 // Teammate spacing helpers: keep AI teammates out of the human player's lane to the rim and
 // apart from each other. Pure and deterministic: no randomness, no clock, no input mutation.
 
-import {
-  BASELINE_Z,
-  HALF_COURT_LINE_Z,
-  RIM_CENTER,
-  SIDELINE_X,
-  type CourtPoint,
-} from '../sim';
+import { BASELINE_Z, HALF_COURT_LINE_Z, RIM_CENTER, SIDELINE_X, type CourtPoint } from '../sim';
 
 /** Half-width of the lane (human player to rim) AI teammates stay out of, m. */
 export const PG_LANE_HALF_WIDTH_M = 1.2;
@@ -40,7 +34,11 @@ function clampToCourt(p: CourtPoint): CourtPoint {
  * PG_LANE_HALF_WIDTH_M + LANE_CLEAR_MARGIN_M, on the side `self` is on (+x on a tie), clamped
  * inside the court; unchanged if already outside the lane.
  */
-export function clearOfLane(target: CourtPoint, self: CourtPoint, laneFrom: CourtPoint): CourtPoint {
+export function clearOfLane(
+  target: CourtPoint,
+  self: CourtPoint,
+  laneFrom: CourtPoint,
+): CourtPoint {
   const clearance = PG_LANE_HALF_WIDTH_M + LANE_CLEAR_MARGIN_M;
   if (distanceToSegment(target, laneFrom, RIM_CENTER) >= PG_LANE_HALF_WIDTH_M) return target;
   const dx = RIM_CENTER.x - laneFrom.x;

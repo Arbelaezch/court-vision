@@ -27,7 +27,9 @@ describe('court constants module', { timeout: 30_000 }, () => {
       .filter((f) => f.endsWith('.ts'));
     for (const file of files) {
       const source = fs.readFileSync(path.join(dir, file), 'utf8');
-      expect(source, file).not.toMatch(/export const (HALF_COURT_WIDTH|HALF_COURT_DEPTH|RIM_HEIGHT)\b/);
+      expect(source, file).not.toMatch(
+        /export const (HALF_COURT_WIDTH|HALF_COURT_DEPTH|RIM_HEIGHT)\b/,
+      );
       expect(source, file).not.toMatch(/const (HALF_COURT_WIDTH|HALF_COURT_DEPTH|RIM_HEIGHT)\s*=/);
     }
   });

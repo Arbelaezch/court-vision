@@ -67,7 +67,13 @@ describe('recordHeadless', () => {
 
   it('passes defenseMode through to the game', () => {
     const inputs: SimInput[] = [];
-    const states = recordHeadless({ ...base, inputs, commands: [], ticks: 2, defenseMode: 'cones' });
+    const states = recordHeadless({
+      ...base,
+      inputs,
+      commands: [],
+      ticks: 2,
+      defenseMode: 'cones',
+    });
     expect(states[0]!.defenseMode).toBe('cones');
     expect(states[2]!.defenseMode).toBe('cones');
   });

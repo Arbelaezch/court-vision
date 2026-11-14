@@ -87,7 +87,9 @@ describe('createCourtMarkings', () => {
     const group = build();
     for (const v of worldVertices(group.getObjectByName('free-throw-circle')!)) {
       const d = Math.hypot(v.x, v.z - FREE_THROW_LINE_Z);
-      expect(Math.abs(d - FREE_THROW_CIRCLE_RADIUS)).toBeLessThanOrEqual(COURT_LINE_WIDTH / 2 + 1e-6);
+      expect(Math.abs(d - FREE_THROW_CIRCLE_RADIUS)).toBeLessThanOrEqual(
+        COURT_LINE_WIDTH / 2 + 1e-6,
+      );
     }
   });
 

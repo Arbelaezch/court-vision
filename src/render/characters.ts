@@ -264,7 +264,10 @@ export function createCharacterLayer(opts: {
     extent: Triple = dims,
   ): void {
     size.set(...dims);
-    part.copy(base).multiply(tmp.makeTranslation(...offset)).scale(size);
+    part
+      .copy(base)
+      .multiply(tmp.makeTranslation(...offset))
+      .scale(size);
     mesh.setMatrixAt(index, part);
     hull.copy(part).scale(outlineScale(extentVec.set(...extent), grow));
     outline.setMatrixAt(index, hull);

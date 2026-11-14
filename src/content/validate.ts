@@ -88,8 +88,7 @@ export function readNumber(
 ): number {
   const { min, max, integer } = opts;
   const kind = integer === true ? 'integer' : 'number';
-  const range =
-    min !== undefined || max !== undefined ? ` ${min ?? '-inf'}..${max ?? 'inf'}` : '';
+  const range = min !== undefined || max !== undefined ? ` ${min ?? '-inf'}..${max ?? 'inf'}` : '';
   const expected = `expected ${kind}${range}, got ${describeValue(value)}`;
   if (typeof value !== 'number' || !Number.isFinite(value)) return fail(at, expected);
   if (integer === true && !Number.isInteger(value)) return fail(at, expected);

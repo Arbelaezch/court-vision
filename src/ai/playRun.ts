@@ -247,8 +247,7 @@ function buildCommands(
       continue;
     }
     const baseTarget = step?.spot ?? play.setup.positions[role];
-    const avoidLane =
-      run.deviated || step === null || LANE_ACTIONS.includes(step.action);
+    const avoidLane = run.deviated || step === null || LANE_ACTIONS.includes(step.action);
     const goal = avoidLane ? clearOfLane(baseTarget, self.pos, human.pos) : baseTarget;
     const arrive = arriveIntent(self.pos, goal);
     const others = ROLE_ORDER.filter((r) => r !== role).map(
@@ -370,8 +369,7 @@ function isDeviation(
       (step.action === 'pass' || step.action === 'handOff') &&
       step.target === to;
     const expectedByDecision = play.decisions.some(
-      (d) =>
-        d.phase === run.phaseId && d.role === from && d.options.some((o) => o.target === to),
+      (d) => d.phase === run.phaseId && d.role === from && d.options.some((o) => o.target === to),
     );
     if (!expectedByTrigger && !expectedByStep && !expectedByDecision) return true;
   }

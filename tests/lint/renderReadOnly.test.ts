@@ -22,7 +22,10 @@ describe('render is read-only (lint)', { timeout: 60_000 }, () => {
   const fixture = 'src/render/__lintFixture__.ts';
 
   it.each(['stepGame', 'takeShot'])('rejects importing %s from ../sim', async (name) => {
-    const messages = await lint(fixture, `import { ${name} } from '../sim'; export const x = ${name};`);
+    const messages = await lint(
+      fixture,
+      `import { ${name} } from '../sim'; export const x = ${name};`,
+    );
     const hit = messages.find((m) => m.ruleId === 'no-restricted-imports');
     expect(hit?.severity).toBe(2);
   });

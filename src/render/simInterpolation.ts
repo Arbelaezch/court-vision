@@ -87,8 +87,10 @@ export function heldBallPosition(holder: CharacterPose, side: TeamSide, simSecon
   const w = Math.min(1, Math.max(0, (speed - MOVING_SPEED_MPS) / HOLD_BLEND_SPEED_MPS));
   const eased = w * w * (3 - 2 * w);
   const defaultYaw = side === 'offense' ? Math.PI : 0;
-  const fx = Math.sin(defaultYaw) * (1 - eased) + (speed > 1e-9 ? (holder.vel.x / speed) * eased : 0);
-  const fz = Math.cos(defaultYaw) * (1 - eased) + (speed > 1e-9 ? (holder.vel.z / speed) * eased : 0);
+  const fx =
+    Math.sin(defaultYaw) * (1 - eased) + (speed > 1e-9 ? (holder.vel.x / speed) * eased : 0);
+  const fz =
+    Math.cos(defaultYaw) * (1 - eased) + (speed > 1e-9 ? (holder.vel.z / speed) * eased : 0);
   const y =
     // Every animation a ball holder can have (including catch, screen and the release clips) keeps
     // the bounce phase, so the ball height never pops when the holder's anim changes.
@@ -157,8 +159,7 @@ export function shotArcPosition(arc: ShotArc, simTick: number): Vec3 {
     return {
       x: lerp(arc.from.x, arc.to.x, u),
       y:
-        lerp(arc.from.y, arc.to.y, u) +
-        4 * (arc.apexM - (arc.from.y + arc.to.y) / 2) * u * (1 - u),
+        lerp(arc.from.y, arc.to.y, u) + 4 * (arc.apexM - (arc.from.y + arc.to.y) / 2) * u * (1 - u),
       z: lerp(arc.from.z, arc.to.z, u),
     };
   }

@@ -45,9 +45,9 @@ describe('createLabelAtlas', () => {
   });
 
   it.each([0, NaN])('throws for cellWidthPx %s', (cellWidthPx) => {
-    expect(() =>
-      createLabelAtlas(['1 SG'], { texture: new THREE.Texture(), cellWidthPx }),
-    ).toThrow(/^Court Vision:/);
+    expect(() => createLabelAtlas(['1 SG'], { texture: new THREE.Texture(), cellWidthPx })).toThrow(
+      /^Court Vision:/,
+    );
   });
 });
 

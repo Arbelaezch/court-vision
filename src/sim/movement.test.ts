@@ -151,10 +151,13 @@ describe('stepPlayerMovement', () => {
     expect(speed(p)).toBeCloseTo(0.5 * movement.profiles.PG.speedMps);
   });
 
-  it.each(['sprint', 'pivot'] as const)('throws for a %s action with a non-boolean held', (type) => {
-    const action = { type, held: 'yes' } as unknown as SimAction;
-    expect(() => stepGame(game(), [action])).toThrow(/held/);
-  });
+  it.each(['sprint', 'pivot'] as const)(
+    'throws for a %s action with a non-boolean held',
+    (type) => {
+      const action = { type, held: 'yes' } as unknown as SimAction;
+      expect(() => stepGame(game(), [action])).toThrow(/held/);
+    },
+  );
 
   it('sets the held flags on the controlled player only', () => {
     const next = stepGame(game(), [SPRINT_ON, { type: 'pivot', held: true }]);

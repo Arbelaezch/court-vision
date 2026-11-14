@@ -97,9 +97,7 @@ describe('readPlay via loadScenario', () => {
 
   it('rejects a play with no reachable terminal phase', () => {
     const data = clone();
-    data.phases[2].transitions = [
-      { to: 'entry', trigger: { kind: 'timeElapsed', seconds: 2 } },
-    ];
+    data.phases[2].transitions = [{ to: 'entry', trigger: { kind: 'timeElapsed', seconds: 2 } }];
     const error = catchError(() => load(data));
     expect(error.field).toBe('giveAndGo.phases');
     expect(error.message).toMatch(/expected a reachable terminal phase/);
@@ -169,9 +167,7 @@ describe('readPlay via loadScenario', () => {
   it('requires a target on a pass option and rejects one elsewhere', () => {
     const missing = clone();
     delete missing.decisions[0].options[2].target;
-    expect(catchError(() => load(missing)).field).toBe(
-      'giveAndGo.decisions[0].options[2].target',
-    );
+    expect(catchError(() => load(missing)).field).toBe('giveAndGo.decisions[0].options[2].target');
 
     const extra = clone();
     extra.decisions[0].options[0].target = 'SG';

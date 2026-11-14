@@ -22,10 +22,7 @@ export type DevView = 'characters' | 'practice' | 'animations' | 'sim';
 export const ANIM_DEV_HOLD_S = 3;
 
 export function parseDevView(value: string | null): DevView | null {
-  return value === 'characters' ||
-    value === 'practice' ||
-    value === 'animations' ||
-    value === 'sim'
+  return value === 'characters' || value === 'practice' || value === 'animations' || value === 'sim'
     ? value
     : null;
 }

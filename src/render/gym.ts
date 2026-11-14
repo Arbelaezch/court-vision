@@ -25,7 +25,10 @@ export function createGymBackdrop(): THREE.Group {
 
   const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x8a9bb0 });
 
-  const wallBack = new THREE.Mesh(new THREE.PlaneGeometry(WALL_BACK_WIDTH, WALL_HEIGHT), wallMaterial);
+  const wallBack = new THREE.Mesh(
+    new THREE.PlaneGeometry(WALL_BACK_WIDTH, WALL_HEIGHT),
+    wallMaterial,
+  );
   wallBack.name = 'wall-back';
   wallBack.position.set(0, WALL_HEIGHT / 2, WALL_BACK_Z);
 
@@ -34,7 +37,10 @@ export function createGymBackdrop(): THREE.Group {
   wallLeft.rotation.y = Math.PI / 2; // faces +x (inward)
   wallLeft.position.set(-WALL_X, WALL_HEIGHT / 2, GROUND_CENTER_Z);
 
-  const wallRight = new THREE.Mesh(new THREE.PlaneGeometry(GROUND_DEPTH, WALL_HEIGHT), wallMaterial);
+  const wallRight = new THREE.Mesh(
+    new THREE.PlaneGeometry(GROUND_DEPTH, WALL_HEIGHT),
+    wallMaterial,
+  );
   wallRight.name = 'wall-right';
   wallRight.rotation.y = -Math.PI / 2; // faces -x (inward)
   wallRight.position.set(WALL_X, WALL_HEIGHT / 2, GROUND_CENTER_Z);

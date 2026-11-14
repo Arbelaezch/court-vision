@@ -158,7 +158,9 @@ describe('character layer', () => {
   it('keeps the marker outline within the marker top offset', () => {
     const layer = build();
     layer.object.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(find<THREE.Mesh>(layer, 'controlled-marker-outline'));
+    const box = new THREE.Box3().setFromObject(
+      find<THREE.Mesh>(layer, 'controlled-marker-outline'),
+    );
     const height = cast.bodyTypes[cast.roles[roster[0]!.role].bodyType].heightM;
     expect(box.max.y).toBeLessThanOrEqual(height + MARKER_TOP_OFFSET_M);
   });
@@ -170,9 +172,9 @@ describe('character layer', () => {
   });
 
   it('rejects duplicate roster ids', () => {
-    expect(() =>
-      createCharacterLayer({ cast, roster: [roster[0]!, roster[0]!], labels }),
-    ).toThrow(/duplicate/);
+    expect(() => createCharacterLayer({ cast, roster: [roster[0]!, roster[0]!], labels })).toThrow(
+      /duplicate/,
+    );
   });
 });
 
@@ -229,10 +231,9 @@ describe('character animation', () => {
     const layer = createCharacterLayer({ cast, roster, labels });
     layer.sync(withAnim('celebrate'), 0, 0);
     const a = instanceBox(limbsOf(layer), 3).getCenter(new THREE.Vector3());
-    const b = instanceBox(
-      find<THREE.InstancedMesh>(layer, 'character-limbs-outline'),
-      3,
-    ).getCenter(new THREE.Vector3());
+    const b = instanceBox(find<THREE.InstancedMesh>(layer, 'character-limbs-outline'), 3).getCenter(
+      new THREE.Vector3(),
+    );
     expect(Math.abs(a.x - b.x)).toBeLessThan(1e-5);
     expect(Math.abs(a.y - b.y)).toBeLessThan(1e-5);
     expect(Math.abs(a.z - b.z)).toBeLessThan(1e-5);

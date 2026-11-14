@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  PLAYER_COUNT,
-  ROLE_ORDER,
-  createGame,
-  createRng,
-  gameSimSeconds,
-  stepGame,
-} from './index';
+import { PLAYER_COUNT, ROLE_ORDER, createGame, createRng, gameSimSeconds, stepGame } from './index';
 import { TEST_MOVEMENT } from './testMovement';
 
 const movement = TEST_MOVEMENT;
