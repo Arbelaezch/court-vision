@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createFakeStorage, type FakeStorage } from './fakeStorage';
-import { recordRunAttempt } from './progress';
+import { isMastered, modeProgressFor, recordRunAttempt } from './progress';
 import { createSaveStore } from './store';
 
 function setup(): { fake: FakeStorage; warnings: string[] } {
@@ -131,5 +131,32 @@ describe('recordRunAttempt', () => {
       /Court Vision:/,
     );
     expect(store.get('progress')).toEqual(before);
+  });
+});
+
+describe('modeProgressFor', () => {
+  const progress = { plays: { giveAndGo: { practice: { attempts: 4, successes: 2 } } } };
+
+  it.each([
+    ['missing play', 'nope', 'practice'],
+    ['missing mode', 'giveAndGo', 'scrimmage'],
+    ['inherited play', 'constructor', 'practice'],
+    ['inherited mode', 'giveAndGo', 'toString'],
+  ])('returns zeros for %s', (_l, playId, modeId) => {
+    expect(modeProgressFor(progress, playId, modeId)).toEqual({ attempts: 0, successes: 0 });
+  });
+
+  it('returns stored counts', () => {
+    expect(modeProgressFor(progress, 'giveAndGo', 'practice')).toEqual({
+      attempts: 4,
+      successes: 2,
+    });
+  });
+});
+
+describe('isMastered', () => {
+  it('is false below and true at the threshold', () => {
+    expect(isMastered({ attempts: 20, successes: 9 }, 10)).toBe(false);
+    expect(isMastered({ attempts: 20, successes: 10 }, 10)).toBe(true);
   });
 });

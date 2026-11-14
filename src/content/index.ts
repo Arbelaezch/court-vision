@@ -7,6 +7,8 @@ export { loadArchetypes } from './archetypes';
 export type { Archetype, ArchetypeId, ArchetypeTable, ShootingByZone } from './archetypes';
 export { BUNDLED_MOVEMENT_TUNING_SOURCE, loadMovementTuning } from './movement';
 export type { MovementTuningSpec } from './movement';
+export { BUNDLED_MASTERY_TUNING_SOURCE, loadMasteryTuning } from './mastery';
+export type { MasteryTuningSpec } from './mastery';
 export { BUNDLED_PASS_TUNING_SOURCE, loadPassTuning } from './passing';
 export type { PassTuningSpec } from './passing';
 export { BUNDLED_SHOT_TUNING_SOURCE, loadShotTuning } from './shooting';

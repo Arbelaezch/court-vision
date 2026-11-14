@@ -3,7 +3,7 @@ import type { RunControllerState } from '../ai';
 import type { PlayScenario } from '../content';
 import { loadAppContent } from './boot';
 import { createAppFlow, sortPlayList, type AppFlow } from './appFlow';
-import { createSaveStore } from './storage';
+import { createSaveStore, recordRunAttempt } from './storage';
 import { createFakeStorage } from './storage/fakeStorage';
 
 const CONTENT = loadAppContent();
@@ -189,5 +189,51 @@ describe('app flow', () => {
     expect(flow.send({ type: 'openSettings' }).ok).toBe(false);
     expect(flow.state().screen).toBe('inRun');
     expect(flow.session()).not.toBeNull();
+  });
+
+  it('labels list every play with zero progress in practice and scrimmage', () => {
+    const { flow } = setup();
+    const labels = flow.labels();
+    expect(labels.progress.map((r) => r.playId)).toEqual(labels.plays.map((p) => p.id));
+    for (const row of labels.progress) {
+      expect(row.modes).toEqual([
+        { modeId: 'practice', attempts: 0, successes: 0, mastered: false },
+        { modeId: 'scrimmage', attempts: 0, successes: 0, mastered: false },
+      ]);
+    }
+  });
+
+  it('every play starts from an empty store', () => {
+    const { flow } = setup();
+    for (const play of flow.labels().plays) {
+      flow.send({ type: 'openPractice' });
+      expect(flow.send({ type: 'selectPlay', playId: play.id }).ok).toBe(true);
+      flow.send({ type: 'pause' });
+      flow.send({ type: 'quit' });
+      expect(flow.state().screen).toBe('playSelect');
+      flow.send({ type: 'back' });
+      expect(flow.state().screen).toBe('mainMenu');
+    }
+  });
+
+  it('opens Scrimmage from the main menu with an empty store', () => {
+    const { flow } = setup();
+    expect(flow.send({ type: 'openScrimmage' }).ok).toBe(true);
+  });
+
+  it('labels reflect a run recorded after the flow was created', () => {
+    const { flow, store } = setup();
+    recordRunAttempt(store, { playId: 'giveAndGo', modeId: 'practice', success: true });
+    const row = flow.labels().progress.find((r) => r.playId === 'giveAndGo');
+    expect(row?.modes[0]).toEqual({
+      modeId: 'practice',
+      attempts: 1,
+      successes: 1,
+      mastered: false,
+    });
+  });
+
+  it('labels carry the mastery threshold', () => {
+    expect(setup().flow.labels().masteredSuccesses).toBe(10);
   });
 });

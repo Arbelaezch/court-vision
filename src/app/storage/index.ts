@@ -18,6 +18,6 @@ export {
   type SeenTooltipsSection,
   type SettingsSection,
 } from './schema';
-export { recordRunAttempt, type RunAttemptRecord } from './progress';
+export { isMastered, modeProgressFor, recordRunAttempt, type RunAttemptRecord } from './progress';
 export { CURRENT_VERSION, MIGRATIONS, migrateV1ToV2, type Migration } from './migrations';
 export { SAVE_STORAGE_KEY, createSaveStore, type SaveStore, type SaveStoreOptions } from './store';
