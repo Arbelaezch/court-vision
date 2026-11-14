@@ -1,9 +1,15 @@
 import './style.css';
-import { bootApp, createHumanInput, createSaveStore, handleMenuEvent } from './app';
+import {
+  bootApp,
+  createControlSettings,
+  createHumanInput,
+  createSaveStore,
+  handleMenuEvent,
+} from './app';
 import { mountAudio } from './audio';
 import { mountInput } from './input';
 import { mountRenderer, parseDevView } from './render';
-import { createCuePromptOverlay, createRunHud, createScreenMenus } from './ui';
+import { createControlsView, createCuePromptOverlay, createRunHud, createScreenMenus } from './ui';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 if (app === null) {
@@ -16,6 +22,7 @@ const { input } = mountInput();
 
 if (dev === null) {
   const store = createSaveStore();
+  const controls = createControlSettings({ store, input });
   const hud = createRunHud({ container: app, doc: document });
   const prompt = createCuePromptOverlay({ container: app, doc: document });
   prompt.show(null);
@@ -56,6 +63,7 @@ if (dev === null) {
   const menus = createScreenMenus({
     container: app,
     doc: document,
+    settingsView: createControlsView({ doc: document, controls }),
     onEvent: (e) => {
       handleMenuEvent(flow, input, human, e);
     },

@@ -9,3 +9,4 @@ export * from './boot';
 export * from './humanInput';
 export * from './runFrame';
 export * from './menuEvents';
+export * from './controlSettings';

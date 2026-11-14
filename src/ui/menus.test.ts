@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { MenuLabels, ScreenEvent, ScreenState } from '../app';
 import { createScreenMenus } from './menus';
 
@@ -258,5 +258,28 @@ describe('createScreenMenus', () => {
     const { menus, root } = setup();
     menus.dispose();
     expect(root.removed).toBe(true);
+  });
+
+  it('mounts the settings view, keeps Back, and unmounts on leaving', () => {
+    const container = new FakeEl();
+    const events: ScreenEvent[] = [];
+    const unmount = vi.fn();
+    const mount = vi.fn(() => unmount);
+    const doc = { createElement: (tag: string) => new FakeEl(tag) };
+    const menus = createScreenMenus({
+      container: container as unknown as HTMLElement,
+      doc: doc as unknown as Document,
+      onEvent: (e) => events.push(e),
+      settingsView: { mount },
+    });
+    const root = container.children[0]!;
+    menus.show({ screen: 'settings' }, labels);
+    expect(mount).toHaveBeenCalledTimes(1);
+    const back = buttons(root).find((b) => b.textContent === 'Back')!;
+    back.click();
+    expect(events).toEqual([{ type: 'back' }]);
+    expect(unmount).not.toHaveBeenCalled();
+    menus.show({ screen: 'mainMenu' }, labels);
+    expect(unmount).toHaveBeenCalledTimes(1);
   });
 });

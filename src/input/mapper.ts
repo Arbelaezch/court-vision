@@ -33,8 +33,16 @@ export interface InputMapper {
   /** True while a single press waits out the double-click window. */
   hasPendingPress(): boolean;
   onAction(listener: (action: PressAction) => void): () => void;
+  /** Atomically swaps bindings and/or the double-click window; throws (keeping the old config) if invalid. */
+  configure(next: { bindings?: readonly Binding[]; doubleClickWindowMs?: number }): void;
+  config(): { bindings: readonly Binding[]; doubleClickWindowMs: number };
+  /** Routes every press (and gamepad axis crossing the threshold) to the listener instead of emitting actions. */
+  startCapture(listener: (input: InputCode) => void): () => void;
+  isCapturing(): boolean;
   dispose(): void;
 }
+
+export const CAPTURE_AXIS_THRESHOLD = 0.5;
 
 const defaultSchedule: Schedule = (fn, delayMs) => {
   const handle = globalThis.setTimeout(fn, delayMs);
@@ -42,14 +50,19 @@ const defaultSchedule: Schedule = (fn, delayMs) => {
 };
 
 export function createInputMapper(options: InputMapperOptions = {}): InputMapper {
-  const bindings = options.bindings ?? DEFAULT_BINDINGS;
-  const windowMs = options.doubleClickWindowMs ?? DEFAULT_DOUBLE_CLICK_WINDOW_MS;
+  let bindings: readonly Binding[] = options.bindings ?? DEFAULT_BINDINGS;
+  let windowMs = options.doubleClickWindowMs ?? DEFAULT_DOUBLE_CLICK_WINDOW_MS;
   const schedule = options.schedule ?? defaultSchedule;
 
+  const checkWindow = (ms: number): void => {
+    if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) {
+      throw new Error('Court Vision: doubleClickWindowMs must be a finite number >= 0');
+    }
+  };
+
   validateBindings(bindings);
-  if (typeof windowMs !== 'number' || !Number.isFinite(windowMs) || windowMs < 0) {
-    throw new Error('Court Vision: doubleClickWindowMs must be a finite number >= 0');
-  }
+  checkWindow(windowMs);
+  let captureListener: ((input: InputCode) => void) | null = null;
 
   const pressed = new Set<InputCode>();
   const analog = new Map<InputCode, number>();
@@ -102,7 +115,12 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
 
   return {
     press(input) {
-      if (disposed || pressed.has(input)) return;
+      if (disposed) return;
+      if (captureListener) {
+        captureListener(input);
+        return;
+      }
+      if (pressed.has(input)) return;
       pressed.add(input);
       if (!hasDouble(input)) {
         for (const a of pressActions(input, 'single')) emit(a);
@@ -127,9 +145,33 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
     setAnalog(input, value) {
       if (disposed) return;
       const v = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+      const prev = analog.get(input) ?? 0;
       if (v === 0) analog.delete(input);
       else analog.set(input, v);
+      if (captureListener && prev < CAPTURE_AXIS_THRESHOLD && v >= CAPTURE_AXIS_THRESHOLD) {
+        captureListener(input);
+      }
     },
+    configure(next) {
+      if (disposed) return;
+      if (next.bindings !== undefined) validateBindings(next.bindings);
+      if (next.doubleClickWindowMs !== undefined) checkWindow(next.doubleClickWindowMs);
+      cancelAllPending();
+      pressed.clear();
+      analog.clear();
+      if (next.bindings !== undefined) bindings = next.bindings.map((b) => ({ ...b }));
+      if (next.doubleClickWindowMs !== undefined) windowMs = next.doubleClickWindowMs;
+    },
+    config: () => ({ bindings, doubleClickWindowMs: windowMs }),
+    startCapture(listener) {
+      cancelAllPending();
+      pressed.clear();
+      captureListener = listener;
+      return () => {
+        if (captureListener === listener) captureListener = null;
+      };
+    },
+    isCapturing: () => captureListener !== null,
     releaseAll() {
       pressed.clear();
       analog.clear();
@@ -164,6 +206,7 @@ export function createInputMapper(options: InputMapperOptions = {}): InputMapper
       analog.clear();
       pointerPos = null;
       listeners.clear();
+      captureListener = null;
     },
   };
 }
