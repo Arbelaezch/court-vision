@@ -1,4 +1,4 @@
-import type { MenuLabels, ScreenEvent, ScreenState } from '../app';
+import type { MenuLabels, PlayModeStatus, ScreenEvent, ScreenState } from '../app';
 
 export interface ScreenMenus {
   show(state: ScreenState, labels: MenuLabels): void;
@@ -9,7 +9,6 @@ const PLACEHOLDER_TITLES = {
   tutorial: 'Tutorial',
   scrimmage: 'Scrimmage',
   settings: 'Settings',
-  progress: 'Progress',
 } as const;
 
 function sameScreen(a: ScreenState | null, b: ScreenState): boolean {
@@ -54,6 +53,26 @@ export function createScreenMenus(opts: {
     return p;
   }
 
+  function masteredBadge(): HTMLElement {
+    const badge = el('span', 'cv-mastered-badge');
+    const icon = el('span', 'cv-mastered-icon', '✓');
+    icon.setAttribute('aria-hidden', 'true');
+    badge.appendChild(icon);
+    badge.appendChild(el('span', 'cv-mastered-text', 'Mastered'));
+    return badge;
+  }
+
+  function statusFor(labels: MenuLabels, playId: string, modeId: string): PlayModeStatus {
+    const found = labels.progress
+      .find((r) => r.playId === playId)
+      ?.modes.find((m) => m.modeId === modeId);
+    return found ?? { modeId, attempts: 0, successes: 0, mastered: false };
+  }
+
+  function plural(n: number, one: string, many: string): string {
+    return `${n} ${n === 1 ? one : many}`;
+  }
+
   function build(state: ScreenState, labels: MenuLabels): void {
     const modeName = (modeId: string): string => labels.modeNames[modeId] ?? modeId;
     const playName = (playId: string): string =>
@@ -74,10 +93,52 @@ export function createScreenMenus(opts: {
       }
       case 'tutorial':
       case 'scrimmage':
-      case 'settings':
-      case 'progress': {
+      case 'settings': {
         const p = panel(PLACEHOLDER_TITLES[state.screen], 'h2');
         p.appendChild(el('p', undefined, 'Coming soon.'));
+        p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
+        root.appendChild(p);
+        return;
+      }
+      case 'progress': {
+        const p = panel('Progress', 'h2');
+        p.appendChild(
+          el(
+            'p',
+            'cv-progress-note',
+            `A play is Mastered in a mode after ${labels.masteredSuccesses} successful runs.`,
+          ),
+        );
+        const table = el('table', 'cv-progress-table');
+        const headRow = el('tr');
+        for (const h of ['Play', 'Mode', 'Attempts', 'Successes', 'Mastered']) {
+          const th = el('th', undefined, h);
+          th.setAttribute('scope', 'col');
+          headRow.appendChild(th);
+        }
+        const thead = el('thead');
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+        const tbody = el('tbody');
+        for (const play of labels.plays) {
+          for (const mode of labels.progressModes) {
+            const status = statusFor(labels, play.id, mode.id);
+            const tr = el('tr');
+            const rowHead = el('th', undefined, play.name);
+            rowHead.setAttribute('scope', 'row');
+            tr.appendChild(rowHead);
+            tr.appendChild(el('td', undefined, mode.name));
+            tr.appendChild(el('td', undefined, String(status.attempts)));
+            tr.appendChild(el('td', undefined, String(status.successes)));
+            const cell = el('td');
+            if (status.mastered) cell.appendChild(masteredBadge());
+            else cell.textContent = 'Not yet';
+            tr.appendChild(cell);
+            tbody.appendChild(tr);
+          }
+        }
+        table.appendChild(tbody);
+        p.appendChild(table);
         p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
         root.appendChild(p);
         return;
@@ -91,6 +152,15 @@ export function createScreenMenus(opts: {
           b.setAttribute('type', 'button');
           b.appendChild(el('span', 'cv-play-name', play.name));
           b.appendChild(el('span', 'cv-play-blurb', play.blurb));
+          const status = statusFor(labels, play.id, state.modeId);
+          b.appendChild(
+            el(
+              'span',
+              'cv-play-progress',
+              `${plural(status.attempts, 'attempt', 'attempts')} · ${plural(status.successes, 'success', 'successes')}`,
+            ),
+          );
+          if (status.mastered) b.appendChild(masteredBadge());
           b.addEventListener('click', () => {
             onEvent({ type: 'selectPlay', playId: play.id });
           });

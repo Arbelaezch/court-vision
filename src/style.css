@@ -81,6 +81,46 @@ body {
   color: rgba(255, 255, 255, 0.65);
 }
 
+.cv-play-progress {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.cv-mastered-badge {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 1px 8px;
+  font-weight: bold;
+  font-size: 13px;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+}
+
+.cv-mastered-icon {
+  font-weight: bold;
+}
+
+.cv-progress-note {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.cv-progress-table {
+  width: 100%;
+  margin-bottom: 12px;
+  border-collapse: collapse;
+}
+
+.cv-progress-table th,
+.cv-progress-table td {
+  padding: 6px 10px;
+  text-align: left;
+}
+
 .cv-hud {
   position: absolute;
   top: 12px;

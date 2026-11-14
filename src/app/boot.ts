@@ -1,6 +1,7 @@
 // Content boot: loads all bundled content and builds the app flow. No DOM, no default store.
 import {
   loadCastContent,
+  loadMasteryTuning,
   loadModes,
   loadPlaybook,
   loadSimMovement,
@@ -14,6 +15,7 @@ export function loadAppContent(): AppContent {
   return {
     plays: loadPlaybook(roles),
     modes: loadModes(),
+    mastery: loadMasteryTuning(),
     movement: loadSimMovement(),
     passing: loadSimPassing(),
     shooting: loadSimShooting(),

@@ -1,9 +1,15 @@
 // App flow controller: owns the screen machine, the single live run session, the visibility binding
 // and a renderer port. DOM-free (only EventTarget types), so node tests and the browser share it.
 import type { RunControllerOptions, RunControllerState } from '../ai';
-import type { ModeId, ModeTable, ScenarioTable } from '../content';
+import type { MasteryTuningSpec, ModeId, ModeTable, ScenarioTable } from '../content';
 import type { PressAction } from '../input';
 import type { SimAction } from '../sim';
+import {
+  buildProgressRows,
+  progressModeLabels,
+  type PlayProgressRow,
+  type ProgressModeLabel,
+} from './progressView';
 import { bindRunVisibilityPause } from './runClock';
 import { createRunSession, type RunSession } from './runSession';
 import {
@@ -37,11 +43,15 @@ export interface PlayListItem {
 export interface MenuLabels {
   readonly plays: readonly PlayListItem[];
   readonly modeNames: Readonly<Record<ModeId, string>>;
+  readonly progressModes: readonly ProgressModeLabel[];
+  readonly progress: readonly PlayProgressRow[];
+  readonly masteredSuccesses: number;
 }
 
 export interface AppContent {
   readonly plays: ScenarioTable;
   readonly modes: ModeTable;
+  readonly mastery: MasteryTuningSpec;
   readonly movement: MovementSetup;
   readonly passing: PassingSetup;
   readonly shooting: ShootingSetup;
@@ -90,7 +100,11 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
   const unsubscribers = new Set<() => void>();
   const modeNames: Record<ModeId, string> = {};
   for (const [id, mode] of Object.entries(content.modes)) modeNames[id] = mode.name;
-  const menuLabels: MenuLabels = { plays: sortPlayList(content.plays), modeNames };
+  const plays = sortPlayList(content.plays);
+  const playIds = plays.map((p) => p.id);
+  const progressModes = progressModeLabels(content.modes);
+  const masteredSuccesses = content.mastery.masteredSuccesses;
+  const staticLabels = { plays, modeNames, progressModes, masteredSuccesses };
 
   let session: RunSession | null = null;
   let unbindVisibility: (() => void) | null = null;
@@ -185,7 +199,10 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
       session.frame(frameDeltaMs, actionsFor);
       renderer.drawRun(session.state());
     },
-    labels: () => menuLabels,
+    labels: () => ({
+      ...staticLabels,
+      progress: buildProgressRows(playIds, progressModes, store.get('progress'), masteredSuccesses),
+    }),
     session: () => session,
     onChange(listener) {
       const off = machine.onChange(listener);
