@@ -114,6 +114,22 @@ describe('human input', () => {
     });
   });
 
+  it('actionsForGame yields held actions plus a queued shoot for a bare game', () => {
+    const input = make({ held: { axes: { x: 0, y: -1 }, sprint: true, pivot: false } });
+    input.press('shoot');
+    expect(input.actionsForGame(start().game)).toEqual([
+      { type: 'move', x: 0, z: 1 },
+      { type: 'sprint', held: true },
+      { type: 'pivot', held: false },
+      { type: 'shoot' },
+    ]);
+    expect(input.actionsForGame(start().game).map((a) => a.type)).toEqual([
+      'move',
+      'sprint',
+      'pivot',
+    ]);
+  });
+
   it('ignores callForScreen and pause', () => {
     const input = make();
     input.press('callForScreen');

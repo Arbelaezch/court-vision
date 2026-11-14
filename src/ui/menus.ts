@@ -6,7 +6,6 @@ export interface ScreenMenus {
 }
 
 const PLACEHOLDER_TITLES = {
-  tutorial: 'Tutorial',
   scrimmage: 'Scrimmage',
   settings: 'Settings',
 } as const;
@@ -93,7 +92,14 @@ export function createScreenMenus(opts: {
         root.appendChild(p);
         return;
       }
-      case 'tutorial':
+      case 'tutorial': {
+        const bar = el('div', 'cv-tutorial-bar');
+        bar.setAttribute('role', 'status');
+        bar.appendChild(el('span', undefined, 'Tutorial (Esc to exit)'));
+        bar.appendChild(button('cv-menu-button', 'Exit tutorial', { type: 'back' }));
+        root.appendChild(bar);
+        return;
+      }
       case 'scrimmage':
       case 'settings': {
         const p = panel(PLACEHOLDER_TITLES[state.screen], 'h2');
@@ -219,7 +225,10 @@ export function createScreenMenus(opts: {
       unmountView?.();
       unmountView = null;
       root.replaceChildren();
-      root.className = state.screen === 'inRun' ? 'cv-screens' : 'cv-screens cv-screens-backdrop';
+      root.className =
+        state.screen === 'inRun' || state.screen === 'tutorial'
+          ? 'cv-screens'
+          : 'cv-screens cv-screens-backdrop';
       build(state, labels);
     },
     dispose() {

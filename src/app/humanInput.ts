@@ -4,6 +4,7 @@ import { passTargetSlot, type PressAction } from '../input';
 import {
   resolvePassTarget,
   type CourtPoint,
+  type GameState,
   type PassTargetKey,
   type PassTargetingSettings,
   type PassType,
@@ -25,6 +26,8 @@ export interface HumanInputSources {
 export interface HumanInput {
   press(action: PressAction): void;
   actionsFor(controller: RunControllerState): SimAction[];
+  /** Held state plus queued presses for a bare game (no run controller), e.g. the tutorial sandbox. */
+  actionsForGame(game: GameState): SimAction[];
   clear(): void;
 }
 
@@ -73,6 +76,10 @@ export function createHumanInput(sources: HumanInputSources): HumanInput {
       lastOptions = controller.options;
       lastRunIndex = controller.runIndex;
     }
+    return actionsForGame(controller.game);
+  }
+
+  function actionsForGame(game: GameState): SimAction[] {
     const held = sources.held();
     const actions: SimAction[] = [
       { type: 'move', x: held.axes.x, z: -held.axes.y },
@@ -88,7 +95,7 @@ export function createHumanInput(sources: HumanInputSources): HumanInput {
         actions.push({ type: 'floater' });
       } else {
         const targetId = resolvePassTarget(
-          controller.game,
+          game,
           { key: selectedKey, aimAt: sources.aimAt() },
           sources.targeting(),
         );
@@ -101,5 +108,5 @@ export function createHumanInput(sources: HumanInputSources): HumanInput {
     return actions;
   }
 
-  return { press, actionsFor, clear };
+  return { press, actionsFor, actionsForGame, clear };
 }

@@ -223,7 +223,20 @@ describe('createScreenMenus', () => {
     expect(events).toEqual([{ type: 'resume' }, { type: 'restart' }, { type: 'quit' }]);
   });
 
-  it.each(['tutorial', 'scrimmage', 'settings'] as const)(
+  it('renders the tutorial bar with an Exit tutorial button and no backdrop', () => {
+    const { menus, root, events } = setup();
+    menus.show({ screen: 'tutorial' }, labels);
+    expect(root.className).not.toContain('cv-screens-backdrop');
+    const bar = find(root, (n) => n.attrs['role'] === 'status')!;
+    expect(bar.className).toBe('cv-tutorial-bar');
+    expect(bar.children[0]!.textContent).toContain('Esc');
+    const bs = buttons(root);
+    expect(bs.map((b) => b.textContent)).toEqual(['Exit tutorial']);
+    bs[0]!.click();
+    expect(events).toEqual([{ type: 'back' }]);
+  });
+
+  it.each(['scrimmage', 'settings'] as const)(
     'renders a Back button on the %s placeholder',
     (screen) => {
       const { menus, root, events } = setup();

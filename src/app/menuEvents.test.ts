@@ -36,6 +36,23 @@ describe('handleMenuEvent', () => {
     expect(cleared()).toBe(1);
   });
 
+  it('drops the pending menu click when the event opens the tutorial', () => {
+    const { clock, input, presses, human, cleared } = setup();
+    let screen = 'mainMenu';
+    const flow = {
+      send: (e: string) => {
+        if (e === 'openTutorial') screen = 'tutorial';
+      },
+      state: () => ({ screen }),
+    };
+    input.press('Mouse0');
+    handleMenuEvent(flow, input, human, 'openTutorial');
+    input.release('Mouse0');
+    clock.advance(1000);
+    expect(presses).toEqual([]);
+    expect(cleared()).toBe(1);
+  });
+
   it('leaves input alone when the event does not start a run', () => {
     const { clock, input, presses, flow, human, cleared } = setup();
     input.press('Mouse0');
