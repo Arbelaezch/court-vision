@@ -1,2 +1,3 @@
 // UI layer: menus, HUD, prompts, tutorial, settings.
-export {};
+export { createCuePromptOverlay } from './cuePrompt';
+export type { CuePromptOverlay } from './cuePrompt';

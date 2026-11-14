@@ -39,6 +39,20 @@ export {
   createPassTargetBadgeLayer,
 } from './passTargetBadges';
 export type { PassTargetBadgeLayer } from './passTargetBadges';
+export {
+  CUE_ARROW_HEAD_M,
+  CUE_ARROW_MIN_LENGTH_M,
+  CUE_ARROW_START_GAP_M,
+  CUE_ARROW_WIDTH_M,
+  CUE_FLOOR_Y_M,
+  CUE_RING_INNER_M,
+  CUE_RING_OUTER_M,
+  CUE_RING_PULSE_AMPLITUDE,
+  CUE_RING_PULSE_PERIOD_S,
+  CUE_SPOT_RADIUS_M,
+  createCueLayer,
+} from './cueLayer';
+export type { CueLayer, CueLayerInput } from './cueLayer';
 export { countDrawCalls } from './drawCalls';
 export { ANIM_DEV_HOLD_S, createDevScene, parseDevView } from './devView';
 export type { DevView } from './devView';

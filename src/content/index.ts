@@ -54,6 +54,16 @@ export type {
   TrackStep,
   TriggerKind,
 } from './plays';
+export {
+  CUE_TOGGLE_FOR_KIND,
+  DEFAULT_CUE_TOGGLES,
+  phaseCues,
+  promptForCues,
+  visibleCues,
+} from './cues';
+export type { CuePrompt, CueToggle, CueToggles } from './cues';
+export { MODE_CUE_LEVELS, MODE_IDS } from './modes';
+export type { ModeId } from './modes';
 export { BUNDLED_PLAY_SOURCES, loadPlaybook } from './playbook';
 export { SCENARIO_KINDS, loadScenario, loadScenarios } from './scenarios';
 export type { Scenario, ScenarioKind, ScenarioTable } from './scenarios';

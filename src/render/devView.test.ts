@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { loadCastContent } from '../content';
+import { DEFAULT_CUE_TOGGLES, loadCastContent } from '../content';
 import { BASELINE_Z, HALF_COURT_LINE_Z, SIDELINE_X } from '../sim';
 import { characterFitHeight } from './characters';
 import { ANIM_STATES } from './animation';
-import { ANIM_DEV_HOLD_S, createDevScene, parseDevView } from './devView';
+import { ANIM_DEV_HOLD_S, CUE_DEV_PHASE_HOLD_S, createDevScene, parseDevView } from './devView';
 import type { DevView } from './devView';
 import { countDrawCalls } from './drawCalls';
 
@@ -110,6 +110,73 @@ describe('createDevScene', () => {
     update(0.1);
     expect(Array.from(limbs.instanceMatrix.array)).not.toEqual(before);
     expect(status()).toBe(state);
+  });
+
+  describe('cues', () => {
+    const visibleCues = (scene: THREE.Scene): string[] => {
+      const out: string[] = [];
+      scene.getObjectByName('cues')?.traverse((o) => {
+        if (/^cue-(floor-arrow|target-ring|spot-marker)-\d+$/.test(o.name) && o.visible) {
+          out.push(o.name.replace(/-\d+$/, ''));
+        }
+      });
+      return out;
+    };
+    const buildCues = (
+      opts: Parameters<typeof createDevScene>[1],
+    ): ReturnType<typeof createDevScene> =>
+      createDevScene('practice', { labelTexture: new THREE.Texture(), ...opts });
+
+    it('full level steps through the phases', () => {
+      const d = buildCues({});
+      expect(visibleCues(d.scene)).toEqual(['cue-target-ring']);
+      expect(d.prompt()?.headline).toBe('Pass to the wing (1 SG)');
+      d.update(CUE_DEV_PHASE_HOLD_S);
+      expect(visibleCues(d.scene)).toEqual(['cue-floor-arrow']);
+      expect(d.prompt()?.headline).toBe('Cut to the rim!');
+      d.update(CUE_DEV_PHASE_HOLD_S);
+      expect(visibleCues(d.scene)).toEqual([]);
+      expect(d.prompt()?.headline).toBe('Read the help');
+    });
+
+    it('none level shows nothing', () => {
+      const d = buildCues({ cueLevel: 'none' });
+      for (let k = 0; k < 3; k++) {
+        expect(visibleCues(d.scene)).toEqual([]);
+        expect(d.prompt()).toBeNull();
+        d.update(CUE_DEV_PHASE_HOLD_S);
+      }
+    });
+
+    it('reduced level shows only the arrow in the cut phase', () => {
+      const d = buildCues({ cueLevel: 'reduced' });
+      expect(visibleCues(d.scene)).toEqual([]);
+      expect(d.prompt()).toBeNull();
+      d.update(CUE_DEV_PHASE_HOLD_S);
+      expect(visibleCues(d.scene)).toEqual(['cue-floor-arrow']);
+      expect(d.prompt()).toBeNull();
+    });
+
+    it('toggles hide only their own cue kind', () => {
+      const noArrows = buildCues({ cueToggles: { ...DEFAULT_CUE_TOGGLES, floorArrows: false } });
+      noArrows.update(CUE_DEV_PHASE_HOLD_S);
+      expect(visibleCues(noArrows.scene)).toEqual([]);
+      expect(noArrows.prompt()?.headline).toBe('Cut to the rim!');
+
+      const noRings = buildCues({ cueToggles: { ...DEFAULT_CUE_TOGGLES, targetRings: false } });
+      expect(visibleCues(noRings.scene)).toEqual([]);
+      expect(noRings.prompt()?.headline).toBe('Pass to the wing (1 SG)');
+
+      const noPrompts = buildCues({ cueToggles: { ...DEFAULT_CUE_TOGGLES, prompts: false } });
+      expect(visibleCues(noPrompts.scene)).toEqual(['cue-target-ring']);
+      expect(noPrompts.prompt()).toBeNull();
+    });
+
+    it('characters view has no cues and no prompt', () => {
+      const d = build('characters');
+      expect(d.scene.getObjectByName('cues')).toBeUndefined();
+      expect(d.prompt()).toBeNull();
+    });
   });
 
   it('characters view plays idle on update and has no status', () => {

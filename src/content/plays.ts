@@ -13,7 +13,15 @@
 //   h. at least one decision per playable role
 // Every field path is rooted at the play id (e.g. giveAndGo.tracks.SF), so errors name the play.
 
-import { BASELINE_Z, HALF_COURT_LINE_Z, ROLE_ORDER, SIDELINE_X } from '../sim';
+import {
+  BASELINE_Z,
+  HALF_COURT_LINE_Z,
+  PASS_TARGET_KEYS,
+  PASS_TARGET_KEY_ROLES,
+  ROLE_ORDER,
+  SIDELINE_X,
+  passTargetKeyForRole,
+} from '../sim';
 import type { CourtPoint, RoleId } from '../sim';
 import { MOVE_IDS, type MoveId, type RoleTable } from './roles';
 import {
@@ -88,7 +96,12 @@ export type Cue =
   | { readonly kind: 'floorArrow'; readonly to: CourtPoint }
   | { readonly kind: 'targetRing'; readonly role: RoleId }
   | { readonly kind: 'spotMarker'; readonly spot: CourtPoint }
-  | { readonly kind: 'prompt'; readonly text: string };
+  | {
+      readonly kind: 'prompt';
+      readonly text: string;
+      readonly reason?: string;
+      readonly passTo?: RoleId;
+    };
 
 /** Cues shown per cue level. The `none` level is always empty. */
 export type PhaseCues = Readonly<Record<CueLevel, readonly Cue[]>>;
@@ -234,7 +247,7 @@ const CUE_KEYS: Readonly<Record<CueKind, readonly string[]>> = {
   floorArrow: ['kind', 'to'],
   targetRing: ['kind', 'role'],
   spotMarker: ['kind', 'spot'],
-  prompt: ['kind', 'text'],
+  prompt: ['kind', 'text', 'reason', 'passTo'],
 };
 
 function readCourtPoint(value: unknown, at: FieldPath): CourtPoint {
@@ -340,7 +353,24 @@ function readCue(value: unknown, at: FieldPath): Cue {
     }
     case 'prompt': {
       const f = getField(obj, 'text', at);
-      return { kind, text: readString(f.value, f.at) };
+      const text = readString(f.value, f.at);
+      const out: {
+        kind: 'prompt';
+        text: string;
+        reason?: string;
+        passTo?: RoleId;
+      } = { kind, text };
+      if (hasValue(obj, 'reason')) out.reason = readString(obj['reason'], childPath(at, 'reason'));
+      if (hasValue(obj, 'passTo')) {
+        const passToAt = childPath(at, 'passTo');
+        const role = readRole(obj['passTo'], passToAt);
+        if (passTargetKeyForRole(role) === null) {
+          const allowed = PASS_TARGET_KEYS.map((k) => PASS_TARGET_KEY_ROLES[k]).join(', ');
+          fail(passToAt, `expected a pass-target role (${allowed}), got "${role}"`);
+        }
+        out.passTo = role;
+      }
+      return out;
     }
     default: {
       const unreachable: never = kind;
@@ -359,7 +389,16 @@ function readCues(value: unknown, at: FieldPath): PhaseCues {
     if (level === 'none' && items.length > 0) {
       fail(field.at, 'expected no cues at cue level none');
     }
-    out[level] = items.map((item, i) => readCue(item, childPath(field.at, i)));
+    let sawPrompt = false;
+    out[level] = items.map((item, i) => {
+      const cue = readCue(item, childPath(field.at, i));
+      if (cue.kind === 'prompt') {
+        if (sawPrompt)
+          fail(childPath(field.at, i), 'expected at most one prompt cue per cue level');
+        sawPrompt = true;
+      }
+      return cue;
+    });
   }
   return out as PhaseCues;
 }
