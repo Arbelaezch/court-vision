@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import {
   DEFAULT_CUE_TOGGLES,
-  MODE_CUE_LEVELS,
   loadCastContent,
+  loadMode,
   loadPlaybook,
   loadSimMovement,
   phaseCues,
@@ -135,7 +135,7 @@ export function createDevScene(
     if (!play || play.kind !== 'play') {
       throw new Error('Court Vision: dev practice view needs a bundled play');
     }
-    const cueLevel = opts.cueLevel ?? MODE_CUE_LEVELS.practice;
+    const cueLevel = opts.cueLevel ?? loadMode('practice').cueLevel;
     const cueToggles = opts.cueToggles ?? DEFAULT_CUE_TOGGLES;
     const humanRole = game.players.find((p) => p.id === game.controlledPlayerId)?.role;
     if (!humanRole) throw new Error('Court Vision: controlled player not found');

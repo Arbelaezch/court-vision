@@ -166,7 +166,7 @@ describe('createSaveStore load', () => {
   const BAD_PROGRESS: [string, unknown][] = [
     ['negative attempts', { plays: { p: { practice: { attempts: -1, successes: 0 } } } }],
     ['fractional successes', { plays: { p: { scrimmage: { attempts: 2, successes: 1.5 } } } }],
-    ['unknown mode', { plays: { p: { freePlay: { attempts: 1, successes: 1 } } } }],
+    ['malformed mode id', { plays: { p: { 'free play': { attempts: 1, successes: 1 } } } }],
     ['plays not an object', { plays: [] }],
   ];
   it.each(BAD_PROGRESS)('resets progress with %s', (_label, progress) => {
@@ -176,6 +176,20 @@ describe('createSaveStore load', () => {
     expect(store.get('settings')).toEqual(CUSTOM_SETTINGS);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/^Court Vision: saved section "progress" is invalid/);
+  });
+
+  it('keeps progress for a mode this build does not know', () => {
+    const progress = {
+      plays: {
+        p: { practice: { attempts: 2, successes: 1 }, freePlay: { attempts: 1, successes: 1 } },
+      },
+    };
+    const doc = { ...V2_FIXTURE, progress };
+    const { fake, warnings } = setup(JSON.stringify(doc));
+    const store = open(fake, warnings);
+    expect(store.get('progress')).toEqual(progress);
+    expect(warnings).toEqual([]);
+    expect(stored(fake)).toEqual(doc);
   });
 
   const BAD_SETTINGS: [string, unknown][] = [

@@ -62,8 +62,16 @@ export {
   visibleCues,
 } from './cues';
 export type { CuePrompt, CueToggle, CueToggles } from './cues';
-export { MODE_CUE_LEVELS, MODE_IDS } from './modes';
-export type { ModeId } from './modes';
+export {
+  BUNDLED_MODE_SOURCES,
+  MODE_RULES,
+  SHOT_CLOCK_SECONDS_RANGE,
+  SPEED_MULTIPLIER_RANGE,
+  loadMode,
+  loadModes,
+  readModeConfig,
+} from './modes';
+export type { ModeConfig, ModeId, ModeRules, ModeTable } from './modes';
 export { BUNDLED_PLAY_SOURCES, loadPlaybook } from './playbook';
 export { SCENARIO_KINDS, loadScenario, loadScenarios } from './scenarios';
 export type { Scenario, ScenarioKind, ScenarioTable } from './scenarios';

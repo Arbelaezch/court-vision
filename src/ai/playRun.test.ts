@@ -179,6 +179,14 @@ describe('startPracticeRun', () => {
     const startAsSg = () => startPracticeRun(SCREEN_TEST, { seed: 1, ...SETUPS, humanRole: 'SG' });
     expect(startAsSg).toThrow(/Court Vision: humanRole/);
   });
+
+  it('passes shotClockSeconds through to the game; omitted means no shot clock', () => {
+    const timed = startPracticeRun(GIVE_AND_GO, { seed: 1, ...SETUPS, shotClockSeconds: 24 });
+    expect(timed.game.shotClockTicks).toBe(24 * SIM_HZ);
+    const untimed = startPracticeRun(GIVE_AND_GO, { seed: 1, ...SETUPS, shotClockSeconds: null });
+    expect(untimed.game.shotClockTicks).toBeNull();
+    expect(start(GIVE_AND_GO).game.shotClockTicks).toBeNull();
+  });
 });
 
 describe('AC1: phases advance on triggers, never on a hidden timer', () => {

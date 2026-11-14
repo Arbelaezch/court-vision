@@ -6,9 +6,8 @@ import {
   validateBindings,
   type Binding,
 } from '../../input';
+import { ID_PATTERN, type ModeId } from '../../content';
 import type { PassTargetingMode } from '../../sim';
-
-export type ProgressMode = 'practice' | 'scrimmage';
 
 /** Non-negative integers. */
 export interface ModeProgress {
@@ -17,7 +16,7 @@ export interface ModeProgress {
 }
 
 export interface ProgressSection {
-  readonly plays: Readonly<Record<string, Partial<Record<ProgressMode, ModeProgress>>>>;
+  readonly plays: Readonly<Record<string, Partial<Record<ModeId, ModeProgress>>>>;
 }
 
 export type PassTargeting = PassTargetingMode;
@@ -59,7 +58,6 @@ export const SECTION_NAMES: readonly SectionName[] = [
   'seenTooltips',
 ];
 
-const PROGRESS_MODES: readonly ProgressMode[] = ['practice', 'scrimmage'];
 const PASS_TARGETINGS: readonly PassTargeting[] = ['numbered', 'aim', 'both'];
 
 /** Returns a fresh object each call, so callers may not share mutable state. */
@@ -111,21 +109,23 @@ function readModeProgress(raw: unknown): ModeProgress | undefined {
   return { attempts: raw.attempts, successes: raw.successes };
 }
 
-function readPlayProgress(raw: unknown): Partial<Record<ProgressMode, ModeProgress>> | undefined {
+function readPlayProgress(raw: unknown): Partial<Record<ModeId, ModeProgress>> | undefined {
   if (!isRecord(raw)) return undefined;
-  const out: Partial<Record<ProgressMode, ModeProgress>> = {};
+  const entries: [string, ModeProgress][] = [];
   for (const [mode, value] of Object.entries(raw)) {
-    if (!isOneOf(mode, PROGRESS_MODES)) return undefined;
+    // Mode ids are data, so a mode this build does not know is kept rather than resetting progress.
+    // A malformed key still fails the section.
+    if (typeof mode !== 'string' || !ID_PATTERN.test(mode)) return undefined;
     const progress = readModeProgress(value);
     if (!progress) return undefined;
-    out[mode] = progress;
+    entries.push([mode, progress]);
   }
-  return out;
+  return Object.fromEntries(entries);
 }
 
 function validateProgress(raw: unknown): ProgressSection | undefined {
   if (!isRecord(raw) || !isRecord(raw.plays)) return undefined;
-  const entries: [string, Partial<Record<ProgressMode, ModeProgress>>][] = [];
+  const entries: [string, Partial<Record<ModeId, ModeProgress>>][] = [];
   for (const [playId, value] of Object.entries(raw.plays)) {
     const play = readPlayProgress(value);
     if (!play) return undefined;

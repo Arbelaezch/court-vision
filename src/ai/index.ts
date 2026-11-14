@@ -47,3 +47,18 @@ export {
 } from './defense';
 export type { DefenderBehavior, DefenderContext, DefenderIntent } from './defense';
 export type { PlayRunState, PracticeRunOptions } from './playRun';
+export {
+  RESULT_HOLD_SECONDS,
+  RESULT_HOLD_STEPS,
+  quitRunController,
+  restartRunController,
+  startRunController,
+  stepRunController,
+} from './runController';
+export type {
+  RunAttempt,
+  RunControllerOptions,
+  RunControllerState,
+  RunControllerStatus,
+  RunControllerStep,
+} from './runController';

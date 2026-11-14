@@ -109,6 +109,8 @@ export interface PracticeRunOptions {
   humanRole?: RoleId;
   /** Live defense: defenders follow this coverage's behaviors instead of Practice cones. */
   liveCoverageId?: string;
+  /** Seconds; null or omitted = no shot clock. */
+  shotClockSeconds?: number | null;
 }
 
 function distance(a: CourtPoint, b: CourtPoint): number {
@@ -234,6 +236,9 @@ export function startPracticeRun(
     movement: options.movement,
     passing: options.passing,
     ...(options.shooting === undefined ? {} : { shooting: options.shooting }),
+    ...(options.shotClockSeconds === undefined
+      ? {}
+      : { shotClockSeconds: options.shotClockSeconds }),
     defenseMode: options.liveCoverageId === undefined ? 'cones' : 'live',
   });
   const game = structuredClone(created);
