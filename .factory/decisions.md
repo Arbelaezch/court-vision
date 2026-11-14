@@ -203,3 +203,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decided by: user on 2026-11-13
 - Why: Blocker on #62: npx prettier is outside the factory allow list, npm run * is allowed
 - Source: package.json scripts
+
+## Hidden tab behavior for the run clock?
+- Kind: implementation
+- Decision: Hiding pauses the run and freezes all sim time incl. shot clock; showing the tab never auto-resumes; first frame after resume is discarded; pausing emits no sim events and counts no attempt
+- Decided by: assumed on 2026-11-14
+- Why: Conservative, reversible; pause menu (#24) not built yet; consistent with g12
