@@ -1,6 +1,8 @@
 // Audio layer: recording AudioContext test double. Not exported from the barrel.
 
 import type {
+  AudioBufferLike,
+  AudioBufferSourceNodeLike,
   AudioContextLike,
   AudioNodeLike,
   AudioParamLike,
@@ -30,7 +32,7 @@ export class FakeParam implements AudioParamLike {
 
 export class FakeNode implements AudioNodeLike {
   connections: FakeNode[] = [];
-  constructor(readonly kind: 'gain' | 'oscillator' | 'destination') {}
+  constructor(readonly kind: 'gain' | 'oscillator' | 'bufferSource' | 'destination') {}
   connect(destination: AudioNodeLike): void {
     this.connections.push(destination as FakeNode);
   }
@@ -62,17 +64,61 @@ export class FakeOscillator extends FakeNode implements OscillatorNodeLike {
   }
 }
 
+export class FakeBuffer implements AudioBufferLike {
+  readonly channels: Float32Array[];
+  constructor(
+    numberOfChannels: number,
+    readonly length: number,
+    readonly sampleRate: number,
+  ) {
+    this.channels = Array.from({ length: numberOfChannels }, () => new Float32Array(length));
+  }
+  getChannelData(channel: number): Float32Array {
+    const data = this.channels[channel];
+    if (data === undefined) throw new Error(`FakeBuffer: no channel ${channel}`);
+    return data;
+  }
+}
+
+export class FakeBufferSource extends FakeNode implements AudioBufferSourceNodeLike {
+  buffer: AudioBufferLike | null = null;
+  loop = false;
+  startedAt: number | null = null;
+  stoppedAt: number | null = null;
+  constructor() {
+    super('bufferSource');
+  }
+  start(when = 0): void {
+    this.startedAt = when;
+  }
+  stop(when = 0): void {
+    this.stoppedAt = when;
+  }
+}
+
 export class FakeAudioContext implements AudioContextLike {
   currentTime: number;
   state: AudioContextState;
+  readonly sampleRate: number;
   readonly destination = new FakeNode('destination');
   nodes: FakeNode[] = [];
   resumeCalls = 0;
   closeCalls = 0;
 
-  constructor(opts: { state?: AudioContextState; currentTime?: number } = {}) {
+  constructor(opts: { state?: AudioContextState; currentTime?: number; sampleRate?: number } = {}) {
     this.state = opts.state ?? 'running';
     this.currentTime = opts.currentTime ?? 0;
+    this.sampleRate = opts.sampleRate ?? 8000;
+  }
+
+  createBuffer(numberOfChannels: number, length: number, sampleRate: number): FakeBuffer {
+    return new FakeBuffer(numberOfChannels, length, sampleRate);
+  }
+
+  createBufferSource(): FakeBufferSource {
+    const node = new FakeBufferSource();
+    this.nodes.push(node);
+    return node;
   }
 
   createGain(): FakeGain {
@@ -102,6 +148,7 @@ export class FakeAudioContext implements AudioContextLike {
 export function createFakeAudioContext(opts?: {
   state?: AudioContextState;
   currentTime?: number;
+  sampleRate?: number;
 }): FakeAudioContext {
   return new FakeAudioContext(opts);
 }

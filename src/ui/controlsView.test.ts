@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CONTROL_ACTIONS, type CaptureState, type ControlSettings } from '../app';
+import {
+  CONTROL_ACTIONS,
+  type AudioSettings,
+  type CaptureState,
+  type ControlSettings,
+} from '../app';
 import { DEFAULT_BINDINGS } from '../input';
 import { createControlsView } from './controlsView';
 
@@ -63,7 +68,7 @@ function all(el: FakeEl, pred: (n: FakeEl) => boolean): FakeEl[] {
   return out;
 }
 
-function setup() {
+function setup(withAudio = false) {
   const state = {
     capture: { kind: 'idle' } as CaptureState,
     message: null as string | null,
@@ -99,9 +104,26 @@ function setup() {
     activeElement: null as FakeEl | null,
     createElement: (tag: string) => new FakeEl(tag),
   };
+  const audioState = { volume: 0.6, musicOn: false, sfxOn: true };
+  let audioListener: (() => void) | null = null;
+  const audioUnsubscribe = vi.fn(() => {
+    audioListener = null;
+  });
+  const audio = {
+    settings: () => ({ ...audioState }),
+    setVolume: vi.fn(),
+    setMusicOn: vi.fn(),
+    setSfxOn: vi.fn(),
+    onChange: (l: () => void) => {
+      audioListener = l;
+      return audioUnsubscribe;
+    },
+    dispose: vi.fn(),
+  };
   const view = createControlsView({
     doc: doc as unknown as Document,
     controls: controls as unknown as ControlSettings,
+    ...(withAudio ? { audio: audio as unknown as AudioSettings } : {}),
   });
   const parent = new FakeEl();
   const cleanup = view.mount(parent as unknown as HTMLElement);
@@ -114,6 +136,10 @@ function setup() {
     root,
     cleanup,
     unsubscribe,
+    audio,
+    audioState,
+    audioUnsubscribe,
+    fireAudio: () => audioListener?.(),
     fire: () => listener?.(),
   };
 }
@@ -245,5 +271,44 @@ describe('createControlsView', () => {
     const next = { preventDefault: vi.fn(), stopPropagation: vi.fn() };
     root.dispatch('click', next);
     expect(next.stopPropagation).not.toHaveBeenCalled();
+  });
+
+  it('has no Audio section without an audio option', () => {
+    const { root } = setup();
+    expect(all(root, (n) => n.attrs['id'] === 'cv-audio-volume')).toHaveLength(0);
+    expect(all(root, (n) => n.textContent === 'Audio')).toHaveLength(0);
+  });
+
+  it('renders the Audio section with the stored volume and wires the slider', () => {
+    const { root, audio } = setup(true);
+    expect(all(root, (n) => n.textContent === 'Audio')).toHaveLength(1);
+    const volume = all(root, (n) => n.attrs['id'] === 'cv-audio-volume')[0]!;
+    expect(volume.value).toBe('0.6');
+    volume.value = '0.35';
+    volume.dispatch('change');
+    expect(audio.setVolume).toHaveBeenCalledWith(0.35);
+  });
+
+  it('wires the Music and Sound effects toggles and reflects state after re-render', () => {
+    const { root, audio, audioState, fireAudio } = setup(true);
+    const toggle = (label: string): FakeEl =>
+      all(root, (n) => n.textContent === label && n.tagName === 'button')[0]!;
+    expect(toggle('Music').attrs['aria-pressed']).toBe('false');
+    expect(toggle('Sound effects').attrs['aria-pressed']).toBe('true');
+    toggle('Music').click();
+    expect(audio.setMusicOn).toHaveBeenCalledWith(true);
+    toggle('Sound effects').click();
+    expect(audio.setSfxOn).toHaveBeenCalledWith(false);
+    audioState.musicOn = true;
+    audioState.sfxOn = false;
+    fireAudio();
+    expect(toggle('Music').attrs['aria-pressed']).toBe('true');
+    expect(toggle('Sound effects').attrs['aria-pressed']).toBe('false');
+  });
+
+  it('unsubscribes from audio changes on cleanup', () => {
+    const { cleanup, audioUnsubscribe } = setup(true);
+    cleanup();
+    expect(audioUnsubscribe).toHaveBeenCalledTimes(1);
   });
 });

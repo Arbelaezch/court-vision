@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { loadSimMovement, loadSimPassing, loadSimShooting } from '../content';
+import { createGame } from '../sim';
 import type { GameEvent } from '../sim';
-import { createAudioEngine, DEFAULT_VOLUMES } from './engine';
+import { createAudioEngine, DEFAULT_VOLUMES, MUSIC_FADE_S } from './engine';
 import {
   createFakeAudioContext,
   pathReaches,
   type FakeAudioContext,
+  type FakeBufferSource,
   type FakeGain,
   type FakeOscillator,
 } from './fakeAudioContext';
@@ -26,6 +29,9 @@ function setup(opts: Parameters<typeof createFakeAudioContext>[0] = {}, volumes?
 const gains = (ctx: FakeAudioContext) => ctx.nodes.filter((n): n is FakeGain => n.kind === 'gain');
 const oscs = (ctx: FakeAudioContext) =>
   ctx.nodes.filter((n): n is FakeOscillator => n.kind === 'oscillator');
+
+const bufferSources = (ctx: FakeAudioContext) =>
+  ctx.nodes.filter((n): n is FakeBufferSource => n.kind === 'bufferSource');
 
 function first<T>(a: T[]): T {
   const v = a[0];
@@ -187,6 +193,32 @@ describe('audio engine', () => {
     expect(oscs(ctx).length).toBeGreaterThan(0);
   });
 
+  it('play(sound, delayS) schedules at currentTime + delayS', () => {
+    const { ctx, engine } = setup({ currentTime: 4 });
+    engine.unlock();
+    engine.play('swish', 0.5);
+    const src = bufferSources(ctx);
+    expect(src).toHaveLength(1);
+    expect(first(src).startedAt).toBe(4.5);
+  });
+
+  it('setSfxEnabled(false) silences play', () => {
+    const { ctx, engine } = setup();
+    engine.unlock();
+    engine.setSfxEnabled(false);
+    const n = ctx.nodes.length;
+    engine.play('whistle');
+    expect(ctx.nodes).toHaveLength(n);
+    engine.setSfxEnabled(true);
+    engine.play('whistle');
+    expect(ctx.nodes.length).toBeGreaterThan(n);
+  });
+
+  it.each([-1, NaN, Infinity])('play rejects delay %s', (d) => {
+    const { engine } = setup();
+    expect(() => engine.play('whistle', d)).toThrow(/^Court Vision:/);
+  });
+
   it('dispose closes once and disables play and unlock', () => {
     const { ctx, createContext, engine } = setup();
     engine.unlock();
@@ -198,5 +230,129 @@ describe('audio engine', () => {
     expect(ctx.nodes).toHaveLength(n);
     engine.unlock();
     expect(createContext).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('music loop', () => {
+  it('is silent when never enabled', () => {
+    const { ctx, engine } = setup();
+    engine.unlock();
+    expect(bufferSources(ctx)).toHaveLength(0);
+    expect(engine.isMusicEnabled()).toBe(false);
+    expect(engine.isMusicPlaying()).toBe(false);
+  });
+
+  it('enabled before unlock starts one looping source on the music bus at unlock', () => {
+    const { ctx, engine } = setup({ currentTime: 7 });
+    engine.setMusicEnabled(true);
+    expect(bufferSources(ctx)).toHaveLength(0);
+    engine.unlock();
+    const [master, , music] = three(ctx);
+    const srcs = bufferSources(ctx);
+    expect(srcs).toHaveLength(1);
+    const src = first(srcs);
+    expect(src.loop).toBe(true);
+    expect(src.startedAt).toBe(ctx.currentTime);
+    expect(src.buffer).not.toBeNull();
+    expect(pathReaches(src, music)).toBe(true);
+    expect(pathReaches(src, master)).toBe(true);
+    expect(pathReaches(src, ctx.destination)).toBe(true);
+    expect(engine.isMusicPlaying()).toBe(true);
+  });
+
+  it('enabling after unlock starts the loop; disabling fades and stops it', () => {
+    const { ctx, engine } = setup({ currentTime: 3 });
+    engine.unlock();
+    engine.setMusicEnabled(true);
+    const src = first(bufferSources(ctx));
+    expect(engine.isMusicPlaying()).toBe(true);
+    const fade = first(src.connections as FakeGain[]);
+    ctx.currentTime = 10;
+    engine.setMusicEnabled(false);
+    expect(src.stoppedAt).toBe(10 + MUSIC_FADE_S);
+    expect(first(fade.gain.automation.slice(-1)).value).toBe(0);
+    expect(engine.isMusicPlaying()).toBe(false);
+    expect(engine.isMusicEnabled()).toBe(false);
+  });
+
+  it('enabling twice creates one source', () => {
+    const { ctx, engine } = setup();
+    engine.unlock();
+    engine.setMusicEnabled(true);
+    engine.setMusicEnabled(true);
+    expect(bufferSources(ctx)).toHaveLength(1);
+  });
+
+  it('can restart after being disabled', () => {
+    const { ctx, engine } = setup();
+    engine.unlock();
+    engine.setMusicEnabled(true);
+    engine.setMusicEnabled(false);
+    engine.setMusicEnabled(true);
+    expect(bufferSources(ctx)).toHaveLength(2);
+    expect(engine.isMusicPlaying()).toBe(true);
+  });
+
+  it('dispose stops a playing loop', () => {
+    const { ctx, engine } = setup({ currentTime: 1 });
+    engine.unlock();
+    engine.setMusicEnabled(true);
+    const src = first(bufferSources(ctx));
+    engine.dispose();
+    expect(src.stoppedAt).toBe(1 + MUSIC_FADE_S);
+    expect(engine.isMusicPlaying()).toBe(false);
+  });
+});
+
+describe('handleStep', () => {
+  const baseGame = createGame({
+    seed: 1,
+    movement: loadSimMovement(),
+    passing: loadSimPassing(),
+    shooting: loadSimShooting(),
+    defenseMode: 'cones',
+  });
+  const heldGame = { ...baseGame, tick: 1, ball: { kind: 'held', holderId: 0 } } as const;
+  const passGame = {
+    ...baseGame,
+    tick: 2,
+    ball: {
+      kind: 'inFlight',
+      pos: { x: 0, y: 1, z: 0 },
+      vel: { x: 0, y: 0, z: 0 },
+      fromId: 0,
+      targetId: 1,
+      passType: 'chestPass',
+      origin: { x: 0, y: 1, z: 0 },
+      elapsedTicks: 0,
+      flightTicks: 20,
+      interception: null,
+    },
+  } as const;
+
+  it('plays event cues through the engine', () => {
+    const { ctx, engine } = setup();
+    engine.unlock();
+    engine.handleStep({ game: heldGame, events: [mistake('turnover')], reset: false });
+    expect(oscs(ctx).length).toBeGreaterThan(0);
+  });
+
+  it('advances the director while locked, so a pass released while locked is not replayed', () => {
+    const { ctx, engine } = setup();
+    expect(() => engine.handleStep({ game: heldGame, events: [], reset: false })).not.toThrow();
+    engine.handleStep({ game: passGame, events: [], reset: false });
+    engine.unlock();
+    expect(oscs(ctx)).toHaveLength(0);
+    engine.handleStep({ game: { ...passGame, tick: 3 }, events: [], reset: false });
+    expect(oscs(ctx)).toHaveLength(0);
+  });
+
+  it('plays a pass release sound from a held-to-flight transition', () => {
+    const { ctx, engine } = setup();
+    engine.unlock();
+    engine.handleStep({ game: heldGame, events: [], reset: false });
+    const before = ctx.nodes.length;
+    engine.handleStep({ game: passGame, events: [], reset: false });
+    expect(ctx.nodes.length).toBeGreaterThan(before);
   });
 });

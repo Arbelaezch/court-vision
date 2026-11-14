@@ -3,7 +3,14 @@
 import type { GameEventSink } from '../sim';
 import { soundForEvent, type SoundId } from './eventSounds';
 import { VOICES } from './sounds';
-import type { AudioContextLike, GainNodeLike } from './types';
+import { createMusicBuffer } from './music';
+import { createSoundDirector, type SoundStep } from './soundDirector';
+import type {
+  AudioBufferLike,
+  AudioBufferSourceNodeLike,
+  AudioContextLike,
+  GainNodeLike,
+} from './types';
 
 export type AudioBus = 'master' | 'sfx' | 'music';
 
@@ -19,9 +26,21 @@ export interface AudioEngine {
   isRunning(): boolean;
   setVolume(bus: AudioBus, volume: number): void;
   getVolume(bus: AudioBus): number;
-  play(sound: SoundId): void;
+  play(sound: SoundId, delayS?: number): void;
+  setSfxEnabled(on: boolean): void;
+  setMusicEnabled(on: boolean): void;
+  isMusicEnabled(): boolean;
+  isMusicPlaying(): boolean;
   handleEvent: GameEventSink;
+  handleStep(step: SoundStep): void;
   dispose(): void;
+}
+
+export const MUSIC_FADE_S = 0.05;
+
+interface MusicLoop {
+  readonly source: AudioBufferSourceNodeLike;
+  readonly fade: GainNodeLike;
 }
 
 export interface CreateAudioEngineOptions {
@@ -49,6 +68,37 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
   let buses: Record<AudioBus, GainNodeLike> | null = null;
   let unavailable = false;
   let disposed = false;
+  let sfxEnabled = true;
+  let musicEnabled = false;
+  let musicBuffer: AudioBufferLike | null = null;
+  let musicLoop: MusicLoop | null = null;
+  const director = createSoundDirector();
+
+  function startMusic(): void {
+    if (ctx === null || buses === null || musicLoop !== null) return;
+    musicBuffer ??= createMusicBuffer(ctx);
+    const fade = ctx.createGain();
+    fade.connect(buses.music);
+    const source = ctx.createBufferSource();
+    source.buffer = musicBuffer;
+    source.loop = true;
+    source.connect(fade);
+    const now = ctx.currentTime;
+    fade.gain.setValueAtTime(0, now);
+    fade.gain.linearRampToValueAtTime(1, now + MUSIC_FADE_S);
+    source.start(now);
+    musicLoop = { source, fade };
+  }
+
+  function stopMusic(): void {
+    if (ctx === null || musicLoop === null) return;
+    const { source, fade } = musicLoop;
+    const now = ctx.currentTime;
+    fade.gain.setValueAtTime(1, now);
+    fade.gain.linearRampToValueAtTime(0, now + MUSIC_FADE_S);
+    source.stop(now + MUSIC_FADE_S);
+    musicLoop = null;
+  }
 
   function unlock(): void {
     if (disposed || unavailable) return;
@@ -72,6 +122,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
       music.gain.value = volumes.music;
       ctx = created;
       buses = { master, sfx, music };
+      if (musicEnabled) startMusic();
     }
     if (ctx.state !== 'running') {
       ctx.resume().catch(() => undefined);
@@ -84,10 +135,20 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     if (buses !== null) buses[bus].gain.value = volume;
   }
 
-  function play(sound: SoundId): void {
+  function play(sound: SoundId, delayS = 0): void {
+    if (!(Number.isFinite(delayS) && delayS >= 0)) {
+      throw new Error(`Court Vision: sound delay must be a finite number >= 0, got ${delayS}`);
+    }
     if (disposed || ctx === null || buses === null || ctx.state !== 'running') return;
-    if (volumes.master === 0 || volumes.sfx === 0) return;
-    VOICES[sound](ctx, buses.sfx, ctx.currentTime);
+    if (!sfxEnabled || volumes.master === 0 || volumes.sfx === 0) return;
+    VOICES[sound](ctx, buses.sfx, ctx.currentTime + delayS);
+  }
+
+  function setMusicEnabled(on: boolean): void {
+    musicEnabled = on;
+    if (disposed) return;
+    if (on) startMusic();
+    else stopMusic();
   }
 
   return {
@@ -97,12 +158,23 @@ export function createAudioEngine(options: CreateAudioEngineOptions): AudioEngin
     setVolume,
     getVolume: (bus) => volumes[bus],
     play,
+    setSfxEnabled: (on) => {
+      sfxEnabled = on;
+    },
+    setMusicEnabled,
+    isMusicEnabled: () => musicEnabled,
+    isMusicPlaying: () => musicLoop !== null,
     handleEvent: (event) => {
       const s = soundForEvent(event);
       if (s !== null) play(s);
     },
+    handleStep: (step) => {
+      for (const cue of director.observe(step)) play(cue.sound, cue.delayS);
+    },
     dispose: () => {
+      director.reset();
       if (disposed) return;
+      stopMusic();
       disposed = true;
       const closing = ctx;
       ctx = null;

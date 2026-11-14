@@ -3,7 +3,7 @@
 import type { RunControllerOptions, RunControllerState } from '../ai';
 import type { MasteryTuningSpec, ModeId, ModeTable, PlayScenario, ScenarioTable } from '../content';
 import type { PressAction } from '../input';
-import type { GameEventSink, GameState, SimAction } from '../sim';
+import type { GameEvent, GameEventSink, GameState, SimAction } from '../sim';
 import {
   buildProgressRows,
   progressModeLabels,
@@ -67,6 +67,13 @@ export interface AppContent {
   readonly shooting: ShootingSetup;
 }
 
+/** One sim step as seen by step sinks. */
+export interface FlowStep {
+  readonly game: GameState;
+  readonly events: readonly GameEvent[];
+  readonly reset: boolean;
+}
+
 export interface AppFlowOptions {
   content: AppContent;
   store: SaveStore;
@@ -79,6 +86,8 @@ export interface AppFlowOptions {
   actionsFor?: (controller: RunControllerState) => readonly SimAction[];
   /** Called synchronously with every sim event of every step, in order. */
   eventSinks?: readonly GameEventSink[];
+  /** Called synchronously once per sim step, after that step's event sinks. */
+  stepSinks?: readonly ((step: FlowStep) => void)[];
   /** Tutorial sandbox renderer; omit to run the tutorial headless. */
   tutorialRenderer?: TutorialRenderer;
   /** Per-step SimActions for the human in the tutorial sandbox; default () => []. */
@@ -117,6 +126,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
   const actionsFor = options.actionsFor ?? (() => []);
   const tutorialActionsFor = options.tutorialActionsFor ?? (() => []);
   const eventSinks = options.eventSinks ?? [];
+  const stepSinks = options.stepSinks ?? [];
   const machine = createScreenMachine();
   const unsubscribers = new Set<() => void>();
   const modeNames: Record<ModeId, string> = {};
@@ -247,6 +257,12 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
         const steps = active.frame(frameDeltaMs, tutorialActionsFor);
         for (const step of steps) {
           for (const event of step.events) for (const sink of eventSinks) sink(event);
+          const flowStep: FlowStep = {
+            game: step.state.game,
+            events: step.events,
+            reset: step.reset,
+          };
+          for (const sink of stepSinks) sink(flowStep);
         }
         const state = active.state();
         options.tutorialRenderer?.drawTutorial(
@@ -264,6 +280,12 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
       const steps = session.frame(frameDeltaMs, actionsFor);
       for (const step of steps) {
         for (const event of step.events) for (const sink of eventSinks) sink(event);
+        const flowStep: FlowStep = {
+          game: step.controller.game,
+          events: step.events,
+          reset: step.reset,
+        };
+        for (const sink of stepSinks) sink(flowStep);
       }
       const state = session.state();
       renderer.drawRun(state, buildRunFrame(activePlay, state, steps, store.get('settings').cues));

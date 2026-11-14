@@ -2,6 +2,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RunControllerState } from '../ai';
 import type { GameEvent } from '../sim';
+import { createSoundDirector } from '../audio/soundDirector';
+import type { SoundId } from '../audio/eventSounds';
 import { loadAppContent } from './boot';
 import { createAppFlow } from './appFlow';
 import { createHumanInput } from './humanInput';
@@ -18,6 +20,8 @@ type Kind = 'success' | 'wrong';
 
 function setup() {
   const events: GameEvent[] = [];
+  const cues: SoundId[] = [];
+  const director = createSoundDirector();
   const draws: { controller: RunControllerState; frame: RunFrame }[] = [];
   const store = createSaveStore({ storage: createFakeStorage({}), warn: () => {} });
   const flowRef: { current: ReturnType<typeof createAppFlow> | null } = { current: null };
@@ -52,12 +56,13 @@ function setup() {
     seed: () => 7,
     actionsFor: human.actionsFor,
     eventSinks: [(e) => events.push(e)],
+    stepSinks: [(s) => cues.push(...director.observe(s).map((c) => c.sound))],
     onPress: human.press,
   });
   flowRef.current = flow;
   flow.send({ type: 'openPractice' });
   flow.send({ type: 'selectPlay', playId: 'giveAndGo' });
-  return { flow, store, events, draws, state };
+  return { flow, store, events, cues, draws, state };
 }
 
 function progress(store: ReturnType<typeof setup>['store']) {
@@ -112,6 +117,10 @@ describe('Practice slice: Give-and-Go end to end', () => {
     expect(ctx.events.some((e) => e.type === 'runSuccess')).toBe(true);
     expect(ctx.draws.some((d) => d.frame.hud.banner?.tone === 'success')).toBe(true);
     expect(ctx.draws.some((d) => d.frame.steps.some((s) => s.reset))).toBe(true);
+    expect(ctx.cues).toEqual(
+      expect.arrayContaining(['passChest', 'catch', 'dribble', 'shotRelease', 'chime']),
+    );
+    expect(ctx.cues.some((c) => c === 'swish' || c === 'rimHit')).toBe(true);
     expectAtSetup(ctx.state());
     expect(progress(ctx.store)).toEqual({ attempts: 1, successes: 1 });
   });
@@ -126,6 +135,7 @@ describe('Practice slice: Give-and-Go end to end', () => {
     expect(mistakeAt).toBeGreaterThanOrEqual(0);
     expect(steps[mistakeAt + 1]?.reset).toBe(true);
     expect(ctx.draws.every((d) => d.controller.status !== 'showingResult')).toBe(true);
+    expect(ctx.cues).toContain('whistle');
     expectAtSetup(ctx.state());
     expect(progress(ctx.store)).toEqual({ attempts: 1, successes: 0 });
   });

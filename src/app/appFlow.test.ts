@@ -3,7 +3,8 @@ import type { RunControllerState } from '../ai';
 import type { PlayScenario } from '../content';
 import type { GameEvent } from '../sim';
 import { loadAppContent } from './boot';
-import { createAppFlow, sortPlayList, type AppFlow } from './appFlow';
+import { createAppFlow, sortPlayList, type AppFlow, type FlowStep } from './appFlow';
+import type { TutorialFrame } from './tutorialPrompt';
 import type { RunFrame } from './runFrame';
 import { createSaveStore, recordRunAttempt } from './storage';
 import { createFakeStorage } from './storage/fakeStorage';
@@ -260,6 +261,59 @@ describe('app flow', () => {
     expect(events).toEqual(stepEvents);
     expect(events.some((e) => e.type === 'mistake')).toBe(true);
     expect(frames[0]?.hud.objective).toBe(GIVE_AND_GO.concept);
+  });
+
+  it('calls step sinks once per run step with game, events and reset; event sinks still fire', () => {
+    const events: GameEvent[] = [];
+    const calls: FlowStep[] = [];
+    const frames: RunFrame[] = [];
+    const store = createSaveStore({ storage: createFakeStorage({}), warn: () => {} });
+    const flow = createAppFlow({
+      content: CONTENT,
+      store,
+      renderer: { drawRun: (_c, f) => frames.push(f), clear: () => {} },
+      seed: () => 1,
+      eventSinks: [(e) => events.push(e)],
+      stepSinks: [(s) => calls.push(s)],
+    });
+    toRun(flow);
+    for (let i = 0; i < 5; i++) flow.frame(1000 / 60);
+    const steps = frames.flatMap((f) => f.steps);
+    expect(steps.length).toBeGreaterThan(0);
+    expect(calls.length).toBe(steps.length);
+    calls.forEach((c, i) => {
+      expect(c.game).toBe(steps[i]!.controller.game);
+      expect(c.events).toEqual(steps[i]!.events);
+      expect(c.reset).toBe(steps[i]!.reset);
+    });
+    expect(events).toEqual(steps.flatMap((s) => s.events));
+  });
+
+  it('calls step sinks once per tutorial step with game, events and reset', () => {
+    const events: GameEvent[] = [];
+    const calls: FlowStep[] = [];
+    const frames: TutorialFrame[] = [];
+    const store = createSaveStore({ storage: createFakeStorage({}), warn: () => {} });
+    const flow = createAppFlow({
+      content: CONTENT,
+      store,
+      renderer: { drawRun: () => {}, clear: () => {} },
+      tutorialRenderer: { drawTutorial: (f) => frames.push(f), clearTutorial: () => {} },
+      eventSinks: [(e) => events.push(e)],
+      stepSinks: [(s) => calls.push(s)],
+      seed: () => 5,
+    });
+    flow.send({ type: 'openTutorial' });
+    for (let i = 0; i < 5; i++) flow.frame(1000 / 60);
+    const steps = frames.flatMap((f) => f.steps);
+    expect(steps.length).toBeGreaterThan(0);
+    expect(calls.length).toBe(steps.length);
+    calls.forEach((c, i) => {
+      expect(c.game).toBe(steps[i]!.game);
+      expect(c.events).toEqual(steps[i]!.events);
+      expect(c.reset).toBe(steps[i]!.reset);
+    });
+    expect(events).toEqual(steps.flatMap((s) => s.events));
   });
 
   it('forwards non-pause presses only while inRun', () => {

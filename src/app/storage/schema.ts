@@ -1,4 +1,4 @@
-// App layer: the v2 save document shape, its defaults and per-section validators.
+// App layer: the v3 save document shape, its defaults and per-section validators.
 // Each validator rebuilds a clean value (unknown fields dropped) or returns undefined when invalid.
 import {
   DEFAULT_BINDINGS,
@@ -42,7 +42,7 @@ export type BindingsSection = readonly Binding[];
 export type SeenTooltipsSection = readonly string[];
 
 export interface SaveDocument {
-  readonly version: 2;
+  readonly version: 3;
   readonly progress: ProgressSection;
   readonly settings: SettingsSection;
   readonly bindings: BindingsSection;
@@ -63,13 +63,13 @@ const PASS_TARGETINGS: readonly PassTargeting[] = ['numbered', 'aim', 'both'];
 /** Returns a fresh object each call, so callers may not share mutable state. */
 export function defaultSaveDocument(): SaveDocument {
   return {
-    version: 2,
+    version: 3,
     progress: { plays: {} },
     settings: {
       passTargeting: 'both',
       doubleClickWindowMs: DEFAULT_DOUBLE_CLICK_WINDOW_MS,
       aimSensitivity: 1,
-      audio: { volume: 1, musicOn: true, sfxOn: true },
+      audio: { volume: 1, musicOn: false, sfxOn: true },
       cues: { floorArrows: true, targetRings: true, prompts: true },
     },
     bindings: DEFAULT_BINDINGS.map(copyBinding),
