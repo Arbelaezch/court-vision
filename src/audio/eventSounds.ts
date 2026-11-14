@@ -2,7 +2,20 @@
 
 import type { GameEvent } from '../sim';
 
-export type SoundId = 'whistle' | 'chime';
+export type SoundId =
+  | 'whistle'
+  | 'chime'
+  | 'dribble'
+  | 'passChest'
+  | 'passBounce'
+  | 'passLob'
+  | 'catch'
+  | 'shotRelease'
+  | 'swish'
+  | 'rimHit'
+  | 'screenContact'
+  | 'footstep'
+  | 'uiClick';
 
 // Only mistakes whistle; a Bad look (runUnsuccessful) is silent. See GameEvent in src/sim/events.ts.
 export function soundForEvent(event: GameEvent): SoundId | null {
@@ -13,15 +26,15 @@ export function soundForEvent(event: GameEvent): SoundId | null {
       return 'chime';
     case 'runUnsuccessful':
       return null;
-    // A completed pass never whistles; pass sounds are a later audio issue.
+    // A completed pass is the catch; it never whistles. The release sound comes from the sound director.
     case 'passCompleted':
-      return null;
-    // Shot sounds are a later audio issue; a blocked shot whistles through its `mistake` event.
+      return 'catch';
+    // The release flick; swish/rim-hit are timed by the sound director. A block also whistles via `mistake`.
     case 'shotResolved':
-      return null;
-    // An automatic screen (decision g4) is not a mistake and never whistles.
+      return 'shotRelease';
+    // An automatic screen (decision g4) is not a mistake and never whistles; contact sounds when it is set.
     case 'screenSet':
-      return null;
+      return 'screenContact';
     default: {
       const unhandled: never = event;
       throw new Error(`Court Vision: unknown game event ${JSON.stringify(unhandled)}`);

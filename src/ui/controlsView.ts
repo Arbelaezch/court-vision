@@ -1,10 +1,12 @@
 import {
   AIM_SENSITIVITY_RANGE,
+  AUDIO_VOLUME_RANGE,
   CONTROL_ACTIONS,
   DOUBLE_CLICK_WINDOW_RANGE,
   PASS_TARGETING_LABELS,
   controlDevice,
   inputLabel,
+  type AudioSettings,
   type ControlSettings,
 } from '../app';
 
@@ -15,8 +17,9 @@ export interface ControlsView {
 export function createControlsView(opts: {
   doc: Document;
   controls: ControlSettings;
+  audio?: AudioSettings;
 }): ControlsView {
-  const { doc, controls } = opts;
+  const { doc, controls, audio } = opts;
 
   function el(tag: string, className?: string, text?: string): HTMLElement {
     const node = doc.createElement(tag);
@@ -73,6 +76,45 @@ export function createControlsView(opts: {
     return row;
   }
 
+  function renderAudio(root: HTMLElement, audio: AudioSettings): void {
+    const { volume, musicOn, sfxOn } = audio.settings();
+    root.appendChild(el('h3', undefined, 'Audio'));
+    root.appendChild(
+      slider(
+        'cv-audio-volume',
+        'Volume',
+        AUDIO_VOLUME_RANGE,
+        volume,
+        `${Math.round(volume * 100)}%`,
+        (v) => {
+          audio.setVolume(v);
+        },
+      ),
+    );
+    const toggles = el('div', 'cv-controls-row');
+    const music = button(
+      'cv-menu-button cv-controls-toggle',
+      'Music',
+      () => {
+        audio.setMusicOn(!musicOn);
+      },
+      'audio-music',
+    );
+    music.setAttribute('aria-pressed', String(musicOn));
+    toggles.appendChild(music);
+    const sfx = button(
+      'cv-menu-button cv-controls-toggle',
+      'Sound effects',
+      () => {
+        audio.setSfxOn(!sfxOn);
+      },
+      'audio-sfx',
+    );
+    sfx.setAttribute('aria-pressed', String(sfxOn));
+    toggles.appendChild(sfx);
+    root.appendChild(toggles);
+  }
+
   function render(root: HTMLElement): void {
     const focusKey = doc.activeElement?.getAttribute('data-focus-key') ?? null;
     focusables = new Map();
@@ -80,6 +122,8 @@ export function createControlsView(opts: {
     const settings = controls.settings();
     const bindings = controls.bindings();
     const capture = controls.capture();
+
+    if (audio !== undefined) renderAudio(root, audio);
 
     root.appendChild(el('h3', undefined, 'Controls'));
 
@@ -240,10 +284,14 @@ export function createControlsView(opts: {
       const unsubscribe = controls.onChange(() => {
         render(root);
       });
+      const unsubscribeAudio = audio?.onChange(() => {
+        render(root);
+      });
       render(root);
 
       return () => {
         unsubscribe();
+        unsubscribeAudio?.();
         controls.cancel();
         root.remove();
       };

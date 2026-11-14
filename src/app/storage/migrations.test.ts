@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_BINDINGS } from '../../input';
-import { CURRENT_VERSION, MIGRATIONS, migrateV1ToV2 } from './migrations';
+import { CURRENT_VERSION, MIGRATIONS, migrateV1ToV2, migrateV2ToV3 } from './migrations';
 
 const V1_FIXTURE: Record<string, unknown> = {
   version: 1,
@@ -56,9 +56,76 @@ describe('migrateV1ToV2', () => {
   });
 });
 
+const V2_FIXTURE: Record<string, unknown> = {
+  version: 2,
+  progress: { plays: { 'give-and-go': { practice: { attempts: 3, successes: 2 } } } },
+  settings: {
+    passTargeting: 'aim',
+    doubleClickWindowMs: 300,
+    aimSensitivity: 1.5,
+    audio: { volume: 0.4, musicOn: true, sfxOn: false },
+    cues: { floorArrows: true, targetRings: false, prompts: true },
+  },
+  bindings: DEFAULT_BINDINGS.map((b) => ({ ...b })),
+  seenTooltips: ['sprint'],
+};
+
+describe('migrateV2ToV3', () => {
+  it('turns music off and keeps volume, sfxOn and everything else', () => {
+    expect(migrateV2ToV3(V2_FIXTURE)).toEqual({
+      ...V2_FIXTURE,
+      version: 3,
+      settings: {
+        passTargeting: 'aim',
+        doubleClickWindowMs: 300,
+        aimSensitivity: 1.5,
+        audio: { volume: 0.4, musicOn: false, sfxOn: false },
+        cues: { floorArrows: true, targetRings: false, prompts: true },
+      },
+    });
+  });
+
+  it('does not mutate its input', () => {
+    const input = structuredClone(V2_FIXTURE);
+    migrateV2ToV3(input);
+    expect(input).toEqual(V2_FIXTURE);
+  });
+
+  it('only bumps the version when settings or settings.audio is not an object', () => {
+    expect(migrateV2ToV3({ version: 2 })).toEqual({ version: 3 });
+    expect(migrateV2ToV3({ version: 2, settings: 'oops' })).toEqual({
+      version: 3,
+      settings: 'oops',
+    });
+    expect(migrateV2ToV3({ version: 2, settings: { audio: [] } })).toEqual({
+      version: 3,
+      settings: { audio: [] },
+    });
+  });
+});
+
 describe('MIGRATIONS', () => {
-  it('registers the v1 step and targets version 2', () => {
+  it('registers the v1 step', () => {
     expect(MIGRATIONS[1]).toBe(migrateV1ToV2);
-    expect(CURRENT_VERSION).toBe(2);
+  });
+
+  it('registers the v2 step and targets version 3', () => {
+    expect(MIGRATIONS[2]).toBe(migrateV2ToV3);
+    expect(CURRENT_VERSION).toBe(3);
+  });
+
+  it('chains v1 through v3 and ends with music off', () => {
+    const v1 = {
+      ...V1_FIXTURE,
+      settings: { ...(V1_FIXTURE.settings as Record<string, unknown>), musicOn: true },
+    };
+    let doc: Record<string, unknown> = v1;
+    for (let v = 1; v < CURRENT_VERSION; v++) doc = MIGRATIONS[v]!(doc);
+    expect(doc.version).toBe(3);
+    expect((doc.settings as { audio: unknown }).audio).toEqual({
+      volume: 0.4,
+      musicOn: false,
+      sfxOn: true,
+    });
   });
 });

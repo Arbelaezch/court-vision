@@ -24,12 +24,29 @@ export interface OscillatorNodeLike extends AudioNodeLike {
   stop(when?: number): void;
 }
 
+export interface AudioBufferLike {
+  readonly length: number;
+  readonly sampleRate: number;
+  // Return type is widened so the DOM AudioBuffer (Float32Array<ArrayBuffer>) still fits.
+  getChannelData(channel: number): Float32Array<ArrayBufferLike>;
+}
+
+export interface AudioBufferSourceNodeLike extends AudioNodeLike {
+  buffer: AudioBufferLike | null;
+  loop: boolean;
+  start(when?: number): void;
+  stop(when?: number): void;
+}
+
 export interface AudioContextLike {
+  readonly sampleRate: number;
   readonly currentTime: number;
   readonly state: AudioContextState;
   readonly destination: AudioNodeLike;
   createGain(): GainNodeLike;
   createOscillator(): OscillatorNodeLike;
+  createBuffer(numberOfChannels: number, length: number, sampleRate: number): AudioBufferLike;
+  createBufferSource(): AudioBufferSourceNodeLike;
   resume(): Promise<void>;
   close(): Promise<void>;
 }

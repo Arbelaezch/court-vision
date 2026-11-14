@@ -19,5 +19,11 @@ export {
   type SettingsSection,
 } from './schema';
 export { isMastered, modeProgressFor, recordRunAttempt, type RunAttemptRecord } from './progress';
-export { CURRENT_VERSION, MIGRATIONS, migrateV1ToV2, type Migration } from './migrations';
+export {
+  CURRENT_VERSION,
+  MIGRATIONS,
+  migrateV1ToV2,
+  migrateV2ToV3,
+  type Migration,
+} from './migrations';
 export { SAVE_STORAGE_KEY, createSaveStore, type SaveStore, type SaveStoreOptions } from './store';

@@ -1,12 +1,13 @@
 import './style.css';
 import {
   bootApp,
+  createAudioSettings,
   createControlSettings,
   createHumanInput,
   createSaveStore,
   handleMenuEvent,
 } from './app';
-import { mountAudio } from './audio';
+import { bindUiClicks, mountAudio } from './audio';
 import { mountInput } from './input';
 import { mountRenderer, parseDevView } from './render';
 import { createControlsView, createCuePromptOverlay, createRunHud, createScreenMenus } from './ui';
@@ -23,6 +24,10 @@ const { input } = mountInput();
 if (dev === null) {
   const store = createSaveStore();
   const controls = createControlSettings({ store, input });
+  const audioSettings = createAudioSettings({ store, output: audio.engine });
+  bindUiClicks(app, () => {
+    audio.engine.play('uiClick');
+  });
   const hud = createRunHud({ container: app, doc: document });
   const prompt = createCuePromptOverlay({ container: app, doc: document });
   prompt.show(null);
@@ -75,13 +80,13 @@ if (dev === null) {
     tutorialActionsFor: human.actionsForGame,
     visibility: { target: document, isHidden: () => document.hidden },
     actionsFor: human.actionsFor,
-    eventSinks: [audio.engine.handleEvent],
+    stepSinks: [audio.engine.handleStep],
     onPress: human.press,
   });
   const menus = createScreenMenus({
     container: app,
     doc: document,
-    settingsView: createControlsView({ doc: document, controls }),
+    settingsView: createControlsView({ doc: document, controls, audio: audioSettings }),
     onEvent: (e) => {
       handleMenuEvent(flow, input, human, e);
     },

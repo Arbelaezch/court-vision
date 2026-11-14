@@ -7,8 +7,10 @@
 // }
 // v2 nests the audio fields under settings.audio and replaces the single showCues switch with
 // per-cue toggles settings.cues = { floorArrows, targetRings, prompts } (decision g8).
+// v3 has the same shape as v2, but music defaults off: settings.audio.musicOn is set to false, since
+// any stored musicOn predates a music setting UI and is the old default rather than a player choice.
 
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 
 export type Migration = (doc: Record<string, unknown>) => Record<string, unknown>;
 
@@ -30,6 +32,16 @@ export function migrateV1ToV2(doc: Record<string, unknown>): Record<string, unkn
   return out;
 }
 
+/** Never throws; settings or settings.audio that are not objects pass through for section repair. */
+export function migrateV2ToV3(doc: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...doc, version: 3 };
+  if (isRecord(doc.settings) && isRecord(doc.settings.audio)) {
+    out.settings = { ...doc.settings, audio: { ...doc.settings.audio, musicOn: false } };
+  }
+  return out;
+}
+
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: migrateV1ToV2,
+  2: migrateV2ToV3,
 };

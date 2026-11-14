@@ -21,7 +21,7 @@ describe('soundForEvent', () => {
     expect(soundForEvent({ type: 'runUnsuccessful', tick: 10, reason: 'Bad look' })).toBeNull();
   });
 
-  it('does not whistle a completed pass', () => {
+  it('catches a completed pass without a whistle', () => {
     expect(
       soundForEvent({
         type: 'passCompleted',
@@ -31,10 +31,10 @@ describe('soundForEvent', () => {
         receiverId: 1,
         receiverSet: true,
       }),
-    ).toBeNull();
+    ).toBe('catch');
   });
 
-  it('plays nothing for a resolved shot (a block whistles through its mistake event)', () => {
+  it('plays the release flick for a resolved shot (a block also whistles via its mistake)', () => {
     expect(
       soundForEvent({
         type: 'shotResolved',
@@ -48,10 +48,12 @@ describe('soundForEvent', () => {
         blockerId: 5,
         reason: 'Contested shot',
       }),
-    ).toBeNull();
+    ).toBe('shotRelease');
   });
 
-  it('plays nothing for an automatic screen being set', () => {
-    expect(soundForEvent({ type: 'screenSet', tick: 10, screenerId: 4, targetId: 0 })).toBeNull();
+  it('plays screen contact when an automatic screen is set', () => {
+    expect(soundForEvent({ type: 'screenSet', tick: 10, screenerId: 4, targetId: 0 })).toBe(
+      'screenContact',
+    );
   });
 });

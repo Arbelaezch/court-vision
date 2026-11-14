@@ -263,3 +263,21 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Hidden tab opens pause menu and does not auto-resume; Esc while paused resumes; Esc on Play Select/placeholders goes to main menu; quit returns to Play Select for the same mode; Practice opens Play Select; Scrimmage is a placeholder
 - Decided by: assumed on 2026-11-14
 - Why: Low-impact, reversible UI behaviour not settled by the documents
+
+## Should existing saves with musicOn true be migrated to off?
+- Kind: implementation
+- Decision: Yes: save v2 to v3 migration sets music off; no screen could change it before, so a saved on is the old default
+- Decided by: assumed on 2026-11-14
+- Why: Issue says music is off unless enabled; reversible
+
+## Whose sprint footsteps play, and when does screen contact sound?
+- Kind: implementation
+- Decision: Footsteps only for the controlled player; screen contact plays when the screen is set (no separate contact event in the sim)
+- Decided by: assumed on 2026-11-14
+- Why: Low-impact audio tuning, easily changed
+
+## Does music keep playing across screens and while paused?
+- Kind: implementation
+- Decision: Yes, music continues across screens and while a run is paused
+- Decided by: assumed on 2026-11-14
+- Why: Low-impact, reversible behaviour choice
