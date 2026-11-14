@@ -3,21 +3,50 @@ import { createCourtScene } from './courtScene';
 import { createDevScene } from './devView';
 import type { DevView } from './devView';
 import { disposeObject3D } from './dispose';
+import { loadCastContent } from '../content';
 import { createCuePromptOverlay } from '../ui';
-import { fitTacticalCamera } from './tacticalCamera';
+import { characterFitHeight } from './characters';
+import { collectCastLabels, createLabelAtlas } from './labelAtlas';
+import { createLiveRunView } from './liveRunView';
+import type { LiveRunView } from './liveRunView';
+import { createPassTargetBadgeAtlas } from './passTargetBadges';
+import { clientToNdc, fitTacticalCamera, screenToCourt } from './tacticalCamera';
 import { bindVisibilityPause } from './visibilityPause';
+import type { CourtPoint } from '../sim';
+
+export interface MountedRenderer {
+  dispose(): void;
+  /** The live run view; null in dev views. */
+  run: LiveRunView | null;
+  /** Court position under a client pixel, or null when it misses the floor. */
+  pointerToCourt(clientX: number, clientY: number): CourtPoint | null;
+}
 
 export function mountRenderer(
   container: HTMLElement,
   opts: { dev?: DevView | null } = {},
-): () => void {
+): MountedRenderer {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
 
   const devScene = opts.dev ? createDevScene(opts.dev) : null;
-  const { scene, camera } = devScene ?? createCourtScene();
-  const topHeight = devScene?.topHeight;
+  let liveAtlases: Array<{ dispose(): void }> = [];
+  let run: LiveRunView | null = null;
+  let courtScene: ReturnType<typeof createCourtScene>;
+  let topHeight: number | undefined = devScene?.topHeight;
+  if (devScene) {
+    courtScene = devScene;
+  } else {
+    const cast = loadCastContent();
+    topHeight = characterFitHeight(cast.bodyTypes);
+    courtScene = createCourtScene({ topHeight });
+    const labels = createLabelAtlas(collectCastLabels(cast.teams));
+    const badgeLabels = createPassTargetBadgeAtlas();
+    liveAtlases = [labels, badgeLabels];
+    run = createLiveRunView({ scene: courtScene.scene, cast, labels, badgeLabels });
+  }
+  const { scene, camera } = courtScene;
 
   const resize = (): void => {
     const width = container.clientWidth || 1;
@@ -69,15 +98,25 @@ export function mountRenderer(
     },
   });
 
-  return () => {
-    unbindVisibility();
-    renderer.setAnimationLoop(null);
-    overlay?.remove();
-    promptOverlay?.dispose();
-    window.removeEventListener('resize', resize);
-    if (devScene) devScene.dispose();
-    else disposeObject3D(scene);
-    renderer.dispose();
-    renderer.domElement.remove();
+  return {
+    run,
+    pointerToCourt(clientX, clientY) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      if (!(rect.width > 0 && rect.height > 0)) return null;
+      return screenToCourt(camera, clientToNdc(clientX, clientY, rect));
+    },
+    dispose() {
+      unbindVisibility();
+      renderer.setAnimationLoop(null);
+      overlay?.remove();
+      promptOverlay?.dispose();
+      window.removeEventListener('resize', resize);
+      run?.dispose();
+      for (const atlas of liveAtlases) atlas.dispose();
+      if (devScene) devScene.dispose();
+      else disposeObject3D(scene);
+      renderer.dispose();
+      renderer.domElement.remove();
+    },
   };
 }

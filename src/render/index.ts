@@ -9,6 +9,9 @@ export {
 export { bindVisibilityPause } from './visibilityPause';
 export type { VisibilityPauseOptions } from './visibilityPause';
 export { mountRenderer } from './mountRenderer';
+export type { MountedRenderer } from './mountRenderer';
+export { createLiveRunView } from './liveRunView';
+export type { LiveRunView } from './liveRunView';
 export {
   MARKER_TOP_OFFSET_M,
   bodyProportions,
