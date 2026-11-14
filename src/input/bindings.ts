@@ -76,6 +76,14 @@ export function gamepadAxisCode(index: number, sign: '+' | '-'): InputCode {
 const GAMEPAD_BUTTON_RE = /^GamepadButton(0|[1-9]\d?)$/;
 const GAMEPAD_AXIS_RE = /^GamepadAxis(0|[1-9]\d?)[+-]$/;
 
+export function isGamepadInput(code: InputCode): boolean {
+  return code.startsWith('Gamepad');
+}
+
+export function isGamepadAxisInput(code: InputCode): boolean {
+  return GAMEPAD_AXIS_RE.test(code);
+}
+
 export function validateBindings(bindings: readonly Binding[]): void {
   const seen = new Set<string>();
   const heldInputs = new Set<InputCode>();

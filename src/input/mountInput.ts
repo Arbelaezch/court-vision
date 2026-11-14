@@ -1,6 +1,6 @@
 // Input layer: mounts keyboard and mouse listeners that feed the DOM-free input mapper.
 
-import { DEFAULT_BINDINGS, mouseButtonCode } from './bindings';
+import { mouseButtonCode } from './bindings';
 import { createInputMapper } from './mapper';
 import { mountGamepad } from './mountGamepad';
 import type { MountedGamepad, MountGamepadOptions } from './mountGamepad';
@@ -57,14 +57,23 @@ function hasShortcutModifier(e: Event): boolean {
   );
 }
 
+/** Sliders keep their native arrow-key behaviour even though arrows are bound. */
+function isRangeInput(t: EventTarget | null): boolean {
+  return (
+    t !== null &&
+    'getAttribute' in t &&
+    typeof t.getAttribute === 'function' &&
+    (t as Element).getAttribute('type') === 'range'
+  );
+}
+
 export function mountInput(options: MountInputOptions = {}): MountedInput {
   const target = options.target ?? window;
-  const bindings = options.bindings ?? DEFAULT_BINDINGS;
   const { gamepad: gamepadOptions, ...mapperOptions } = options;
   const input = createInputMapper(mapperOptions);
   const gamepad =
     gamepadOptions === false ? null : mountGamepad(input, { ...gamepadOptions, target });
-  const boundInputs = new Set(bindings.map((b) => b.input));
+  const isBound = (code: string): boolean => input.config().bindings.some((b) => b.input === code);
   let mounted = true;
 
   function onEvent(e: Event): void {
@@ -76,7 +85,7 @@ export function mountInput(options: MountInputOptions = {}): MountedInput {
         if (readRepeat(e)) return;
         if (code === null) return;
         if (hasShortcutModifier(e)) return;
-        if (boundInputs.has(code)) e.preventDefault();
+        if (input.isCapturing() || (isBound(code) && !isRangeInput(e.target))) e.preventDefault();
         input.press(code);
         return;
       }
@@ -104,7 +113,7 @@ export function mountInput(options: MountInputOptions = {}): MountedInput {
         input.releaseAll();
         return;
       case 'contextmenu':
-        if (boundInputs.has(mouseButtonCode(2))) e.preventDefault();
+        if (input.isCapturing() || isBound(mouseButtonCode(2))) e.preventDefault();
         return;
     }
   }

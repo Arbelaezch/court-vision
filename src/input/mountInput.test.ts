@@ -115,6 +115,36 @@ describe('mountInput', () => {
     expect(mounted.input.pointer()).toBeNull();
   });
 
+  describe('arrow keys on range inputs', () => {
+    const slider = { getAttribute: (k: string) => (k === 'type' ? 'range' : null) };
+    const button = { getAttribute: (k: string) => (k === 'type' ? 'button' : null) };
+    const arrowBindings = [{ action: 'moveLeft' as const, input: 'ArrowLeft' }];
+
+    function keydownOn(s: ReturnType<typeof setup>, t: unknown, code = 'ArrowLeft'): Event {
+      const e = new Event('keydown', { cancelable: true });
+      Object.defineProperty(e, 'target', { value: t });
+      Object.defineProperty(e, 'code', { value: code });
+      Object.defineProperty(e, 'repeat', { value: false });
+      s.target.dispatchEvent(e);
+      return e;
+    }
+
+    it('does not prevent default on a range input', () => {
+      expect(keydownOn(setup(arrowBindings), slider).defaultPrevented).toBe(false);
+    });
+
+    it('still prevents default for a bound key on a non-range target', () => {
+      expect(keydownOn(setup(arrowBindings), button).defaultPrevented).toBe(true);
+    });
+
+    it('always prevents default while capturing', () => {
+      const s = setup(arrowBindings);
+      s.mounted.input.startCapture(() => {});
+      expect(keydownOn(s, slider).defaultPrevented).toBe(true);
+      expect(keydownOn(s, slider, 'KeyZ').defaultPrevented).toBe(true);
+    });
+  });
+
   it('unmount stops listening and is safe twice', () => {
     const { mounted, actions, fire } = setup();
     mounted.unmount();

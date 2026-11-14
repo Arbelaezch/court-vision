@@ -24,8 +24,10 @@ export function createScreenMenus(opts: {
   container: HTMLElement;
   doc: Document;
   onEvent: (e: ScreenEvent) => void;
+  settingsView?: { mount(parent: HTMLElement): () => void };
 }): ScreenMenus {
-  const { container, doc, onEvent } = opts;
+  const { container, doc, onEvent, settingsView } = opts;
+  let unmountView: (() => void) | null = null;
   const root = doc.createElement('div');
   root.className = 'cv-screens';
   container.appendChild(root);
@@ -95,7 +97,13 @@ export function createScreenMenus(opts: {
       case 'scrimmage':
       case 'settings': {
         const p = panel(PLACEHOLDER_TITLES[state.screen], 'h2');
-        p.appendChild(el('p', undefined, 'Coming soon.'));
+        if (state.screen === 'settings' && settingsView !== undefined) {
+          const body = el('div', 'cv-settings-body');
+          p.appendChild(body);
+          unmountView = settingsView.mount(body);
+        } else {
+          p.appendChild(el('p', undefined, 'Coming soon.'));
+        }
         p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
         root.appendChild(p);
         return;
@@ -208,11 +216,15 @@ export function createScreenMenus(opts: {
     show(state, labels) {
       if (sameScreen(last, state)) return;
       last = state;
+      unmountView?.();
+      unmountView = null;
       root.replaceChildren();
       root.className = state.screen === 'inRun' ? 'cv-screens' : 'cv-screens cv-screens-backdrop';
       build(state, labels);
     },
     dispose() {
+      unmountView?.();
+      unmountView = null;
       root.remove();
     },
   };

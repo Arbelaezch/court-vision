@@ -16,11 +16,14 @@ export {
   mouseButtonCode,
   gamepadButtonCode,
   gamepadAxisCode,
+  isGamepadInput,
+  isGamepadAxisInput,
   type Binding,
   type Gesture,
   type InputCode,
 } from './bindings';
 export {
+  CAPTURE_AXIS_THRESHOLD,
   createInputMapper,
   type InputMapper,
   type InputMapperOptions,

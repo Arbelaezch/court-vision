@@ -121,6 +121,76 @@ body {
   text-align: left;
 }
 
+.cv-controls h3 {
+  margin: 0 0 12px;
+}
+
+.cv-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.cv-controls-toggle {
+  display: inline-block;
+  width: auto;
+  margin: 0;
+}
+
+.cv-controls-toggle[aria-pressed='true'] {
+  font-weight: bold;
+  border: 2px solid #ffd54a;
+}
+
+.cv-bindings {
+  width: 100%;
+  margin: 12px 0;
+  border-collapse: collapse;
+}
+
+.cv-bindings th,
+.cv-bindings td {
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.cv-bind-slot {
+  margin: 2px 4px 2px 0;
+  padding: 6px 10px;
+  font: 14px sans-serif;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cv-bind-slot:focus-visible {
+  outline: 3px solid #ffd54a;
+  outline-offset: 2px;
+}
+
+.cv-bind-slot[aria-pressed='true'] {
+  font-weight: bold;
+  border: 2px dashed #ffd54a;
+}
+
+.cv-controls-status {
+  min-height: 1.4em;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.cv-controls-conflict {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 2px solid #ffd54a;
+  border-radius: 8px;
+}
+
 .cv-hud {
   position: absolute;
   top: 12px;
