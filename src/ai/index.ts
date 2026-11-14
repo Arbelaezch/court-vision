@@ -47,9 +47,12 @@ export {
 } from './defense';
 export type { DefenderBehavior, DefenderContext, DefenderIntent } from './defense';
 export type { PlayRunState, PracticeRunOptions } from './playRun';
+export { OPENING_SEPARATION_M, isTeammateOpen } from './openings';
 export {
+  COVERAGE_PICK_SALT,
   RESULT_HOLD_SECONDS,
   RESULT_HOLD_STEPS,
+  coverageForRun,
   quitRunController,
   restartRunController,
   startRunController,

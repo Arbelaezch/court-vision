@@ -5,11 +5,6 @@ export interface ScreenMenus {
   dispose(): void;
 }
 
-const PLACEHOLDER_TITLES = {
-  scrimmage: 'Scrimmage',
-  settings: 'Settings',
-} as const;
-
 function sameScreen(a: ScreenState | null, b: ScreenState): boolean {
   if (a === null || a.screen !== b.screen) return false;
   const modeA = 'modeId' in a ? a.modeId : undefined;
@@ -100,10 +95,9 @@ export function createScreenMenus(opts: {
         root.appendChild(bar);
         return;
       }
-      case 'scrimmage':
       case 'settings': {
-        const p = panel(PLACEHOLDER_TITLES[state.screen], 'h2');
-        if (state.screen === 'settings' && settingsView !== undefined) {
+        const p = panel('Settings', 'h2');
+        if (settingsView !== undefined) {
           const body = el('div', 'cv-settings-body');
           p.appendChild(body);
           unmountView = settingsView.mount(body);

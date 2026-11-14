@@ -15,12 +15,15 @@
 // touches storage: the app layer records the attempt.
 //
 // Run `n` (0-based runIndex) uses seed `(options.seed + n) >>> 0`; every reset or restart moves to
-// the next run.
+// the next run. Scrimmage rules also pick that run's coverage from the run seed (coverageForRun), so
+// the pick is replayable and every reset re-picks.
 //
 // Pure and deterministic: no timers, no Math.random, no wall clock, no mutation of inputs.
 import type { ModeConfig, ModeId, PlayScenario } from '../content';
 import {
   SIM_HZ,
+  createRng,
+  pickOne,
   type GameEvent,
   type GameState,
   type MovementSetup,
@@ -31,6 +34,14 @@ import {
 } from '../sim';
 import { startPracticeRun, stepPracticeRun, type PlayRunState } from './playRun';
 import { startReferee, stepReferee, type RefereeState, type RunOutcome } from './referee';
+
+/** Salt mixed into the run seed so the coverage pick doesn't correlate with the sim's RNG stream. */
+export const COVERAGE_PICK_SALT = 0x9e3779b9;
+
+/** The coverage id Scrimmage uses for a run with seed `runSeed`: uniform over play.coverages. */
+export function coverageForRun(play: PlayScenario, runSeed: number): string {
+  return pickOne(createRng((runSeed ^ COVERAGE_PICK_SALT) >>> 0), play.coverages).id;
+}
 
 /** How long the result banner holds the final frame after a success or unsuccessful run, s. */
 export const RESULT_HOLD_SECONDS = 1.5;
@@ -44,7 +55,10 @@ export interface RunControllerOptions {
   shooting?: ShootingSetup;
   /** Default: play.playableRoles[0]. */
   humanRole?: RoleId;
-  /** Practice rules default to play.practiceCoverage; Scrimmage rules require it. */
+  /**
+   * Practice rules default to play.practiceCoverage; Scrimmage rules pick one per run from
+   * play.coverages with coverageForRun unless given.
+   */
   coverageId?: string;
 }
 
@@ -87,7 +101,9 @@ function buildRun(
 ): RunControllerState {
   const seed = (options.seed + runIndex) >>> 0;
   const coverageId =
-    mode.rules === 'practice' ? (options.coverageId ?? play.practiceCoverage) : options.coverageId;
+    mode.rules === 'practice'
+      ? (options.coverageId ?? play.practiceCoverage)
+      : (options.coverageId ?? coverageForRun(play, seed));
   const liveCoverageId = mode.defense === 'live' ? coverageId : undefined;
   const { game, run } = startPracticeRun(play, {
     seed,

@@ -19,8 +19,8 @@ export interface PlayProgressRow {
   readonly modes: readonly PlayModeStatus[];
 }
 
-// DESIGN_DOC 8.4 tracks progress in both v1 modes; Scrimmage has no mode file until #29, so its
-// name falls back here.
+// DESIGN_DOC 8.4 tracks progress in both v1 modes; the names here are the fallback when a mode
+// file is not loaded.
 export const V1_PROGRESS_MODES: readonly ProgressModeLabel[] = [
   { id: 'practice', name: 'Practice' },
   { id: 'scrimmage', name: 'Scrimmage' },

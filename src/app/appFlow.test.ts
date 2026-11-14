@@ -222,6 +222,35 @@ describe('app flow', () => {
   it('opens Scrimmage from the main menu with an empty store', () => {
     const { flow } = setup();
     expect(flow.send({ type: 'openScrimmage' }).ok).toBe(true);
+    expect(flow.state()).toEqual({ screen: 'playSelect', modeId: 'scrimmage' });
+  });
+
+  it('starts a live 5-on-5 Scrimmage Give-and-Go run with a full shot clock', () => {
+    const runs: RunControllerState[] = [];
+    const frames: RunFrame[] = [];
+    const store = createSaveStore({ storage: createFakeStorage({}), warn: () => {} });
+    const flow = createAppFlow({
+      content: CONTENT,
+      store,
+      renderer: {
+        drawRun: (c, f) => {
+          runs.push(c);
+          frames.push(f);
+        },
+        clear: () => {},
+      },
+      seed: () => 1,
+    });
+    flow.send({ type: 'openScrimmage' });
+    flow.send({ type: 'selectPlay', playId: GIVE_AND_GO.id });
+    expect(flow.state()).toEqual({ screen: 'inRun', modeId: 'scrimmage', playId: GIVE_AND_GO.id });
+    flow.frame(16);
+    const run = runs[runs.length - 1]!;
+    expect(run.mode.id).toBe('scrimmage');
+    expect(run.game.players).toHaveLength(10);
+    expect(run.game.defenseMode).toBe('live');
+    expect(GIVE_AND_GO.coverages.map((c) => c.id)).toContain(run.referee.coverageId);
+    expect(frames[frames.length - 1]!.hud.shotClockSeconds).toBe(24);
   });
 
   it('labels reflect a run recorded after the flow was created', () => {

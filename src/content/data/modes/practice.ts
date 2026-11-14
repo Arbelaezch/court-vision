@@ -10,4 +10,5 @@ export const PRACTICE_MODE_DATA = {
   defense: 'cones',
   speedMultiplier: 1,
   shotClockSeconds: null,
+  decisionCueDelaySeconds: null,
 };

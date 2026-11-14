@@ -29,6 +29,7 @@ const SCRIMMAGE_TEST: ModeConfig = {
   rules: 'scrimmage',
   cueLevel: 'reduced',
   defense: 'cones',
+  decisionCueDelaySeconds: 1.5,
 };
 const CUT_SPOT = { x: 0.8, z: -4 };
 

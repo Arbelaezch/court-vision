@@ -14,6 +14,9 @@ import { advanceBallFlight, startPass } from './passing';
 import type { CourtPoint, GameState, PlayerCommand, PlayerState, SimAction } from './state';
 import { takeShot } from './takeShot';
 
+/** The mistake reason emitted when the shot clock runs out before a shot is released. */
+export const SHOT_CLOCK_VIOLATION_REASON = 'Shot clock';
+
 function clampToUnitLength(x: number, z: number): CourtPoint {
   const len = Math.hypot(x, z);
   if (len > 1) {
@@ -206,9 +209,18 @@ export function stepGame(
   // catch sees the receiver's velocity on this step (./passing.ts).
   next.events.push(...advanceBallFlight(next, state.tick + 1));
 
-  // Shot-clock violations are not simulated yet.
+  // Shot-clock violations are turnovers (decision g5); the referee whistles any sim mistake
+  // (./events.ts). It fires once, on the 1 -> 0 step, and a released shot (dead ball) beats the buzzer.
   if (next.shotClockTicks !== null && next.shotClockTicks > 0) {
     next.shotClockTicks -= 1;
+    if (next.shotClockTicks === 0 && next.ball.kind !== 'dead') {
+      next.events.push({
+        type: 'mistake',
+        tick: state.tick + 1,
+        kind: 'turnover',
+        reason: SHOT_CLOCK_VIOLATION_REASON,
+      });
+    }
   }
 
   next.tick += 1;
