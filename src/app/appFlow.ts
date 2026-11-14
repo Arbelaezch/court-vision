@@ -3,7 +3,7 @@
 import type { RunControllerOptions, RunControllerState } from '../ai';
 import type { MasteryTuningSpec, ModeId, ModeTable, PlayScenario, ScenarioTable } from '../content';
 import type { PressAction } from '../input';
-import type { GameEventSink, SimAction } from '../sim';
+import type { GameEventSink, GameState, SimAction } from '../sim';
 import {
   buildProgressRows,
   progressModeLabels,
@@ -22,6 +22,8 @@ import {
   type TransitionResult,
 } from './screens';
 import type { SaveStore } from './storage';
+import { buildTutorialFrame, type TutorialFrame } from './tutorialPrompt';
+import { createTutorialSession, type TutorialSession } from './tutorialSession';
 
 export type MovementSetup = RunControllerOptions['movement'];
 export type PassingSetup = RunControllerOptions['passing'];
@@ -32,6 +34,13 @@ export interface RunRenderer {
   drawRun(controller: RunControllerState, frame: RunFrame): void;
   /** Called when the session ends (quit or dispose). */
   clear(): void;
+}
+
+export interface TutorialRenderer {
+  /** Called every frame while the tutorial session exists. */
+  drawTutorial(frame: TutorialFrame): void;
+  /** Called when the tutorial ends (exit, finish or dispose). */
+  clearTutorial(): void;
 }
 
 export interface PlayListItem {
@@ -70,7 +79,11 @@ export interface AppFlowOptions {
   actionsFor?: (controller: RunControllerState) => readonly SimAction[];
   /** Called synchronously with every sim event of every step, in order. */
   eventSinks?: readonly GameEventSink[];
-  /** Non-pause press actions, forwarded only while the screen is inRun. */
+  /** Tutorial sandbox renderer; omit to run the tutorial headless. */
+  tutorialRenderer?: TutorialRenderer;
+  /** Per-step SimActions for the human in the tutorial sandbox; default () => []. */
+  tutorialActionsFor?: (game: GameState) => readonly SimAction[];
+  /** Non-pause press actions, forwarded while the screen is inRun or tutorial. */
   onPress?: (action: PressAction) => void;
 }
 
@@ -81,6 +94,7 @@ export interface AppFlow {
   frame(frameDeltaMs: number): void;
   labels(): MenuLabels;
   session(): RunSession | null;
+  tutorial(): TutorialSession | null;
   onChange(listener: (state: ScreenState) => void): () => void;
   dispose(): void;
 }
@@ -101,6 +115,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
   const { content, store, renderer } = options;
   const seed = options.seed ?? randomSeed;
   const actionsFor = options.actionsFor ?? (() => []);
+  const tutorialActionsFor = options.tutorialActionsFor ?? (() => []);
   const eventSinks = options.eventSinks ?? [];
   const machine = createScreenMachine();
   const unsubscribers = new Set<() => void>();
@@ -115,6 +130,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
   let session: RunSession | null = null;
   let activePlay: PlayScenario | null = null;
   let unbindVisibility: (() => void) | null = null;
+  let tutorial: TutorialSession | null = null;
 
   function handleClockPause(): void {
     if (machine.state().screen === 'inRun') machine.send({ type: 'pause' });
@@ -134,6 +150,12 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
     session = null;
     activePlay = null;
     unbindVisibility = null;
+  }
+
+  function endTutorial(): void {
+    if (tutorial === null) return;
+    tutorial = null;
+    options.tutorialRenderer?.clearTutorial();
   }
 
   function send(event: ScreenEvent): TransitionResult {
@@ -190,6 +212,18 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
       case 'quit':
         endSession();
         return machine.send(event);
+      case 'openTutorial':
+        endTutorial();
+        tutorial = createTutorialSession({
+          seed: seed(),
+          movement: content.movement,
+          passing: content.passing,
+          shooting: content.shooting,
+        });
+        return machine.send(event);
+      case 'back':
+        if (state.screen === 'tutorial') endTutorial();
+        return machine.send(event);
       default:
         return machine.send(event);
     }
@@ -200,13 +234,32 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
     send,
     handleAction(action) {
       if (action !== 'pause') {
-        if (machine.state().screen === 'inRun') options.onPress?.(action);
+        const screen = machine.state().screen;
+        if (screen === 'inRun' || screen === 'tutorial') options.onPress?.(action);
         return;
       }
       const event = escapeEvent(machine.state().screen);
       if (event !== null) send(event);
     },
     frame(frameDeltaMs) {
+      if (tutorial !== null) {
+        const active = tutorial;
+        const steps = active.frame(frameDeltaMs, tutorialActionsFor);
+        for (const step of steps) {
+          for (const event of step.events) for (const sink of eventSinks) sink(event);
+        }
+        const state = active.state();
+        options.tutorialRenderer?.drawTutorial(
+          buildTutorialFrame(
+            state,
+            steps,
+            store.get('bindings'),
+            store.get('settings').passTargeting,
+          ),
+        );
+        if (state.status === 'finished') send({ type: 'back' });
+        return;
+      }
       if (session === null || activePlay === null) return;
       const steps = session.frame(frameDeltaMs, actionsFor);
       for (const step of steps) {
@@ -220,6 +273,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
       progress: buildProgressRows(playIds, progressModes, store.get('progress'), masteredSuccesses),
     }),
     session: () => session,
+    tutorial: () => tutorial,
     onChange(listener) {
       const off = machine.onChange(listener);
       unsubscribers.add(off);
@@ -230,6 +284,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
     },
     dispose() {
       if (session !== null) endSession();
+      endTutorial();
       for (const off of unsubscribers) off();
       unsubscribers.clear();
     },

@@ -55,6 +55,24 @@ if (dev === null) {
         prompt.show(null);
       },
     },
+    tutorialRenderer: {
+      drawTutorial(frame) {
+        mounted.run?.drawGame({
+          game: frame.game,
+          humanRole: frame.humanRole,
+          steps: frame.steps,
+          cues: [],
+        });
+        hud.update(frame.hud);
+        prompt.show(frame.prompt);
+      },
+      clearTutorial() {
+        mounted.run?.clear();
+        hud.update(null);
+        prompt.show(null);
+      },
+    },
+    tutorialActionsFor: human.actionsForGame,
     visibility: { target: document, isHidden: () => document.hidden },
     actionsFor: human.actionsFor,
     eventSinks: [audio.engine.handleEvent],
@@ -71,7 +89,7 @@ if (dev === null) {
   const render = (): void => {
     const state = flow.state();
     menus.show(state, flow.labels());
-    if (state.screen !== 'inRun' && state.screen !== 'paused') {
+    if (state.screen !== 'inRun' && state.screen !== 'paused' && state.screen !== 'tutorial') {
       hud.update(null);
       prompt.show(null);
     }

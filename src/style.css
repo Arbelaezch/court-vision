@@ -202,6 +202,27 @@ body {
   pointer-events: none;
 }
 
+.cv-tutorial-bar .cv-menu-button {
+  width: auto;
+  margin: 0;
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
+.cv-tutorial-bar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  font: 13px sans-serif;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  pointer-events: auto;
+}
+
 .cv-run-hud {
   position: absolute;
   top: 44px;

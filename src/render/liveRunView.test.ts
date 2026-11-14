@@ -6,6 +6,7 @@ import { DEFAULT_CUE_TOGGLES, loadCastContent, loadMode } from '../content';
 import type { PlayScenario } from '../content';
 import { loadAppContent } from '../app/boot';
 import { buildRunFrame } from '../app/runFrame';
+import { createGame } from '../sim';
 import { createCourtScene } from './courtScene';
 import { collectCastLabels, createLabelAtlas } from './labelAtlas';
 import { createLiveRunView } from './liveRunView';
@@ -49,6 +50,27 @@ describe('live run view', () => {
     expect(badges.children.filter((c) => c.visible)).toHaveLength(4);
     expect(all).toContain('ball');
     expect(all).toContain('cues');
+  });
+
+  it('drawGame draws a bare cones game', () => {
+    const { scene, view } = setup();
+    const game = createGame({
+      seed: 1,
+      movement: CONTENT.movement,
+      passing: CONTENT.passing,
+      shooting: CONTENT.shooting,
+      defenseMode: 'cones',
+    });
+    view.drawGame({
+      game,
+      humanRole: 'PG',
+      steps: [{ game, events: [], reset: false }],
+      cues: [],
+    });
+    const all = names(scene);
+    expect(all.filter((n) => n.startsWith('jersey-'))).toHaveLength(5);
+    expect(all.filter((n) => n.startsWith('cone-label-'))).toHaveLength(5);
+    expect(all).toContain('ball');
   });
 
   it('handles a reset step', () => {

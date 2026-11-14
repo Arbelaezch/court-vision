@@ -62,3 +62,16 @@ export type {
   RunControllerStatus,
   RunControllerStep,
 } from './runController';
+export {
+  TUTORIAL_FINISH_HOLD_STEPS,
+  TUTORIAL_STEP_HOLD_STEPS,
+  currentTutorialStep,
+  startTutorial,
+  stepTutorial,
+} from './tutorialSandbox';
+export type {
+  TutorialSandboxOptions,
+  TutorialState,
+  TutorialStatus,
+  TutorialStepResult,
+} from './tutorialSandbox';

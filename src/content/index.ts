@@ -77,3 +77,5 @@ export type { ModeConfig, ModeId, ModeRules, ModeTable } from './modes';
 export { BUNDLED_PLAY_SOURCES, loadPlaybook } from './playbook';
 export { SCENARIO_KINDS, loadScenario, loadScenarios } from './scenarios';
 export type { Scenario, ScenarioKind, ScenarioTable } from './scenarios';
+export { TUTORIAL_CONTROLS, TUTORIAL_FINISHED, TUTORIAL_STEPS, tutorialTokens } from './tutorial';
+export type { TutorialControl, TutorialGoal, TutorialStep, TutorialStepId } from './tutorial';

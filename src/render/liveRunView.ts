@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import type { RunControllerState } from '../ai';
-import type { CastContent } from '../content';
+import type { CastContent, Cue } from '../content';
 import type { RunFrame } from '../app/runFrame';
 import { FIXED_DT, passTargetBadges } from '../sim';
-import type { RoleId } from '../sim';
+import type { GameEvent, GameState, RoleId } from '../sim';
 import { createBallLayer } from './ball';
 import type { BallLayer } from './ball';
 import { createCharacterLayer } from './characters';
@@ -20,8 +20,23 @@ import { createSimAnimTracker } from './simAnimation';
 import { ballRenderPosition, interpolatePlayers } from './simInterpolation';
 import type { SimSnapshot } from './simInterpolation';
 
+export interface LiveDrawStep {
+  readonly game: GameState;
+  readonly events: readonly GameEvent[];
+  readonly reset: boolean;
+}
+
+export interface LiveDrawInput {
+  readonly game: GameState;
+  readonly humanRole: RoleId;
+  readonly steps: readonly LiveDrawStep[];
+  readonly cues: readonly Cue[];
+}
+
 export interface LiveRunView {
   draw(controller: RunControllerState, frame: RunFrame): void;
+  /** Draws a bare game state (no run controller), e.g. the tutorial sandbox. */
+  drawGame(input: LiveDrawInput): void;
   /** Hides and disposes the run objects (on quit). The next draw rebuilds them. */
   clear(): void;
   dispose(): void;
@@ -86,35 +101,49 @@ export function createLiveRunView(opts: {
     return { key, layer, ball, badges, cues, cones };
   };
 
+  function drawGame(input: LiveDrawInput): void {
+    const game: SimSnapshot = input.game;
+    const key = `${game.defenseMode}:${game.players.map((p) => p.id).join(',')}`;
+    if (objects && objects.key !== key) {
+      teardown();
+      tracker.reset();
+      prevGame = null;
+    }
+    objects ??= build(game, key);
+
+    for (const step of input.steps) {
+      const stepGame: SimSnapshot = step.game;
+      if (step.reset) tracker.reset();
+      else tracker.observe(prevGame ?? stepGame, stepGame, step.events);
+      prevGame = stepGame;
+    }
+    prevGame = game;
+
+    const poses = interpolatePlayers(game, game, 0, (p) => tracker.animFor(p, game));
+    const dtSec = input.steps.length * FIXED_DT;
+    objects.layer.sync(poses, game.controlledPlayerId, dtSec);
+    objects.ball.sync(ballRenderPosition(game, game, 0, poses, tracker.shotArc()));
+    objects.badges.sync(poses, passTargetBadges(input.game));
+    objects.cones?.sync(defenseSpots(game));
+
+    const offense: Partial<Record<RoleId, { x: number; z: number }>> = {};
+    for (const p of game.players) if (p.side === 'offense') offense[p.role] = p.pos;
+    objects.cues.sync({ cues: input.cues, offense, humanRole: input.humanRole, dtSec });
+  }
+
   return {
+    drawGame,
     draw(controller, frame) {
-      const game: SimSnapshot = controller.game;
-      const key = `${game.defenseMode}:${game.players.map((p) => p.id).join(',')}`;
-      if (objects && objects.key !== key) {
-        teardown();
-        tracker.reset();
-        prevGame = null;
-      }
-      objects ??= build(game, key);
-
-      for (const step of frame.steps) {
-        const stepGame: SimSnapshot = step.controller.game;
-        if (step.reset) tracker.reset();
-        else tracker.observe(prevGame ?? stepGame, stepGame, step.events);
-        prevGame = stepGame;
-      }
-      prevGame = game;
-
-      const poses = interpolatePlayers(game, game, 0, (p) => tracker.animFor(p, game));
-      const dtSec = frame.steps.length * FIXED_DT;
-      objects.layer.sync(poses, game.controlledPlayerId, dtSec);
-      objects.ball.sync(ballRenderPosition(game, game, 0, poses, tracker.shotArc()));
-      objects.badges.sync(poses, passTargetBadges(controller.game));
-      objects.cones?.sync(defenseSpots(game));
-
-      const offense: Partial<Record<RoleId, { x: number; z: number }>> = {};
-      for (const p of game.players) if (p.side === 'offense') offense[p.role] = p.pos;
-      objects.cues.sync({ cues: frame.cues, offense, humanRole: controller.run.humanRole, dtSec });
+      drawGame({
+        game: controller.game,
+        humanRole: controller.run.humanRole,
+        steps: frame.steps.map((s) => ({
+          game: s.controller.game,
+          events: s.events,
+          reset: s.reset,
+        })),
+        cues: frame.cues,
+      });
     },
     clear() {
       teardown();
