@@ -40,8 +40,14 @@
 // placement), and each role switches to its step for the new phase (else keeps its current step).
 // A step carried over from an earlier phase is only a spot to hold: its one-shot actions (setScreen,
 // pass, handOff) fire only while the step's own phase is the current one.
+//
+// Live coverage: when `liveCoverageId` is set, defenders are not cones. They start on that coverage's
+// start-phase spots and each step they steer (never teleport) with the behaviors of ./defense.ts
+// toward the coverage step for the current phase (a phase not in the script keeps the previous
+// step). The referee's Scrimmage `coverageId` should be the same id. While deviated, defenders keep
+// running their behaviors.
 
-import type { PhaseTrigger, PlayScenario, TrackStep } from '../content';
+import type { CoverageStep, DefenderStep, PhaseTrigger, PlayScenario, TrackStep } from '../content';
 import {
   ROLE_ORDER,
   SIM_HZ,
@@ -59,6 +65,7 @@ import {
   type SimAction,
   type TeamSide,
 } from '../sim';
+import { defenderCommands } from './defense';
 import { clearOfLane, separationPush } from './spacing';
 
 /** A player within this distance of a spot has reached it, m. */
@@ -89,6 +96,8 @@ export interface PlayRunState {
   passesMade: RoleId[];
   /** A pass the play does not expect completed: the phase is frozen (see header). */
   deviated: boolean;
+  /** Live coverage defenders (null = Practice cones): coverage id and the step each role runs. */
+  liveDefense: { coverageId: string; steps: Record<RoleId, DefenderStep> } | null;
 }
 
 export interface PracticeRunOptions {
@@ -98,6 +107,8 @@ export interface PracticeRunOptions {
   shooting?: ShootingSetup;
   /** Default: play.playableRoles[0]. */
   humanRole?: RoleId;
+  /** Live defense: defenders follow this coverage's behaviors instead of Practice cones. */
+  liveCoverageId?: string;
 }
 
 function distance(a: CourtPoint, b: CourtPoint): number {
@@ -134,6 +145,18 @@ function practiceScriptSpots(
     spots[role] = { x: spot.x, z: spot.z };
   }
   return spots as Record<RoleId, CourtPoint>;
+}
+
+function coverageStepFor(
+  play: PlayScenario,
+  coverageId: string,
+  phaseId: string,
+): CoverageStep | null {
+  const coverage = play.coverages.find((c) => c.id === coverageId);
+  if (coverage === undefined) {
+    throw new Error(`Court Vision: play ${play.id} has no coverage ${coverageId}`);
+  }
+  return coverage.script.find((s) => s.phase === phaseId) ?? null;
 }
 
 function stepFor(play: PlayScenario, role: RoleId, phaseId: string): TrackStep | null {
@@ -180,11 +203,30 @@ export function startPracticeRun(
   if (startPhase === undefined) {
     throw new Error(`Court Vision: play ${play.id} has no phases`);
   }
-  const coneSpots = practiceScriptSpots(play, startPhase.id);
-  if (coneSpots === null) {
-    throw new Error(
-      `Court Vision: Practice coverage of play ${play.id} has no step for start phase ${startPhase.id}`,
-    );
+  let coneSpots: Record<RoleId, CourtPoint>;
+  let liveDefense: PlayRunState['liveDefense'] = null;
+  if (options.liveCoverageId === undefined) {
+    const spots = practiceScriptSpots(play, startPhase.id);
+    if (spots === null) {
+      throw new Error(
+        `Court Vision: Practice coverage of play ${play.id} has no step for start phase ${startPhase.id}`,
+      );
+    }
+    coneSpots = spots;
+  } else {
+    const startStep = coverageStepFor(play, options.liveCoverageId, startPhase.id);
+    if (startStep === null) {
+      throw new Error(
+        `Court Vision: coverage ${options.liveCoverageId} of play ${play.id} has no step for start phase ${startPhase.id}`,
+      );
+    }
+    const spots: Partial<Record<RoleId, CourtPoint>> = {};
+    for (const role of ROLE_ORDER) {
+      const { spot } = startStep.defenders[role];
+      spots[role] = { x: spot.x, z: spot.z };
+    }
+    coneSpots = spots as Record<RoleId, CourtPoint>;
+    liveDefense = { coverageId: options.liveCoverageId, steps: { ...startStep.defenders } };
   }
 
   const created = createGame({
@@ -192,7 +234,7 @@ export function startPracticeRun(
     movement: options.movement,
     passing: options.passing,
     ...(options.shooting === undefined ? {} : { shooting: options.shooting }),
-    defenseMode: 'cones',
+    defenseMode: options.liveCoverageId === undefined ? 'cones' : 'live',
   });
   const game = structuredClone(created);
   for (const role of ROLE_ORDER) {
@@ -219,6 +261,7 @@ export function startPracticeRun(
     screensSet: [],
     passesMade: [],
     deviated: false,
+    liveDefense,
   };
   return { game, run };
 }
@@ -230,12 +273,16 @@ function buildCommands(
   passesMade: RoleId[],
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  for (const role of ROLE_ORDER) {
-    const cone = playerFor(game, 'defense', role);
-    const spot = run.coneSpots[role];
-    if (cone.pos.x !== spot.x || cone.pos.z !== spot.z) {
-      commands.push({ type: 'place', playerId: cone.id, x: spot.x, z: spot.z });
+  if (run.liveDefense === null) {
+    for (const role of ROLE_ORDER) {
+      const cone = playerFor(game, 'defense', role);
+      const spot = run.coneSpots[role];
+      if (cone.pos.x !== spot.x || cone.pos.z !== spot.z) {
+        commands.push({ type: 'place', playerId: cone.id, x: spot.x, z: spot.z });
+      }
     }
+  } else {
+    commands.push(...defenderCommands(game, run.liveDefense.steps));
   }
 
   const human = playerFor(game, 'offense', run.humanRole);
@@ -329,7 +376,7 @@ function triggerHolds(
     case 'timeElapsed':
       return next.tick - run.phaseStartTick >= Math.round(trigger.seconds * SIM_HZ);
     case 'defenseReaction':
-      // No producer in Practice: cones never react. Live defenders come in a later issue.
+      // No producer yet: neither cones nor live defenders emit a reaction trigger.
       return false;
     default: {
       const unreachable: never = trigger;
@@ -411,10 +458,17 @@ export function stepPracticeRun(
     const step = stepFor(play, role, taken.to);
     if (step !== null) activeSteps[role] = step;
   }
+  const liveStep =
+    run.liveDefense === null ? null : coverageStepFor(play, run.liveDefense.coverageId, taken.to);
+  const liveDefense =
+    run.liveDefense === null || liveStep === null
+      ? run.liveDefense
+      : { coverageId: run.liveDefense.coverageId, steps: { ...liveStep.defenders } };
   return {
     game: next,
     run: {
       ...run,
+      liveDefense,
       phaseId: taken.to,
       phaseStartTick: next.tick,
       activeSteps,

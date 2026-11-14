@@ -214,3 +214,19 @@ Questions about the product or its implementation and how they were settled. Rec
 - Kind: product
 - Decision: Option 1: Scrimmage: Good (continues, counts as success); Practice: still follows the path and may succeed
 - Decided by: user on 2026-11-14
+
+## How should a set defender's guard position relate to the scripted return pass lane?
+- Kind: product
+- Decision: Option 1: change guard so a set defender stays between its man and the rim but shifts off its man's passing lanes; scripted return passes stay open and interceptions stay possible elsewhere
+- Decided by: user on 2026-11-14
+
+## Where should the Give-and-Go SF help spot sit so the kick-out pass is not intercepted by a live defender?
+- Kind: implementation
+- Decision: Moved from (-1.5,-3.5) to (-1,-4.9) in giveAndGo.ts so help keeps clear of the holder-to-own-man lane
+- Decided by: assumed on 2026-11-14
+- Why: Live help defenders otherwise intercepted the scripted kick-out pass; small reversible content tweak
+
+## Open the PR for #21 with R3-1 as a known follow-up, or run another fix round?
+- Kind: product
+- Decision: Option 1: open the PR as is. Do not file a follow-up issue; instead comment the R3-1 situation on the PR (guard lane-shift target can jump ~2.5 m when a lane angle crosses LANE_MIN_FACING, untested) and note it as something to test if guard movement gives issues
+- Decided by: user on 2026-11-14

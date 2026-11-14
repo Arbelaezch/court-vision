@@ -34,4 +34,16 @@ export {
   distanceToSegment,
   separationPush,
 } from './spacing';
+export {
+  CLOSEOUT_CUSHION_M,
+  DEFENDER_BEHAVIORS,
+  DEFENSE_ARRIVE_RADIUS_M,
+  DEFENSE_SPRINT_DISTANCE_M,
+  GUARD_CUSHION_M,
+  HELP_CONTEST_GAP_M,
+  HELP_CONTEST_RADIUS_M,
+  defenderCommands,
+  isInKey,
+} from './defense';
+export type { DefenderBehavior, DefenderContext, DefenderIntent } from './defense';
 export type { PlayRunState, PracticeRunOptions } from './playRun';

@@ -77,6 +77,8 @@ export const DEFENDER_ACTIONS = [
   'sag',
   'help',
   'closeout',
+  // An over-aggressive closeout that runs at its man at full sprint without breaking down.
+  'closeoutHard',
   'chaseOver',
   'goUnder',
   'switch',

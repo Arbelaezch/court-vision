@@ -319,11 +319,12 @@ export type SimAction =
 /**
  * Commands for players other than the controlled one (AI teammates, Practice cones), applied by
  * stepGame before the actions. `steer` sets the move intent (clamped to length <= 1, like a move
- * action); `place` teleports the player and zeroes its velocity and intent; `pass` releases a pass
+ * action) and `sprint` sets the held sprint input for that step (an omitted flag means not
+ * sprinting); `place` teleports the player and zeroes its velocity and intent; `pass` releases a pass
  * or hand-off from that player (ignored unless it holds the ball, as for the human).
  */
 export type PlayerCommand =
-  | { type: 'steer'; playerId: number; x: number; z: number }
+  | { type: 'steer'; playerId: number; x: number; z: number; sprint?: boolean }
   | { type: 'place'; playerId: number; x: number; z: number }
   | { type: 'pass'; playerId: number; passType: PassType; targetId: number };
 

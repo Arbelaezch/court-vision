@@ -139,7 +139,7 @@ export const GIVE_AND_GO_DATA = {
           defenders: {
             PG: { spot: { x: 0.5, z: -1 }, action: 'guard' },
             SG: { spot: { x: 5, z: -2 }, action: 'guard' },
-            SF: { spot: { x: -1.5, z: -3.5 }, action: 'help' },
+            SF: { spot: { x: -1, z: -4.9 }, action: 'help' },
             PF: { spot: { x: 6, z: -5.9 }, action: 'guard' },
             C: { spot: { x: -6, z: -5.9 }, action: 'guard' },
           },

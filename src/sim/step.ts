@@ -131,7 +131,11 @@ function applyCommand(next: GameState, command: PlayerCommand): void {
     case 'steer': {
       const player = commandedPlayer(next, command);
       requireFinitePoint(command);
+      if (command.sprint !== undefined && typeof command.sprint !== 'boolean') {
+        throw new Error('Court Vision: steer command sprint must be a boolean');
+      }
       player.moveIntent = clampToUnitLength(command.x, command.z);
+      player.sprintHeld = command.sprint === true;
       return;
     }
     case 'place': {
