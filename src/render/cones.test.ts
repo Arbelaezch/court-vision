@@ -95,6 +95,29 @@ describe('practice cones', () => {
     expect(() => cones.dispose()).not.toThrow();
   });
 
+  it('sync moves the instance matrix and label of a cone', () => {
+    const cones = createPracticeCones({ teams: cast.teams, cones: spots, labels });
+    const role = spots[0]!.role;
+    cones.sync(spots.map((s) => (s.role === role ? { ...s, x: 3, z: -2 } : s)));
+    const body = cones.object.getObjectByName('cone-bodies') as THREE.InstancedMesh;
+    const m = new THREE.Matrix4();
+    body.getMatrixAt(0, m);
+    const pos = new THREE.Vector3().setFromMatrixPosition(m);
+    expect(pos.x).toBe(3);
+    expect(pos.z).toBe(-2);
+    const label = cones.object.getObjectByName(`cone-label-${role}`) as THREE.Mesh;
+    expect(label.position.x).toBe(3);
+    expect(label.position.z).toBe(-2);
+  });
+
+  it('sync throws on an unknown or missing role', () => {
+    const cones = createPracticeCones({ teams: cast.teams, cones: spots, labels });
+    expect(() => cones.sync(spots.slice(1))).toThrow(/every cone role/);
+    expect(() => cones.sync([...spots.slice(1), { role: 'XX' as never, x: 0, z: 0 }])).toThrow(
+      /unknown cone role/,
+    );
+  });
+
   it('rejects duplicate roles', () => {
     expect(() =>
       createPracticeCones({ teams: cast.teams, cones: [spots[0]!, spots[0]!], labels }),

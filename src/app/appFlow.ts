@@ -1,9 +1,9 @@
 // App flow controller: owns the screen machine, the single live run session, the visibility binding
 // and a renderer port. DOM-free (only EventTarget types), so node tests and the browser share it.
 import type { RunControllerOptions, RunControllerState } from '../ai';
-import type { MasteryTuningSpec, ModeId, ModeTable, ScenarioTable } from '../content';
+import type { MasteryTuningSpec, ModeId, ModeTable, PlayScenario, ScenarioTable } from '../content';
 import type { PressAction } from '../input';
-import type { SimAction } from '../sim';
+import type { GameEventSink, SimAction } from '../sim';
 import {
   buildProgressRows,
   progressModeLabels,
@@ -11,6 +11,7 @@ import {
   type ProgressModeLabel,
 } from './progressView';
 import { bindRunVisibilityPause } from './runClock';
+import { buildRunFrame, type RunFrame } from './runFrame';
 import { createRunSession, type RunSession } from './runSession';
 import {
   createScreenMachine,
@@ -28,7 +29,7 @@ export type ShootingSetup = NonNullable<RunControllerOptions['shooting']>;
 
 export interface RunRenderer {
   /** Called every frame while a session exists (inRun or paused) with the current controller. */
-  drawRun(controller: RunControllerState): void;
+  drawRun(controller: RunControllerState, frame: RunFrame): void;
   /** Called when the session ends (quit or dispose). */
   clear(): void;
 }
@@ -67,6 +68,10 @@ export interface AppFlowOptions {
   visibility?: { target: EventTarget; isHidden: () => boolean };
   /** Per-step SimActions for the human; default () => [] (the practice-slice maps input later). */
   actionsFor?: (controller: RunControllerState) => readonly SimAction[];
+  /** Called synchronously with every sim event of every step, in order. */
+  eventSinks?: readonly GameEventSink[];
+  /** Non-pause press actions, forwarded only while the screen is inRun. */
+  onPress?: (action: PressAction) => void;
 }
 
 export interface AppFlow {
@@ -96,6 +101,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
   const { content, store, renderer } = options;
   const seed = options.seed ?? randomSeed;
   const actionsFor = options.actionsFor ?? (() => []);
+  const eventSinks = options.eventSinks ?? [];
   const machine = createScreenMachine();
   const unsubscribers = new Set<() => void>();
   const modeNames: Record<ModeId, string> = {};
@@ -107,6 +113,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
   const staticLabels = { plays, modeNames, progressModes, masteredSuccesses };
 
   let session: RunSession | null = null;
+  let activePlay: PlayScenario | null = null;
   let unbindVisibility: (() => void) | null = null;
 
   function handleClockPause(): void {
@@ -125,6 +132,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
     unbindVisibility?.();
     renderer.clear();
     session = null;
+    activePlay = null;
     unbindVisibility = null;
   }
 
@@ -160,6 +168,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
             clock: session.clock,
           });
         }
+        activePlay = play;
         return machine.send(event);
       }
       case 'pause': {
@@ -190,14 +199,21 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
     state: () => machine.state(),
     send,
     handleAction(action) {
-      if (action !== 'pause') return;
+      if (action !== 'pause') {
+        if (machine.state().screen === 'inRun') options.onPress?.(action);
+        return;
+      }
       const event = escapeEvent(machine.state().screen);
       if (event !== null) send(event);
     },
     frame(frameDeltaMs) {
-      if (session === null) return;
-      session.frame(frameDeltaMs, actionsFor);
-      renderer.drawRun(session.state());
+      if (session === null || activePlay === null) return;
+      const steps = session.frame(frameDeltaMs, actionsFor);
+      for (const step of steps) {
+        for (const event of step.events) for (const sink of eventSinks) sink(event);
+      }
+      const state = session.state();
+      renderer.drawRun(state, buildRunFrame(activePlay, state, steps, store.get('settings').cues));
     },
     labels: () => ({
       ...staticLabels,

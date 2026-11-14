@@ -131,3 +131,55 @@ body {
   border-radius: 6px;
   pointer-events: none;
 }
+
+.cv-run-hud {
+  position: absolute;
+  top: 44px;
+  left: 12px;
+  font: 13px sans-serif;
+  pointer-events: none;
+}
+
+.cv-run-hud[hidden],
+.cv-result-banner[hidden] {
+  display: none;
+}
+
+.cv-hud-objective {
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+}
+
+.cv-stamina {
+  width: 120px;
+  height: 8px;
+  margin-top: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cv-stamina-fill {
+  height: 100%;
+  background: #4cd964;
+}
+
+.cv-result-banner {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 20px;
+  font: bold 24px sans-serif;
+  color: #fff;
+  border-radius: 8px;
+}
+
+.cv-result-success {
+  background: #1f9d3a;
+}
+
+.cv-result-neutral {
+  background: rgba(0, 0, 0, 0.7);
+}

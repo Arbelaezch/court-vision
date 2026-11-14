@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { RunControllerState } from '../../src/ai';
-import { bootApp, createSaveStore } from '../../src/app';
+import {
+  bootApp,
+  createHumanInput,
+  createSaveStore,
+  loadAppContent,
+  type RunFrame,
+} from '../../src/app';
 import { createFakeStorage } from '../../src/app/storage/fakeStorage';
 import { BUNDLED_PLAY_SOURCES } from '../../src/content';
 
@@ -37,5 +43,31 @@ describe('app boot smoke', () => {
     flow.send({ type: 'quit' });
     expect(flow.state().screen).toBe('playSelect');
     expect(store.get('progress').plays).toEqual({});
+  });
+
+  it('draws a frame with the objective and Full cues through the human input path', () => {
+    const store = createSaveStore({ storage: createFakeStorage({}), warn: () => {} });
+    const frames: RunFrame[] = [];
+    const events: unknown[] = [];
+    const human = createHumanInput({
+      held: () => ({ axes: { x: 0, y: 0 }, sprint: false, pivot: false }),
+      aimAt: () => null,
+      targeting: () => ({ mode: 'both', aimSensitivity: 1 }),
+    });
+    const flow = bootApp({
+      store,
+      renderer: { drawRun: (_c, f) => frames.push(f), clear: () => {} },
+      seed: () => 1,
+      visibility: { target: new EventTarget(), isHidden: () => false },
+      actionsFor: human.actionsFor,
+      eventSinks: [(e) => events.push(e)],
+      onPress: human.press,
+    });
+    flow.send({ type: 'openPractice' });
+    flow.send({ type: 'selectPlay', playId: 'giveAndGo' });
+    for (let i = 0; i < 5; i++) flow.frame(1000 / 60);
+    const last = frames[frames.length - 1];
+    expect(last?.hud.objective).toBe(loadAppContent().plays['giveAndGo']?.concept);
+    expect(last?.cues.length).toBeGreaterThan(0);
   });
 });

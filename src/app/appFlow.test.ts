@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { RunControllerState } from '../ai';
 import type { PlayScenario } from '../content';
+import type { GameEvent } from '../sim';
 import { loadAppContent } from './boot';
 import { createAppFlow, sortPlayList, type AppFlow } from './appFlow';
+import type { RunFrame } from './runFrame';
 import { createSaveStore, recordRunAttempt } from './storage';
 import { createFakeStorage } from './storage/fakeStorage';
 
@@ -231,6 +233,52 @@ describe('app flow', () => {
       successes: 1,
       mastered: false,
     });
+  });
+
+  it('forwards step events to sinks in order and hands drawRun a frame', () => {
+    const events: GameEvent[] = [];
+    const frames: RunFrame[] = [];
+    const store = createSaveStore({ storage: createFakeStorage({}), warn: () => {} });
+    const flow = createAppFlow({
+      content: CONTENT,
+      store,
+      renderer: { drawRun: (_c, f) => frames.push(f), clear: () => {} },
+      seed: () => 1,
+      actionsFor: (c) => [
+        {
+          type: 'pass',
+          passType: 'chestPass',
+          targetId: c.game.players.find((p) => p.role === 'SF' && p.side === 'offense')?.id ?? -1,
+        },
+      ],
+      eventSinks: [(e) => events.push(e)],
+    });
+    toRun(flow);
+    for (let i = 0; i < 5; i++) flow.frame(1000 / 60);
+    const stepEvents = frames.flatMap((f) => f.steps.flatMap((s) => s.events));
+    expect(events.length).toBeGreaterThan(0);
+    expect(events).toEqual(stepEvents);
+    expect(events.some((e) => e.type === 'mistake')).toBe(true);
+    expect(frames[0]?.hud.objective).toBe(GIVE_AND_GO.concept);
+  });
+
+  it('forwards non-pause presses only while inRun', () => {
+    const pressed: string[] = [];
+    const store = createSaveStore({ storage: createFakeStorage({}), warn: () => {} });
+    const flow = createAppFlow({
+      content: CONTENT,
+      store,
+      renderer: { drawRun: () => {}, clear: () => {} },
+      onPress: (a) => pressed.push(a),
+    });
+    flow.handleAction('chestPass');
+    flow.send({ type: 'openPractice' });
+    flow.handleAction('chestPass');
+    flow.send({ type: 'selectPlay', playId: 'giveAndGo' });
+    flow.handleAction('chestPass');
+    flow.handleAction('pause');
+    flow.handleAction('chestPass');
+    expect(pressed).toEqual(['chestPass']);
   });
 
   it('labels carry the mastery threshold', () => {

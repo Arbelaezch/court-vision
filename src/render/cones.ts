@@ -22,7 +22,7 @@ export function createPracticeCones(opts: {
   teams: TeamCast;
   cones: readonly ConeSpot[];
   labels: LabelAtlas;
-}): { object: THREE.Group; dispose(): void } {
+}): { object: THREE.Group; sync(cones: readonly ConeSpot[]): void; dispose(): void } {
   const { teams, cones, labels } = opts;
   const seen = new Set<RoleId>();
   for (const cone of cones) {
@@ -64,13 +64,19 @@ export function createPracticeCones(opts: {
   const lift = new THREE.Matrix4().makeTranslation(0, CONE_HEIGHT_M / 2, 0);
   const drop = new THREE.Matrix4().makeTranslation(0, -CONE_HEIGHT_M / 2, 0);
 
-  cones.forEach((cone, index) => {
-    bodies.setColorAt(index, primary);
+  const place = (cone: ConeSpot, index: number): void => {
     matrix.makeTranslation(cone.x, 0, cone.z);
     bodies.setMatrixAt(index, matrix);
     // Outline hull: grown about mid-height so the base cap dips below the floor (no z-fight).
     hull.copy(matrix).multiply(lift).scale(grow).multiply(drop);
     outlines.setMatrixAt(index, hull);
+  };
+  const labelMeshes = new Map<RoleId, THREE.Mesh>();
+  const indexByRole = new Map(cones.map((c, i) => [c.role, i]));
+
+  cones.forEach((cone, index) => {
+    bodies.setColorAt(index, primary);
+    place(cone, index);
 
     const cell = labels.cell(cone.role);
     const plane = new THREE.PlaneGeometry(LABEL_SIZE_M, LABEL_SIZE_M);
@@ -87,12 +93,29 @@ export function createPracticeCones(opts: {
     // Tilt toward the tactical camera.
     label.rotation.x = -pitch;
     group.add(label);
+    labelMeshes.set(cone.role, label);
   });
   bodies.instanceMatrix.needsUpdate = true;
   outlines.instanceMatrix.needsUpdate = true;
 
   return {
     object: group,
+    sync(next) {
+      for (const cone of next) {
+        if (!indexByRole.has(cone.role)) {
+          throw new Error(`Court Vision: unknown cone role ${cone.role}`);
+        }
+      }
+      if (new Set(next.map((c) => c.role)).size !== cones.length) {
+        throw new Error('Court Vision: cone sync needs every cone role exactly once');
+      }
+      for (const cone of next) {
+        place(cone, indexByRole.get(cone.role)!);
+        labelMeshes.get(cone.role)!.position.set(cone.x, CONE_HEIGHT_M + LABEL_GAP_M, cone.z);
+      }
+      bodies.instanceMatrix.needsUpdate = true;
+      outlines.instanceMatrix.needsUpdate = true;
+    },
     dispose() {
       disposeObject3D(group);
       gradient.dispose();
