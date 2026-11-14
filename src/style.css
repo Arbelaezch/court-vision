@@ -9,3 +9,85 @@ body {
   height: 100vh;
   overflow: hidden;
 }
+
+.cv-screens {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: sans-serif;
+  color: #fff;
+}
+
+.cv-screens-backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.cv-menu {
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px 32px;
+  background: rgba(10, 10, 20, 0.85);
+  border-radius: 12px;
+  color: #fff;
+  font-family: sans-serif;
+}
+
+.cv-menu h1,
+.cv-menu h2 {
+  margin: 0 0 16px;
+}
+
+.cv-menu-button,
+.cv-play-button {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 14px;
+  font: 16px sans-serif;
+  text-align: left;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.cv-menu-button:focus-visible,
+.cv-play-button:focus-visible {
+  outline: 3px solid #ffd54a;
+  outline-offset: 2px;
+}
+
+.cv-play-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cv-play-name {
+  display: block;
+  font-weight: bold;
+}
+
+.cv-play-blurb {
+  display: block;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.cv-hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  font: 13px sans-serif;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  pointer-events: none;
+}

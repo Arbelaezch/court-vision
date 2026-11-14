@@ -257,3 +257,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Yes: unsuccessful adds to attempts but not successes, like a mistake; only quit/restart via the controller leaves counters unchanged
 - Decided by: assumed on 2026-11-14
 - Why: g12 separates ended runs from abandoned ones; DESIGN_DOC.md:252 calls a Bad look an unsuccessful run; cheap to change
+
+## Screen-flow details for #24: hidden-tab pause, Esc while paused, Esc on other screens, quit target
+- Kind: implementation
+- Decision: Hidden tab opens pause menu and does not auto-resume; Esc while paused resumes; Esc on Play Select/placeholders goes to main menu; quit returns to Play Select for the same mode; Practice opens Play Select; Scrimmage is a placeholder
+- Decided by: assumed on 2026-11-14
+- Why: Low-impact, reversible UI behaviour not settled by the documents
