@@ -38,12 +38,17 @@ describe('visibleCues', () => {
     }
   });
 
-  it('shows only the cut arrow at level reduced', () => {
-    expect(visibleCues(phase('entry'), 'reduced', DEFAULT_CUE_TOGGLES)).toEqual([]);
+  it('shows the Reduced cues of each phase', () => {
+    expect(visibleCues(phase('entry'), 'reduced', DEFAULT_CUE_TOGGLES)).toEqual([
+      { kind: 'targetRing', role: 'SG' },
+    ]);
     expect(visibleCues(phase('cut'), 'reduced', DEFAULT_CUE_TOGGLES)).toEqual([
       { kind: 'floorArrow', to: { x: 0.8, z: -4 } },
     ]);
-    expect(visibleCues(phase('finish'), 'reduced', DEFAULT_CUE_TOGGLES)).toEqual([]);
+    const finish = visibleCues(phase('finish'), 'reduced', DEFAULT_CUE_TOGGLES);
+    expect(finish).toEqual([{ kind: 'prompt', text: 'Read the help' }]);
+    expect(promptForCues(finish)).toEqual({ headline: 'Read the help', reason: null });
+    expect(promptForCues(visibleCues(phase('entry'), 'reduced', DEFAULT_CUE_TOGGLES))).toBeNull();
   });
 
   it('removes only the toggled-off kind', () => {
