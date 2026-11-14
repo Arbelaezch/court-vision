@@ -251,3 +251,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decided by: assumed on 2026-11-14
 - Why: movement cues remain and decision cues are subtler in Scrimmage; the schema has no delay field
 - Source: DESIGN_DOC.md:146,250; issue #22
+
+## Does an unsuccessful (Bad look) run count as an attempt?
+- Kind: implementation
+- Decision: Yes: unsuccessful adds to attempts but not successes, like a mistake; only quit/restart via the controller leaves counters unchanged
+- Decided by: assumed on 2026-11-14
+- Why: g12 separates ended runs from abandoned ones; DESIGN_DOC.md:252 calls a Bad look an unsuccessful run; cheap to change

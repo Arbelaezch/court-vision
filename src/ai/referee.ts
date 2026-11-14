@@ -26,7 +26,7 @@
 // rest of the run, so a later interception of a wrong-teammate pass is not a second outcome.
 //
 // Pure and deterministic: no mutation of inputs, no Math.random, no wall clock.
-import type { DecisionGrade, PlayScenario } from '../content';
+import type { DecisionGrade, ModeRules, PlayScenario } from '../content';
 import type { GameEvent, GameState, MistakeKind, RoleId, RunGrade, SimAction } from '../sim';
 import {
   GRADE_REASONS,
@@ -36,7 +36,8 @@ import {
   type ResolvingAction,
 } from './grading';
 
-export type RunMode = 'practice' | 'scrimmage';
+// Mode rule sets come from MODE_RULES in content/modes.ts (one list).
+export type RunMode = ModeRules;
 export type RunQuality = 'great' | 'good';
 export type OutcomeRule = 'mistake' | 'unsuccessful';
 
