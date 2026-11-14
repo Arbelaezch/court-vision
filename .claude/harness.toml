@@ -19,10 +19,12 @@ base_branch = "main"
 [repos.app]
 path = "."
 description = "TypeScript + Vite + three.js browser game; single npm package at the repo root"
-# test and build have no `kind` because the harness has no Vitest/Vite parser, so they are plain pass/fail gates.
+# test, build and format have no `kind` because the harness has no Vitest/Vite/Prettier parser, so they are plain
+# pass/fail gates. format goes through the npm script: factory sessions may not run `npx prettier`.
 gates = [
   { name = "typecheck", kind = "tsc", cmd = "npx tsc --noEmit --pretty false" },
   { name = "lint", kind = "eslint", cmd = "npx eslint ." },
   { name = "test", cmd = "npx vitest run" },
   { name = "build", cmd = "npx vite build" },
+  { name = "format", cmd = "npm run format:check" },
 ]

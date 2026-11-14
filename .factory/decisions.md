@@ -196,3 +196,10 @@ Questions about the product or its implementation and how they were settled. Rec
 - Kind: product
 - Decision: Cone of 45 x sensitivity degrees, falling back to the closest angle when the cone is empty; a number key always wins in Both
 - Decided by: user on 2026-11-13
+
+## How do factory sessions run prettier, when npx prettier is refused?
+- Kind: implementation
+- Decision: Use the repo's npm scripts: npm run format (write) and npm run format:check (check). They are already allowed; do not ask for an npx prettier rule.
+- Decided by: user on 2026-11-13
+- Why: Blocker on #62: npx prettier is outside the factory allow list, npm run * is allowed
+- Source: package.json scripts
