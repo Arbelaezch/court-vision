@@ -7,6 +7,24 @@ export {
   startPracticeRun,
   stepPracticeRun,
 } from './playRun';
+export { GRADE_REASONS, MISTAKE_REASONS, classifyAction, findDecisionPoint } from './grading';
+export type { ActionClass, ResolvingAction } from './grading';
+export {
+  OUTCOME_RULES,
+  WRONG_PASS_TYPE_GRADE_CAP,
+  runGradeFor,
+  startReferee,
+  stepReferee,
+} from './referee';
+export type {
+  GradedDecision,
+  OutcomeRule,
+  RefereeOptions,
+  RefereeState,
+  RunMode,
+  RunOutcome,
+  RunQuality,
+} from './referee';
 export {
   LANE_CLEAR_MARGIN_M,
   PG_LANE_HALF_WIDTH_M,

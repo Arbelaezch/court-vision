@@ -29,7 +29,8 @@
 // current phase for the passer's role (a graded read is on script) sets `deviated`. While deviated
 // the phase is frozen (no trigger evaluation), the AI makes no passes and sets no screens, the AI
 // ball holder stands still, and everyone else keeps walking to their lane-clear, spaced spot.
-// Grading this as a mistake is a later issue.
+// The human's unexpected pass is graded at release by the run referee (./referee.ts) as a
+// `wrongTeammate` mistake; the freeze here only keeps the AI still until the caller resets.
 //
 // The human role's track is not executed: its active step spot only gates AI passes to it (an AI
 // passes to the human once the human has reached that spot). Roles map to players by role: the

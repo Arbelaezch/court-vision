@@ -8,8 +8,9 @@
 //   to the shot's release height draws one score, in ascending id: closeness + rating term + one
 //   seeded jitter draw. The lowest id at or above blockThreshold blocks and takes the ball, which
 //   is a `mistake` turnover;
-// - otherwise one make draw decides the shot and the ball goes dead. A Bad look also emits
-//   `runUnsuccessful`, made or missed.
+// - otherwise one make draw decides the shot and the ball goes dead. An unblocked shot emits only
+//   `shotResolved`; the run referee (src/ai/referee.ts) decides what a Bad look means per mode
+//   (decision "Bad look or blocked on-script shot", g1).
 // Randomness order: block draws first, then the make draw (only when not blocked).
 
 import { RIM_CENTER } from './court';
@@ -121,9 +122,5 @@ export function takeShot(
   const made = nextFloat(next.rng) < makeChance;
   next.ball = { kind: 'dead', shooterId: shooter.id, made };
   next.lastCatch = null;
-  const events: GameEvent[] = [{ ...base, made, blockerId: null, reason: rating.reason }];
-  if (rating.look === 'bad') {
-    events.push({ type: 'runUnsuccessful', tick: eventTick, reason: rating.reason });
-  }
-  return events;
+  return [{ ...base, made, blockerId: null, reason: rating.reason }];
 }
