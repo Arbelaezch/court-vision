@@ -3,6 +3,7 @@ import { createCourtScene } from './courtScene';
 import { createDevScene } from './devView';
 import type { DevView } from './devView';
 import { disposeObject3D } from './dispose';
+import { createCuePromptOverlay } from '../ui';
 import { fitTacticalCamera } from './tacticalCamera';
 import { bindVisibilityPause } from './visibilityPause';
 
@@ -35,6 +36,7 @@ export function mountRenderer(
       'position: fixed; top: 8px; left: 8px; padding: 2px 6px; font: 14px monospace; color: #fff; background: rgba(0,0,0,0.6); pointer-events: none';
     container.appendChild(overlay);
   }
+  const promptOverlay = devScene ? createCuePromptOverlay({ container, doc: document }) : null;
   let shownStatus: string | null = null;
 
   let loggedDrawCalls = false;
@@ -44,6 +46,7 @@ export function mountRenderer(
     lastMs = timeMs;
     if (devScene) {
       devScene.update(dt);
+      promptOverlay?.show(devScene.prompt());
       const status = devScene.status();
       if (overlay && status !== shownStatus) {
         shownStatus = status;
@@ -70,6 +73,7 @@ export function mountRenderer(
     unbindVisibility();
     renderer.setAnimationLoop(null);
     overlay?.remove();
+    promptOverlay?.dispose();
     window.removeEventListener('resize', resize);
     if (devScene) devScene.dispose();
     else disposeObject3D(scene);

@@ -33,6 +33,11 @@ export function passTargetBadgeLabel(key: PassTargetKey): string {
   return `${key} ${PASS_TARGET_KEY_ROLES[key]}`;
 }
 
+/** Reverse of PASS_TARGET_KEY_ROLES: the key that picks `role`, or null (the PG has none). */
+export function passTargetKeyForRole(role: RoleId): PassTargetKey | null {
+  return PASS_TARGET_KEYS.find((key) => PASS_TARGET_KEY_ROLES[key] === role) ?? null;
+}
+
 export const PASS_TARGET_BADGE_LABELS: readonly string[] =
   PASS_TARGET_KEYS.map(passTargetBadgeLabel);
 

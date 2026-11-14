@@ -73,6 +73,7 @@ export {
   PASS_TARGET_KEY_ROLES,
   passTargetBadgeLabel,
   passTargetBadges,
+  passTargetKeyForRole,
   resolvePassTarget,
 } from './passTargeting';
 export type {

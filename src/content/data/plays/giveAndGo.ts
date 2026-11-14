@@ -34,7 +34,12 @@ export const GIVE_AND_GO_DATA = {
       cues: {
         full: [
           { kind: 'targetRing', role: 'SG' },
-          { kind: 'prompt', text: 'Pass to the wing' },
+          {
+            kind: 'prompt',
+            text: 'Pass to the wing',
+            passTo: 'SG',
+            reason: 'Then cut while your defender watches the ball',
+          },
         ],
         reduced: [],
         none: [],
@@ -46,7 +51,11 @@ export const GIVE_AND_GO_DATA = {
       cues: {
         full: [
           { kind: 'floorArrow', to: { x: 0.8, z: -4 } },
-          { kind: 'prompt', text: 'Cut to the rim!' },
+          {
+            kind: 'prompt',
+            text: 'Cut to the rim!',
+            reason: 'Your defender turned to watch the pass',
+          },
         ],
         reduced: [{ kind: 'floorArrow', to: { x: 0.8, z: -4 } }],
         none: [],
@@ -56,7 +65,13 @@ export const GIVE_AND_GO_DATA = {
       id: 'finish',
       transitions: [],
       cues: {
-        full: [{ kind: 'prompt', text: 'Read the help' }],
+        full: [
+          {
+            kind: 'prompt',
+            text: 'Read the help',
+            reason: 'Shoot if no help comes; kick out if it does',
+          },
+        ],
         reduced: [],
         none: [],
       },

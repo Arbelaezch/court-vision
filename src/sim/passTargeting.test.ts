@@ -5,6 +5,7 @@ import {
   PASS_TARGET_KEY_ROLES,
   createGame,
   passTargetBadges,
+  passTargetKeyForRole,
   resolvePassTarget,
 } from './index';
 import type {
@@ -264,5 +265,15 @@ describe('passTargetBadges', () => {
 
   it('exposes the label list', () => {
     expect(PASS_TARGET_BADGE_LABELS).toEqual(['1 SG', '2 SF', '3 PF', '4 C']);
+  });
+});
+
+describe('passTargetKeyForRole', () => {
+  it('maps roles to keys and the PG to null', () => {
+    expect(passTargetKeyForRole('SG')).toBe(1);
+    expect(passTargetKeyForRole('SF')).toBe(2);
+    expect(passTargetKeyForRole('PF')).toBe(3);
+    expect(passTargetKeyForRole('C')).toBe(4);
+    expect(passTargetKeyForRole('PG')).toBeNull();
   });
 });

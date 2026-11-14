@@ -192,6 +192,37 @@ describe('readPlay via loadScenario', () => {
     expect(error.message).toMatch(/expected no cues at cue level none/);
   });
 
+  it('reads prompt passTo and reason, omitting them when absent', () => {
+    const phases = scenario.phases;
+    const entry = phases[0]?.cues.full[1];
+    expect(entry).toMatchObject({ kind: 'prompt', passTo: 'SG' });
+    expect(entry).toHaveProperty('reason');
+    expect(phases[1]?.cues.full[1]).not.toHaveProperty('passTo');
+  });
+
+  it('rejects a prompt passTo that has no pass key', () => {
+    const data = clone();
+    data.phases[0].cues.full[1].passTo = 'PG';
+    const error = catchError(() => load(data));
+    expect(error.field).toBe('giveAndGo.phases[0].cues.full[1].passTo');
+    expect(error.message).toMatch(/expected a pass-target role \(SG, SF, PF, C\), got "PG"/);
+  });
+
+  it('rejects an unknown prompt key', () => {
+    const data = clone();
+    data.phases[0].cues.full[1].icon = 'ball';
+    const error = catchError(() => load(data));
+    expect(error.field).toBe('giveAndGo.phases[0].cues.full[1].icon');
+  });
+
+  it('rejects a second prompt in one cue level', () => {
+    const data = clone();
+    data.phases[0].cues.full.push({ kind: 'prompt', text: 'Again' });
+    const error = catchError(() => load(data));
+    expect(error.field).toBe('giveAndGo.phases[0].cues.full[2]');
+    expect(error.message).toMatch(/at most one prompt cue per cue level/);
+  });
+
   it('rejects a decision role that is not playable', () => {
     const data = clone();
     data.decisions[0].role = 'SG';
