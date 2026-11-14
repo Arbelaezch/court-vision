@@ -19,7 +19,9 @@ describe('validateBindings', () => {
   });
 
   it('rejects an unknown gesture', () => {
-    const bad = [{ input: 'Mouse0', action: 'chestPass', gesture: 'Double' }] as unknown as Binding[];
+    const bad = [
+      { input: 'Mouse0', action: 'chestPass', gesture: 'Double' },
+    ] as unknown as Binding[];
     expect(() => validateBindings(bad)).toThrow(/^Court Vision: bindings\[0\].*gesture/);
   });
 

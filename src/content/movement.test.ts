@@ -20,11 +20,7 @@ describe('loadMovementTuning', () => {
   });
 
   it.each([
-    [
-      'missing sprintDurationS',
-      (d: any) => delete d.sprintDurationS,
-      'movement.sprintDurationS',
-    ],
+    ['missing sprintDurationS', (d: any) => delete d.sprintDurationS, 'movement.sprintDurationS'],
     [
       'sprintSpeedMultiplier below 1',
       (d: any) => (d.sprintSpeedMultiplier = 0.9),

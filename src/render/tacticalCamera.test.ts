@@ -62,7 +62,11 @@ describe('fitTacticalCamera', () => {
   });
 
   it('keeps the default top height at head height', () => {
-    const maxY = Math.max(...tacticalFitPoints().slice(0, 8).map((p) => p.y));
+    const maxY = Math.max(
+      ...tacticalFitPoints()
+        .slice(0, 8)
+        .map((p) => p.y),
+    );
     expect(maxY).toBe(PLAYER_HEAD_HEIGHT);
   });
 

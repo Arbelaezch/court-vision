@@ -36,11 +36,7 @@ describe('loadTeams', () => {
       (d) => (d.offense.jerseyNumbers.PG = 100),
       'teams.offense.jerseyNumbers.PG',
     ],
-    [
-      'duplicate jersey',
-      (d) => (d.offense.jerseyNumbers.SG = 3),
-      'teams.offense.jerseyNumbers.SG',
-    ],
+    ['duplicate jersey', (d) => (d.offense.jerseyNumbers.SG = 3), 'teams.offense.jerseyNumbers.SG'],
     ['unknown side', (d) => (d.bench = d.offense), 'teams.bench'],
     [
       'same primary color',

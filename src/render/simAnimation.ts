@@ -57,7 +57,10 @@ export function createSimAnimTracker(): SimAnimTracker {
 
     for (const event of curr.events) {
       if (event.type === 'shotResolved') {
-        start(event.shooterId, event.shotType === 'layup' || event.shotType === 'floater' ? 'layup' : 'shoot');
+        start(
+          event.shooterId,
+          event.shotType === 'layup' || event.shotType === 'floater' ? 'layup' : 'shoot',
+        );
         arc = shotArcFromStep(prev, curr, event);
       } else if (event.type === 'screenSet') {
         start(event.screenerId, 'screen');

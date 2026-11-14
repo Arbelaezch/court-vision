@@ -44,10 +44,7 @@ function layout(): GameState {
     C: polar(180, 5),
   };
   for (const p of state.players) {
-    p.pos =
-      p.side === 'offense'
-        ? { ...spots[p.role]! }
-        : { x: -9 + p.id, z: 12 };
+    p.pos = p.side === 'offense' ? { ...spots[p.role]! } : { x: -9 + p.id, z: 12 };
   }
   return state;
 }
@@ -88,9 +85,9 @@ describe('resolvePassTarget numbered', () => {
     expect(
       resolvePassTarget(state, { key: null, aimAt: polar(0, 5) }, settings('numbered')),
     ).toBeNull();
-    expect(
-      resolvePassTarget(state, { key: 2, aimAt: polar(180, 5) }, settings('numbered')),
-    ).toBe(byRole(state, 'SF').id);
+    expect(resolvePassTarget(state, { key: 2, aimAt: polar(180, 5) }, settings('numbered'))).toBe(
+      byRole(state, 'SF').id,
+    );
   });
 });
 
@@ -148,7 +145,9 @@ describe('resolvePassTarget aim', () => {
 
   it('returns null when aiming at the holder', () => {
     const state = layout();
-    expect(resolvePassTarget(state, { key: null, aimAt: { x: 0, z: 0 } }, settings('aim'))).toBeNull();
+    expect(
+      resolvePassTarget(state, { key: null, aimAt: { x: 0, z: 0 } }, settings('aim')),
+    ).toBeNull();
   });
 
   it('never returns the holder or a defender', () => {
@@ -216,10 +215,14 @@ describe('resolvePassTarget holder gating', () => {
 describe('resolvePassTarget validation', () => {
   it('throws for an unknown mode', () => {
     expect(() =>
-      resolvePassTarget(layout(), { key: 1, aimAt: null }, {
-        mode: 'mind' as PassTargetingMode,
-        aimSensitivity: 1,
-      }),
+      resolvePassTarget(
+        layout(),
+        { key: 1, aimAt: null },
+        {
+          mode: 'mind' as PassTargetingMode,
+          aimSensitivity: 1,
+        },
+      ),
     ).toThrow(/^Court Vision:/);
   });
 

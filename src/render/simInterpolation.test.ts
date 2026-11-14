@@ -84,11 +84,7 @@ describe('interpolatePlayers', () => {
 describe.each<PassType>(['bouncePass', 'lob'])('%s ball path', (passType) => {
   it('follows the sim ball and its height profile', () => {
     const game = newGame();
-    const states = record(
-      [{ type: 'pass', passType, targetId: sgId(game) }],
-      60,
-      game,
-    );
+    const states = record([{ type: 'pass', passType, targetId: sgId(game) }], 60, game);
     const tuning = game.passing!.tuning;
     const sampled: number[] = [];
     let checked = 0;
@@ -100,7 +96,11 @@ describe.each<PassType>(['bouncePass', 'lob'])('%s ball path', (passType) => {
       expect(pos.x).toBeCloseTo(prev.ball.pos.x, 12);
       expect(pos.y).toBeCloseTo(prev.ball.pos.y, 12);
       expect(pos.z).toBeCloseTo(prev.ball.pos.z, 12);
-      const expected = passHeightAt(passType, prev.ball.elapsedTicks / prev.ball.flightTicks, tuning);
+      const expected = passHeightAt(
+        passType,
+        prev.ball.elapsedTicks / prev.ball.flightTicks,
+        tuning,
+      );
       expect(Math.abs(pos.y - expected)).toBeLessThan(1e-9);
       sampled.push(pos.y);
       checked++;
@@ -115,7 +115,11 @@ describe.each<PassType>(['bouncePass', 'lob'])('%s ball path', (passType) => {
   });
 });
 
-function shotStates(placeNearRim: boolean): { states: GameState[]; event: ShotResolvedEvent; k: number } {
+function shotStates(placeNearRim: boolean): {
+  states: GameState[];
+  event: ShotResolvedEvent;
+  k: number;
+} {
   const game = newGame();
   const id = game.controlledPlayerId;
   const commands = placeNearRim

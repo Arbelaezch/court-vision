@@ -21,9 +21,8 @@ export interface MountedGamepad {
 }
 
 const defaultGetGamepads: GamepadSource = () => {
-  const nav = (
-    globalThis as { navigator?: { getGamepads?: () => Iterable<GamepadLike | null> } }
-  ).navigator;
+  const nav = (globalThis as { navigator?: { getGamepads?: () => Iterable<GamepadLike | null> } })
+    .navigator;
   if (typeof nav?.getGamepads === 'function') return Array.from(nav.getGamepads());
   return [];
 };

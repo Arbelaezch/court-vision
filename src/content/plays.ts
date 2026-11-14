@@ -98,7 +98,11 @@ export type PhaseTrigger =
   | { readonly kind: 'passCompleted'; readonly from: RoleId; readonly to: RoleId }
   | { readonly kind: 'screenSet'; readonly screener: RoleId }
   | { readonly kind: 'timeElapsed'; readonly seconds: number }
-  | { readonly kind: 'defenseReaction'; readonly defender: RoleId; readonly action: DefenderAction };
+  | {
+      readonly kind: 'defenseReaction';
+      readonly defender: RoleId;
+      readonly action: DefenderAction;
+    };
 
 export interface PhaseTransition {
   readonly to: string;
@@ -601,10 +605,7 @@ function readDecisions(
     const phaseField = getField(obj, 'phase', decAt);
     const phase = readPhaseRef(phaseField.value, phaseField.at, ctx.phaseIds);
     if (!ctx.reachable.has(phase)) {
-      fail(
-        phaseField.at,
-        `phase "${phase}" is not reachable from start phase "${ctx.startPhase}"`,
-      );
+      fail(phaseField.at, `phase "${phase}" is not reachable from start phase "${ctx.startPhase}"`);
     }
 
     const optionsField = getField(obj, 'options', decAt);
