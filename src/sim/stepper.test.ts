@@ -7,6 +7,8 @@ import {
   type StepperState,
 } from './stepper';
 
+import { MAX_FRAME_DELTA_MS, SIM_HZ } from './stepper';
+
 function run(speed: number, deltas: number[]): StepperState {
   const stepper = createStepper(speed);
   let sum = 0;
@@ -43,6 +45,16 @@ describe('stepper', () => {
   it('clamps a long frame to the maximum delta', () => {
     expect(advanceStepper(createStepper(1), 1000)).toBe(15);
   });
+
+  it.each([3000, 5000, 30000])(
+    'bounds a several-second frame (%s ms) by the maximum catch-up steps',
+    (d) => {
+      const bound = Math.floor((MAX_FRAME_DELTA_MS * SIM_HZ) / 1000);
+      expect(advanceStepper(createStepper(1), d)).toBeLessThanOrEqual(bound);
+      expect(advanceStepper(createStepper(1), d)).toBe(15);
+      expect(advanceStepper(createStepper(0.85), d)).toBe(12);
+    },
+  );
 
   it('reports interpolation alpha within [0, 1)', () => {
     const s = createStepper(1);
