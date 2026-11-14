@@ -101,6 +101,82 @@ describe('guardPoint and isInKey', () => {
   });
 });
 
+describe('guard shifts off passing lanes', () => {
+  function laneDistance(a: CourtPoint, b: CourtPoint, p: CourtPoint): number {
+    const lx = b.x - a.x;
+    const lz = b.z - a.z;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * lx + (p.z - a.z) * lz) / (lx * lx + lz * lz)));
+    return dist(p, { x: a.x + lx * t, z: a.z + lz * t });
+  }
+
+  it('stays clear of the ball holder lanes while staying on the rim side of its man', () => {
+    const game = newGame();
+    const sg = player(game, 'offense', 'SG');
+    place(sg, { x: 5.5, z: -1 });
+    place(player(game, 'offense', 'PG'), { x: 0.8, z: -4 });
+    game.ball = { kind: 'held', holderId: sg.id };
+    const self = player(game, 'defense', 'SG');
+    place(self, { x: 5, z: -2 });
+    let g = game;
+    for (let t = 0; t < 240; t += 1) {
+      g = tick(g, { SG: { action: 'guard', spot: { x: 5, z: -2 } } }, STAND);
+    }
+    const man = player(g, 'offense', 'SG');
+    const def = player(g, 'defense', 'SG');
+    const radius = g.passing?.tuning.laneRadiusM ?? 0.9;
+    for (const mate of g.players) {
+      if (mate.side !== 'offense' || mate.id === man.id) continue;
+      expect(laneDistance(man.pos, mate.pos, def.pos)).toBeGreaterThanOrEqual(radius);
+    }
+    expect(dist(def.pos, RIM_CENTER)).toBeLessThan(dist(man.pos, RIM_CENTER));
+  });
+
+  it('moves its target smoothly while a teammate crosses the rim line of its man', () => {
+    const game = newGame();
+    const sg = player(game, 'offense', 'SG');
+    place(sg, { x: 5.5, z: -1 });
+    place(player(game, 'offense', 'PG'), { x: 7, z: 5 });
+    place(player(game, 'offense', 'PF'), { x: 7.5, z: 4 });
+    place(player(game, 'offense', 'C'), { x: 8, z: 3 });
+    const sf = player(game, 'offense', 'SF');
+    const rx = RIM_CENTER.x - sg.pos.x;
+    const rz = RIM_CENTER.z - sg.pos.z;
+    const rlen = Math.hypot(rx, rz);
+    const spot = guardPoint(sg, GUARD_CUSHION_M);
+    place(player(game, 'defense', 'SG'), spot);
+    let prev: { x: number; z: number } | null = null;
+    let maxJump = 0;
+    for (let k = -30; k <= 30; k += 1) {
+      const off = k * 0.05;
+      place(sf, {
+        x: sg.pos.x + rx * 0.6 - (rz / rlen) * off,
+        z: sg.pos.z + rz * 0.6 + (rx / rlen) * off,
+      });
+      const cmd = defenderCommands(game, { SG: { action: 'guard', spot } })[0];
+      if (cmd === undefined || cmd.type !== 'steer') throw new Error('expected steer');
+      if (prev !== null) maxJump = Math.max(maxJump, Math.hypot(cmd.x - prev.x, cmd.z - prev.z));
+      prev = { x: cmd.x, z: cmd.z };
+    }
+    // The steer command is the target offset over the 1 m arrive radius. Without the fade the
+    // target jumped about 2.5 m when the teammate crossed the line; now it ramps over a few steps.
+    expect(maxJump).toBeLessThan(0.8);
+  });
+
+  it('keeps the plain cushion point when no teammate lane passes near it', () => {
+    const game = newGame();
+    const sg = player(game, 'offense', 'SG');
+    place(sg, { x: 5.5, z: -1 });
+    place(player(game, 'offense', 'PG'), { x: 5.5, z: 4 });
+    place(player(game, 'offense', 'SF'), { x: 5.5, z: 3 });
+    place(player(game, 'offense', 'PF'), { x: 7, z: 5 });
+    place(player(game, 'offense', 'C'), { x: 3, z: 5 });
+    const spot = guardPoint(sg, GUARD_CUSHION_M);
+    place(player(game, 'defense', 'SG'), spot);
+    const cmd = defenderCommands(game, { SG: { action: 'guard', spot } })[0];
+    expect(cmd).toMatchObject({ type: 'steer', x: 0, z: 0 });
+  });
+});
+
 describe('defenderCommands', () => {
   it('emits only steer commands for roles present, skipping the controlled player', () => {
     const game = newGame();

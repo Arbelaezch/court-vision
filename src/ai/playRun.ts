@@ -47,13 +47,7 @@
 // step). The referee's Scrimmage `coverageId` should be the same id. While deviated, defenders keep
 // running their behaviors.
 
-import type {
-  CoverageStep,
-  DefenderStep,
-  PhaseTrigger,
-  PlayScenario,
-  TrackStep,
-} from '../content';
+import type { CoverageStep, DefenderStep, PhaseTrigger, PlayScenario, TrackStep } from '../content';
 import {
   ROLE_ORDER,
   SIM_HZ,

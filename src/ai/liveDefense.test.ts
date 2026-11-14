@@ -7,7 +7,16 @@ import {
   loadSimShooting,
   type PlayScenario,
 } from '../content';
-import { FIXED_DT, type CourtPoint, type GameState, type RoleId, type SimAction } from '../sim';
+import {
+  BASELINE_Z,
+  FIXED_DT,
+  HALF_COURT_LINE_Z,
+  SIDELINE_X,
+  type CourtPoint,
+  type GameState,
+  type RoleId,
+  type SimAction,
+} from '../sim';
 import { isInKey, startPracticeRun, stepPracticeRun, type PlayRunState } from './index';
 
 const roles = loadCastContent().roles;
@@ -49,13 +58,16 @@ interface CutRun {
   /** Defense positions on the step the phase changed from cut to finish; null if it never did. */
   atFinish: CourtPoint[] | null;
   maxStep: number;
+  /** True when any defender stood on the sim's wall clamp at any tick. */
+  wallContact: boolean;
   debug?: string;
 }
 
 function runCut(seed: number, liveCoverageId: string): CutRun {
   let state: Run = startPracticeRun(GIVE_AND_GO, { seed, ...SETUPS, liveCoverageId });
   const sgId = player(state.game, 'offense', 'SG').id;
-  const out: CutRun = { reachedCut: false, atFinish: null, maxStep: -Infinity };
+  const mistakes: string[] = [];
+  const out: CutRun = { reachedCut: false, atFinish: null, maxStep: -Infinity, wallContact: false };
   for (let tick = 0; tick < 1200; tick += 1) {
     const actions: SimAction[] =
       tick === 0
@@ -64,6 +76,7 @@ function runCut(seed: number, liveCoverageId: string): CutRun {
     const prev = state;
     state = stepPracticeRun(GIVE_AND_GO, prev.run, prev.game, actions);
     if (state.run.phaseId === 'cut') out.reachedCut = true;
+    for (const e of state.game.events) if (e.type === 'mistake') mistakes.push(JSON.stringify(e));
     for (const role of ROLES) {
       const before = player(prev.game, 'defense', role);
       const after = player(state.game, 'defense', role);
@@ -71,6 +84,13 @@ function runCut(seed: number, liveCoverageId: string): CutRun {
         before.movement.speedMps * state.game.movementTuning.sprintSpeedMultiplier * FIXED_DT;
       const moved = Math.hypot(after.pos.x - before.pos.x, after.pos.z - before.pos.z);
       out.maxStep = Math.max(out.maxStep, moved - limit);
+      if (
+        after.pos.z <= BASELINE_Z ||
+        after.pos.z >= HALF_COURT_LINE_Z ||
+        Math.abs(after.pos.x) >= SIDELINE_X
+      ) {
+        out.wallContact = true;
+      }
     }
     if (prev.run.phaseId === 'cut' && state.run.phaseId === 'finish') {
       out.atFinish = ROLES.map((r) => ({ ...player(state.game, 'defense', r).pos }));
@@ -84,8 +104,54 @@ function runCut(seed: number, liveCoverageId: string): CutRun {
     ball: state.game.ball,
     pg: pg.pos,
     passes: state.run.passesMade,
+    defense: ROLES.map((r) => [
+      r,
+      player(state.game, 'defense', r).id,
+      player(state.game, 'defense', r).pos,
+    ]),
+    sg: player(state.game, 'offense', 'SG').pos,
+    mistakes: mistakes,
   });
   return out;
+}
+
+interface KickOut {
+  intercepted: boolean;
+  sfHasBall: boolean;
+  debug: string;
+}
+
+/** Run entry and cut to the finish, then kick out to the SF with a chest pass. */
+function runKickOut(seed: number, liveCoverageId: string): KickOut {
+  let state: Run = startPracticeRun(GIVE_AND_GO, { seed, ...SETUPS, liveCoverageId });
+  const sgId = player(state.game, 'offense', 'SG').id;
+  const sfId = player(state.game, 'offense', 'SF').id;
+  let kicked = false;
+  let kickTicks = 0;
+  for (let tick = 0; tick < 1500 && kickTicks < 120; tick += 1) {
+    let actions: SimAction[];
+    if (tick === 0) actions = [{ type: 'pass', passType: 'chestPass', targetId: sgId }];
+    else if (state.run.phaseId === 'finish' && !kicked) {
+      const holder = state.game.ball.kind === 'held' ? state.game.ball.holderId : -1;
+      const pgId = player(state.game, 'offense', 'PG').id;
+      if (holder === pgId) {
+        actions = [{ type: 'pass', passType: 'chestPass', targetId: sfId }];
+        kicked = true;
+      } else {
+        actions = [moveToward(state.game, CUT_SPOT)];
+      }
+    } else {
+      actions = [moveToward(state.game, CUT_SPOT)];
+    }
+    state = stepPracticeRun(GIVE_AND_GO, state.run, state.game, actions);
+    if (kicked) kickTicks += 1;
+  }
+  const events = JSON.stringify(state.game.events);
+  return {
+    intercepted: state.game.events.some((e) => e.type === 'mistake'),
+    sfHasBall: state.game.ball.kind === 'held' && state.game.ball.holderId === sfId,
+    debug: JSON.stringify({ kicked, phase: state.run.phaseId, ball: state.game.ball, events }),
+  };
 }
 
 describe('live defense in the play run', () => {
@@ -104,6 +170,33 @@ describe('live defense in the play run', () => {
       const result = runCut(seed, 'ballWatch');
       expect(result.atFinish).not.toBeNull();
       expect(result.atFinish?.some((p) => isInKey(p))).toBe(false);
+    }
+  });
+
+  it('never reaches a wall: live defenders stay off the sim clamp through the cut', () => {
+    for (const coverage of ['ballWatch', 'helpOnCut']) {
+      for (const seed of SEEDS) {
+        const result = runCut(seed, coverage);
+        expect(result.atFinish).not.toBeNull();
+        expect(result.wallContact).toBe(false);
+      }
+    }
+  });
+
+  it('the SG -> PG return pass completes against the guarding SG, in both coverages', () => {
+    for (const coverage of ['ballWatch', 'helpOnCut']) {
+      for (const seed of SEEDS) {
+        const result = runCut(seed, coverage);
+        expect(result.atFinish, result.debug).not.toBeNull();
+      }
+    }
+  });
+
+  it('helpOnCut: the great kick-out read to the SF is not intercepted', () => {
+    for (const seed of SEEDS) {
+      const outcome = runKickOut(seed, 'helpOnCut');
+      expect(outcome.intercepted, outcome.debug).toBe(false);
+      expect(outcome.sfHasBall, outcome.debug).toBe(true);
     }
   });
 

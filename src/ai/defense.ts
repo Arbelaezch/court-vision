@@ -13,7 +13,9 @@
 //
 // Behaviors per action:
 //   guard       hold a cushion (GUARD_CUSHION_M) from the man toward the rim, mirroring the man's
-//               velocity as feed-forward plus a pull toward the cushion point;
+//               velocity as feed-forward plus a pull toward the cushion point. The
+//               point shifts sideways off his passing lanes (to every teammate);
+//               the scripted `spot` is only the start position, never read by guard-like actions;
 //   recover     like guard, but sprints back whenever it is more than 0.5 m off the cushion point;
 //   closeout    controlled: sprint in, then break down and stop CLOSEOUT_CUSHION_M from the man;
 //   closeoutHard over-aggressive: full sprint straight at the man with no breakdown, so it overruns
@@ -22,15 +24,22 @@
 //   chaseOver, goUnder, switch, drop, hedge
 //               generic "go to the scripted spot" until a screen play needs more.
 //
+// Known sim exemption (A1): when a defender reaches the baseline, a sideline or the half-court line,
+// src/sim/step.ts clamps its position and zeroes the velocity component in one tick, which can
+// exceed the per-tick acceleration bound. Behaviors do not avoid walls; the scripted plays keep
+// defenders off them (see liveDefense.test.ts, "never reaches a wall").
+//
 // Imports only from the sim barrel (and content types); it must not import ./playRun (cycle).
 
 import type { DefenderAction, DefenderStep } from '../content';
 import {
   BASELINE_Z,
   FREE_THROW_LINE_Z,
+  HALF_COURT_LINE_Z,
   KEY_WIDTH,
   RIM_CENTER,
   ROLE_ORDER,
+  SIDELINE_X,
   type CourtPoint,
   type GameState,
   type PlayerCommand,
@@ -50,6 +59,21 @@ export const DEFENSE_ARRIVE_RADIUS_M = 1.5;
 export const HELP_CONTEST_RADIUS_M = 3.0;
 /** Help contest spot: this far from the holder toward the rim, m. */
 export const HELP_CONTEST_GAP_M = 0.6;
+
+/** Lane radius used when the game has no passing setup, m. */
+const DEFAULT_LANE_RADIUS_M = 0.9;
+/** A guard keeps this much beyond the interception lane radius from the passing lane, m. */
+const LANE_MARGIN_M = 0.35;
+/** Above this speed a man is driving and his guard stops shifting off passing lanes, m/s. */
+const DRIVE_SPEED_MPS = 2.5;
+/** A lane-shifted guard point stays this far inside the court lines, m. */
+const WALL_MARGIN_M = 0.4;
+/** Passing lanes aim at a teammate's position this far ahead, s. */
+const LANE_LOOKAHEAD_S = 0.35;
+/** Lanes nearly parallel to the sidestep direction are ignored (cannot be cleared by sliding). */
+const LANE_MIN_FACING = 0.2;
+/** Cap on the slide along the fixed side, as a multiple of the lane clearance. */
+const LANE_MAX_SLIDE_FACTOR = 2;
 
 /** Recover sprints whenever it is farther than this from its target, m. */
 const RECOVER_SPRINT_DISTANCE_M = 0.5;
@@ -99,9 +123,72 @@ function topSpeed(self: PlayerState, game: GameState, sprint: boolean): number {
   return self.movement.speedMps * (sprint ? game.movementTuning.sprintSpeedMultiplier : 1);
 }
 
+/**
+ * Shift `target` sideways until it is at least `laneClearM` from the passing lane (the segment
+ * man -> teammate), for each teammate in turn. The slide is always to one fixed side of the
+ * man->rim line (toward the man's half of the court), so it is continuous and deterministic.
+ * Best effort: a later teammate's slide can leave an earlier lane, and the wall clamp runs last.
+ */
+function clearOfLanes(
+  man: PlayerState,
+  target: CourtPoint,
+  game: GameState,
+  onlyTo: PlayerState | null = null,
+): CourtPoint {
+  const laneClearM = (game.passing?.tuning.laneRadiusM ?? DEFAULT_LANE_RADIUS_M) + LANE_MARGIN_M;
+  let { x, z } = target;
+  // Fixed side: perpendicular to the man->rim line, toward the man's own half of the court.
+  const rdx = RIM_CENTER.x - man.pos.x;
+  const rdz = RIM_CENTER.z - man.pos.z;
+  const rd = Math.hypot(rdx, rdz) || 1;
+  const leftX = -rdz / rd;
+  const leftZ = rdx / rd;
+  const flip = leftX * man.pos.x < 0 ? -1 : 1;
+  const sideX = leftX * flip;
+  const sideZ = leftZ * flip;
+  for (const mate of game.players) {
+    if (mate.side !== 'offense' || mate.id === man.id) continue;
+    if (onlyTo !== null && mate.id !== onlyTo.id) continue;
+    // Aim at where the teammate will be: a pass to a moving receiver is led the same way.
+    const lx = mate.pos.x + mate.vel.x * LANE_LOOKAHEAD_S - man.pos.x;
+    const lz = mate.pos.z + mate.vel.z * LANE_LOOKAHEAD_S - man.pos.z;
+    const len = Math.hypot(lx, lz);
+    if (len === 0) continue;
+    const tx = x - man.pos.x;
+    const tz = z - man.pos.z;
+    const along = (tx * lx + tz * lz) / (len * len);
+    if (along <= 0 || along >= 1) continue;
+    const signed = (lx * tz - lz * tx) / len;
+    // Always step to one fixed side of the man->rim line (set by the caller) and slide along it
+    // until this lane is cleared on that side. Unlike picking the side per lane, the target then
+    // moves continuously when a teammate crosses the man->rim line.
+    const nx = -lz / len;
+    const nz = lx / len;
+    const facing = nx * sideX + nz * sideZ;
+    if (Math.abs(facing) < LANE_MIN_FACING) continue;
+    const sgn = facing > 0 ? 1 : -1;
+    const room = laneClearM - sgn * signed;
+    if (room <= 0) continue;
+    const k = Math.min(room / Math.abs(facing), laneClearM * LANE_MAX_SLIDE_FACTOR);
+    x += sideX * k;
+    z += sideZ * k;
+  }
+  // Stay off the walls: the sim zeroes velocity at a wall, which breaks the acceleration limit.
+  return {
+    x: Math.max(-SIDELINE_X + WALL_MARGIN_M, Math.min(SIDELINE_X - WALL_MARGIN_M, x)),
+    z: Math.max(BASELINE_Z + WALL_MARGIN_M, Math.min(HALF_COURT_LINE_Z - WALL_MARGIN_M, z)),
+  };
+}
+
 function guardLike(ctx: DefenderContext, sprintRadius: number | null): DefenderIntent {
   const { game, self, man } = ctx;
-  const target = guardPoint(man, GUARD_CUSHION_M);
+  const cushion = guardPoint(man, GUARD_CUSHION_M);
+  // Decision 2026-11-14: a set defender stays between its man and the rim but shifts off his
+  // passing lanes, so scripted passes stay open. It does this before its man gets the ball: a
+  // lateral slide cannot start after the catch and still beat an immediate pass.
+  // A man driving at speed is defended on the drive, not on his passes.
+  const driving = man.sprinting || Math.hypot(man.vel.x, man.vel.z) > DRIVE_SPEED_MPS;
+  const target = driving ? cushion : clearOfLanes(man, cushion, game);
   const d = dist(self.pos, target);
   const sprint =
     sprintRadius === null ? man.sprinting || d > DEFENSE_SPRINT_DISTANCE_M : d > sprintRadius;
@@ -153,7 +240,8 @@ const help: DefenderBehavior = (ctx) => {
       d === 0
         ? { x: holder.pos.x, z: holder.pos.z }
         : { x: holder.pos.x + (dx / d) * gap, z: holder.pos.z + (dz / d) * gap };
-    return seekSpot(ctx, target, true);
+    // Leave the kick-out lane to the man this helper left open (the read the play grades great).
+    return seekSpot(ctx, clearOfLanes(holder, target, ctx.game, ctx.man), true);
   }
   return seekSpot(ctx, ctx.step.spot);
 };
