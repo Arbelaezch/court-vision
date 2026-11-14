@@ -33,6 +33,9 @@ export interface ShotTuningSpec {
   readonly offBalancePenalty: number;
   readonly outOfRangePenalty: number;
   readonly floaterPenalty: number;
+  readonly crowdingRadiusM: number;
+  readonly driveLaneHalfWidthM: number;
+  readonly spacingWeight: number;
   readonly greatMinScore: number;
   readonly goodMinScore: number;
   readonly dribbleSpeedMps: number;
@@ -82,6 +85,9 @@ const RANGES: Record<keyof ShotTuningSpec, Range> = {
   offBalancePenalty: UNIT,
   outOfRangePenalty: UNIT,
   floaterPenalty: UNIT,
+  crowdingRadiusM: DISTANCE,
+  driveLaneHalfWidthM: DISTANCE,
+  spacingWeight: UNIT,
   greatMinScore: SCORE,
   goodMinScore: SCORE,
   dribbleSpeedMps: SPEED,

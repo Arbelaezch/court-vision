@@ -11,9 +11,12 @@
 //   from reach + jump against the shot's release height, so a floater rises over a big;
 // - offBalance (jump shots): moving faster than offBalanceSpeedMps, or a recent unset catch;
 // - outOfRange: beyond maxRangeM, or a zone rating below rangeRatingFloor;
-// - floater: a fixed penalty, so an open layup still beats an open floater.
+// - floater: a fixed penalty, so an open layup still beats an open floater;
+// - spacing: the closest teammate inside crowdingRadiusM, or inside the lane to the rim (half-width
+//   driveLaneHalfWidthM), up to spacingWeight, keeping the largest per teammate.
 // The reason is 'Open shot' for a Great look, otherwise the largest penalty's reason (ties in the
-// order above).
+// order above). When the spacing penalty is above 0 and spacing is not already the reason, the
+// reason gets ', crowded spacing' appended.
 
 import { RIM_CENTER, isBeyondArc } from './court';
 import { contestingOpponents } from './opponents';
@@ -35,7 +38,11 @@ export const SHOT_REASONS = {
   offBalance: 'Off-balance shot',
   outOfRange: 'Shot out of range',
   floater: 'Tough floater',
+  spacing: 'Crowded spacing',
 } as const;
+
+// Appended to the reason when spacing lowers a look that another reason explains.
+export const SHOT_SPACING_NOTE = 'crowded spacing';
 
 export interface LookRating {
   look: LookQuality;
@@ -143,6 +150,7 @@ const PENALTY_ORDER = [
   'offBalance',
   'outOfRange',
   'floater',
+  'spacing',
 ] as const;
 type PenaltyKey = (typeof PENALTY_ORDER)[number];
 
@@ -172,6 +180,38 @@ function contestAt(d: number, tuning: ShotTuning): number {
   return tuning.contestWeight * (1 - d / tuning.contestRadiusM);
 }
 
+/**
+ * Unclamped fraction `t` of `p` along the segment a -> b (0 when the segment has zero length) and
+ * the perpendicular distance from `p` to the line point at `t`.
+ */
+function segmentProjection(a: CourtPoint, b: CourtPoint, p: CourtPoint): { t: number; w: number } {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const lengthSq = dx * dx + dz * dz;
+  if (lengthSq === 0) {
+    return { t: 0, w: horizontalDistance(p, a) };
+  }
+  const t = ((p.x - a.x) * dx + (p.z - a.z) * dz) / lengthSq;
+  return { t, w: horizontalDistance(p, { x: a.x + t * dx, z: a.z + t * dz }) };
+}
+
+/** Largest crowding or in-lane penalty over the shooter's teammates (at most spacingWeight). */
+function spacingPenalty(state: GameState, shooter: PlayerState, tuning: ShotTuning): number {
+  const teammates = state.players.filter((p) => p.side === shooter.side && p.id !== shooter.id);
+  let largest = 0;
+  for (const mate of teammates) {
+    const d = horizontalDistance(mate.pos, shooter.pos);
+    if (d < tuning.crowdingRadiusM) {
+      largest = Math.max(largest, tuning.spacingWeight * (1 - d / tuning.crowdingRadiusM));
+    }
+    const { t, w } = segmentProjection(shooter.pos, RIM_CENTER, mate.pos);
+    if (t > 0 && t < 1 && w < tuning.driveLaneHalfWidthM) {
+      largest = Math.max(largest, tuning.spacingWeight * (1 - w / tuning.driveLaneHalfWidthM));
+    }
+  }
+  return largest;
+}
+
 /** Scores the look for `shotType` taken by `shooterId` on `eventTick`. */
 export function rateLook(
   state: GameState,
@@ -194,6 +234,7 @@ export function rateLook(
     offBalance: 0,
     outOfRange: 0,
     floater: 0,
+    spacing: 0,
   };
 
   let nearest: PlayerState | null = null;
@@ -242,6 +283,8 @@ export function rateLook(
     penalties.floater = tuning.floaterPenalty;
   }
 
+  penalties.spacing = spacingPenalty(state, shooter, tuning);
+
   let sum = 0;
   let largest: PenaltyKey = 'contested';
   for (const key of PENALTY_ORDER) {
@@ -252,10 +295,15 @@ export function rateLook(
   }
   const score = clamp01(1 - sum);
   const look = lookFromScore(score, tuning);
+  const primary = look === 'great' ? SHOT_REASONS.open : SHOT_REASONS[largest];
+  const reason =
+    penalties.spacing > 0 && primary !== SHOT_REASONS.spacing
+      ? `${primary}, ${SHOT_SPACING_NOTE}`
+      : primary;
   return {
     look,
     score,
-    reason: look === 'great' ? SHOT_REASONS.open : SHOT_REASONS[largest],
+    reason,
     zone,
     distanceM,
     nearestDefenderId: nearest === null ? null : nearest.id,

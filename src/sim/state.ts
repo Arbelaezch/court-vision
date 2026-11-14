@@ -197,6 +197,12 @@ export interface ShotTuning {
   outOfRangePenalty: number;
   /** Fixed floater penalty, look-score units (0-1). */
   floaterPenalty: number;
+  /** A teammate closer than this to the shooter crowds the shot, m. */
+  crowdingRadiusM: number;
+  /** Half-width of the lane from the shooter to the rim centre; a teammate inside it is in the way, m. */
+  driveLaneHalfWidthM: number;
+  /** Largest spacing penalty, look-score units (0-1). */
+  spacingWeight: number;
   /** A look score at or above this is Great, in (goodMinScore, 1]. */
   greatMinScore: number;
   /** A look score at or above this is Good, in (0, 1]. */
@@ -465,6 +471,7 @@ const NON_NEGATIVE_SHOT_TUNING_KEYS = [
   'offBalancePenalty',
   'outOfRangePenalty',
   'floaterPenalty',
+  'spacingWeight',
   'blockJitter',
 ] as const;
 
@@ -475,6 +482,8 @@ const POSITIVE_SHOT_TUNING_KEYS = [
   'contestRadiusM',
   'rimContestSpanM',
   'blockRadiusM',
+  'crowdingRadiusM',
+  'driveLaneHalfWidthM',
   'layupReleaseHeightM',
   'jumpShotReleaseHeightM',
   'floaterReleaseHeightM',
