@@ -9,7 +9,13 @@ export {
 } from './playRun';
 export { GRADE_REASONS, MISTAKE_REASONS, classifyAction, findDecisionPoint } from './grading';
 export type { ActionClass, ResolvingAction } from './grading';
-export { OUTCOME_RULES, runGradeFor, startReferee, stepReferee } from './referee';
+export {
+  OUTCOME_RULES,
+  WRONG_PASS_TYPE_GRADE_CAP,
+  runGradeFor,
+  startReferee,
+  stepReferee,
+} from './referee';
 export type {
   GradedDecision,
   OutcomeRule,

@@ -9,7 +9,7 @@
 //
 // Matching:
 // - A pass first matches an option with the same pass type and target, then the first option with
-//   the same target and any pass move (the read is graded, the pass type only changes risk). Failing
+//   the same target and any pass move (the read is graded, flagged `exactMove: false`). Failing
 //   that it is on path (ungraded) when the phase expects a pass to that target or the role's track
 //   passes to it in that phase; otherwise it is a wrong teammate.
 // - A shoot or floater matches an option with the same move, then the first shoot/floater option,
@@ -34,7 +34,19 @@ export const GRADE_REASONS = {
 export type ResolvingAction = Extract<SimAction, { type: 'pass' | 'shoot' | 'floater' }>;
 
 export type ActionClass =
-  | { kind: 'option'; decisionId: string; optionId: string; grade: DecisionGrade; reason: string }
+  | {
+      kind: 'option';
+      decisionId: string;
+      optionId: string;
+      grade: DecisionGrade;
+      reason: string;
+      /**
+       * False when a pass matched an option's target but not its pass type (for example a chest
+       * pass where the option is a bounce pass). The grade is the option's own; the referee decides
+       * what a different pass type is worth per mode.
+       */
+      exactMove: boolean;
+    }
   | { kind: 'onPath' }
   | { kind: 'wrongTeammate'; reason: string }
   | { kind: 'offScript'; reason: string };
@@ -53,7 +65,7 @@ function optionClass(
   decision: DecisionPoint,
   option: DecisionOption,
   coverageId: string,
-): ActionClass {
+): Extract<ActionClass, { kind: 'option' }> {
   const grade = option.grades[coverageId];
   if (grade === undefined) {
     throw new Error(
@@ -66,6 +78,7 @@ function optionClass(
     optionId: option.id,
     grade,
     reason: GRADE_REASONS[grade],
+    exactMove: true,
   };
 }
 
@@ -107,10 +120,12 @@ export function classifyAction(
     if (targetRole === null) {
       return { kind: 'wrongTeammate', reason: MISTAKE_REASONS.wrongTeammate };
     }
+    const exact = options.find((o) => o.move === action.passType && o.target === targetRole);
     const match =
-      options.find((o) => o.move === action.passType && o.target === targetRole) ??
-      options.find((o) => o.target === targetRole && PASS_MOVES.includes(o.move));
-    if (decision && match) return optionClass(play, decision, match, coverageId);
+      exact ?? options.find((o) => o.target === targetRole && PASS_MOVES.includes(o.move));
+    if (decision && match) {
+      return { ...optionClass(play, decision, match, coverageId), exactMove: exact !== undefined };
+    }
     if (isOnPathPass(play, role, phaseId, targetRole)) return { kind: 'onPath' };
     return { kind: 'wrongTeammate', reason: MISTAKE_REASONS.wrongTeammate };
   }

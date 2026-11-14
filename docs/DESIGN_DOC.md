@@ -250,7 +250,7 @@ Grades drive (a) the on-screen mistake text, (b) the end-of-run result banner, a
 - **Cues:** `Reduced`. Movement cues remain, and decision cues are subtler (e.g. a hint after a short delay, or a highlight on the open teammate only once the opening exists).
 - **Clock:** a generous shot clock (default 24 seconds, configurable). A violation is a mistake.
 - **Mistakes:** turnovers (interceptions, out of bounds, blocked shots), passes to the wrong teammate, off-script actions and shot-clock violations give the "bad" whistle, optional short red text, and an **instant reset** to the half-court start. A bad look or a bad read is an unsuccessful run: no whistle and no mistake reset. Mistakes are meaningful but never harsh.
-- **Run ends/success:** same end rule as Practice. A run succeeds when every read was Great or Good for the coverage faced and the final look was not Bad; a Good read continues and counts as a success, shown as Good rather than Perfect (decision g2).
+- **Run ends/success:** same end rule as Practice. A run succeeds when every read was Great or Good for the coverage faced and the final look was not Bad; a Good read continues and counts as a success, shown as Good rather than Perfect (decision g2). A pass of the wrong type to the correct teammate (e.g. a chest pass where the read is a bounce pass) is graded at most Good, so it continues and counts as a success. In Practice it still follows the standard path and may succeed.
 
 ### 8.3 Mistake feedback (both modes)
 

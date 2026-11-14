@@ -20,7 +20,9 @@ import {
   type SimAction,
 } from '../sim';
 import {
+  GRADE_REASONS,
   OUTCOME_RULES,
+  WRONG_PASS_TYPE_GRADE_CAP,
   runGradeFor,
   startPracticeRun,
   startReferee,
@@ -395,6 +397,141 @@ describe('AC4: sim turnovers end the run as a mistake without a duplicate event'
       expect(first.resetRequested || settled.resetRequested).toBe(true);
     }
     expect(intercepted).toBeGreaterThan(0);
+  });
+});
+
+/** A shotResolved event for the human, as the sim would emit it. */
+function shotEvent(
+  game: GameState,
+  fields: { look: 'great' | 'good' | 'bad'; blockerId: number | null; reason: string },
+): GameEvent {
+  return {
+    type: 'shotResolved',
+    tick: game.tick + 1,
+    shooterId: game.controlledPlayerId,
+    shotType: 'layup',
+    zone: 'rim',
+    look: fields.look,
+    makeChance: 0.5,
+    made: false,
+    blockerId: fields.blockerId,
+    reason: fields.reason,
+  } as GameEvent;
+}
+
+/** Steps the referee directly with a synthetic `after` state holding `events`. */
+function refereeStep(
+  play: PlayScenario,
+  state: Refereed,
+  actions: SimAction[],
+  events: GameEvent[],
+) {
+  const after: GameState = { ...structuredClone(state.game), tick: state.game.tick + 1, events };
+  return stepReferee(play, state.referee, {
+    before: state.game,
+    phaseId: state.run.phaseId,
+    actions,
+    after,
+  });
+}
+
+describe('blocked shots are turnovers with a whistle and reset', () => {
+  const blockedEvents = (game: GameState, look: 'great' | 'bad'): GameEvent[] => [
+    shotEvent(game, { look, blockerId: 99, reason: 'Contested shot' }),
+    { type: 'mistake', tick: game.tick + 1, kind: 'turnover', reason: 'Contested shot' },
+  ];
+
+  it.each<[string, string, 'great' | 'bad']>([
+    ['ballWatch', 'great read', 'great'],
+    ['helpOnCut', 'bad read', 'bad'],
+  ])('scrimmage %s layup (%s) blocked', (coverageId, _, look) => {
+    const atFinish = toFinish(GIVE_AND_GO, start(GIVE_AND_GO, 1, scrimmage(coverageId)));
+    const step = refereeStep(
+      GIVE_AND_GO,
+      atFinish,
+      [{ type: 'shoot' }],
+      blockedEvents(atFinish.game, look),
+    );
+    expect(step.events).toEqual([]);
+    expect(step.resetRequested).toBe(true);
+    expect(step.referee.outcome).toEqual({
+      kind: 'mistake',
+      tick: atFinish.game.tick + 1,
+      mistakeKind: 'turnover',
+      reason: 'Contested shot',
+    });
+  });
+
+  it('an off-script blocked shot is one turnover, not a second whistle', () => {
+    const s0 = start(GIVE_AND_GO, 1, scrimmage('ballWatch'));
+    const step = refereeStep(GIVE_AND_GO, s0, [{ type: 'shoot' }], blockedEvents(s0.game, 'bad'));
+    expect(step.events).toEqual([]);
+    expect(step.resetRequested).toBe(true);
+    expect(step.referee.outcome).toMatchObject({ kind: 'mistake', reason: 'Contested shot' });
+  });
+});
+
+describe('Bad look rule', () => {
+  const badLook = (game: GameState) => [
+    shotEvent(game, { look: 'bad', blockerId: null, reason: 'Rushed look' }),
+  ];
+
+  it('Practice ignores the look: the standard-path shot succeeds', () => {
+    const atFinish = toFinish(GIVE_AND_GO, start(GIVE_AND_GO, 1));
+    const step = refereeStep(GIVE_AND_GO, atFinish, [{ type: 'shoot' }], badLook(atFinish.game));
+    expect(step.referee.outcome).toMatchObject({ kind: 'success', quality: 'great' });
+    expect(ofType(step.events, 'runSuccess')).toHaveLength(1);
+    expect(step.resetRequested).toBe(false);
+  });
+
+  it('Scrimmage makes it an unsuccessful run with the shot reason, no whistle or reset', () => {
+    const atFinish = toFinish(GIVE_AND_GO, start(GIVE_AND_GO, 1, scrimmage('ballWatch')));
+    const step = refereeStep(GIVE_AND_GO, atFinish, [{ type: 'shoot' }], badLook(atFinish.game));
+    expect(step.events).toEqual([
+      { type: 'runUnsuccessful', tick: atFinish.game.tick + 1, reason: 'Rushed look' },
+    ]);
+    expect(step.referee.outcome).toMatchObject({ kind: 'unsuccessful', reason: 'Rushed look' });
+    expect(step.resetRequested).toBe(false);
+  });
+});
+
+describe('a pass of the wrong type to the correct teammate', () => {
+  const bounceToSF = (game: GameState): SimAction => ({
+    type: 'pass',
+    passType: 'bouncePass',
+    targetId: offense(game, 'SF').id,
+  });
+
+  it('Scrimmage caps a Great read at Good (WRONG_PASS_TYPE_GRADE_CAP)', () => {
+    expect(WRONG_PASS_TYPE_GRADE_CAP).toBe('good');
+    const atFinish = toFinish(GIVE_AND_GO, start(GIVE_AND_GO, 1, scrimmage('helpOnCut')));
+    const exact = stepOnce(GIVE_AND_GO, atFinish, [passTo(atFinish.game, 'SF')]);
+    expect(exact.state.referee.graded[0]).toMatchObject({ grade: 'great' });
+    const step = stepOnce(GIVE_AND_GO, atFinish, [bounceToSF(atFinish.game)]);
+    expect(step.refereeEvents).toEqual([]);
+    expect(step.resetRequested).toBe(false);
+    expect(step.state.referee.graded).toEqual([
+      expect.objectContaining({
+        optionId: 'kickToWing',
+        grade: 'good',
+        reason: GRADE_REASONS.good,
+      }),
+    ]);
+  });
+
+  it('Practice still follows the standard path', () => {
+    const data: any = structuredClone(GIVE_AND_GO_DATA);
+    const kick = data.decisions[0].options.find((o: any) => o.id === 'kickToWing');
+    const standard = data.coverages.find((c: any) => c.practiceStandard).id;
+    kick.grades[standard] = 'great';
+    const play = loadScenario({ file: GIVE_AND_GO_FILE, data }, roles);
+    const atFinish = toFinish(play, start(play, 1));
+    const step = stepOnce(play, atFinish, [bounceToSF(atFinish.game)]);
+    expect(step.refereeEvents).toEqual([]);
+    expect(step.resetRequested).toBe(false);
+    expect(step.state.referee.graded).toEqual([
+      expect.objectContaining({ optionId: 'kickToWing', grade: 'great' }),
+    ]);
   });
 });
 

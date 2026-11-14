@@ -34,6 +34,7 @@ describe('classifyAction', () => {
       optionId: 'kickToWing',
       grade: 'good',
       reason: GRADE_REASONS.good,
+      exactMove: true,
     });
     expect(classify(GIVE_AND_GO, 'finish', 'helpOnCut', chest, 'SF')).toMatchObject({
       optionId: 'kickToWing',
@@ -45,6 +46,18 @@ describe('classifyAction', () => {
     expect(classify(GIVE_AND_GO, 'finish', 'ballWatch', bounce, 'SF')).toMatchObject({
       kind: 'option',
       optionId: 'kickToWing',
+    });
+  });
+
+  it('keeps the option grade for another pass type but flags it as not the exact move', () => {
+    // screenTest roll: hitRoller is a bounce pass graded great; a chest pass is the same read.
+    expect(classify(SCREEN_TEST, 'roll', 'standard', chest, 'C')).toMatchObject({
+      optionId: 'hitRoller',
+      grade: 'great',
+      exactMove: false,
+    });
+    expect(classify(SCREEN_TEST, 'roll', 'standard', bounce, 'C')).toMatchObject({
+      exactMove: true,
     });
   });
 

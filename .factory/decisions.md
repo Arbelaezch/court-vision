@@ -209,3 +209,8 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Hiding pauses the run and freezes all sim time incl. shot clock; showing the tab never auto-resumes; first frame after resume is discarded; pausing emits no sim events and counts no attempt
 - Decided by: assumed on 2026-11-14
 - Why: Conservative, reversible; pause menu (#24) not built yet; consistent with g12
+
+## How should a pass of the wrong type to the correct teammate be graded in each mode?
+- Kind: product
+- Decision: Option 1: Scrimmage: Good (continues, counts as success); Practice: still follows the path and may succeed
+- Decided by: user on 2026-11-14

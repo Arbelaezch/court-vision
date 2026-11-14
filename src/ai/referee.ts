@@ -49,6 +49,13 @@ export const OUTCOME_RULES = {
   practiceOffPath: 'mistake',
 } as const satisfies Record<string, OutcomeRule>;
 
+/**
+ * g2: in Scrimmage a pass of the wrong type to the correct teammate (a chest pass where the read is
+ * a bounce pass) is a Good read at best, so the run continues and is shown as Good. Practice still
+ * follows the standard path, so it is not capped there.
+ */
+export const WRONG_PASS_TYPE_GRADE_CAP = 'good' as const satisfies DecisionGrade;
+
 export interface GradedDecision {
   tick: number;
   decisionId: string;
@@ -207,8 +214,16 @@ export function stepReferee(
   let graded = referee.graded;
   let pendingFinalPassTo = referee.pendingFinalPassTo;
 
-  // 1-3. Grade the human's resolving action, if one took effect.
   const action = countedAction(actions, before, after, humanId);
+  const turnover = after.events.find((e) => e.type === 'mistake');
+
+  // A blocked shot is a turnover whatever its read: the sim already emitted the whistle, so record
+  // it and request the reset without grading or re-emitting.
+  if (action !== null && action.type !== 'pass' && turnover !== undefined) {
+    return recordTurnover(referee, turnover);
+  }
+
+  // 1-3. Grade the human's resolving action, if one took effect.
   if (action !== null) {
     const targetRole =
       action.type === 'pass' ? teammateRole(before, action.targetId, humanId) : null;
@@ -241,7 +256,12 @@ export function stepReferee(
       if (referee.mode === 'scrimmage' && cls.grade === 'bad') {
         return applyRule(referee, OUTCOME_RULES.badRead, tick, GRADE_REASONS.bad);
       }
-      const { decisionId, optionId, grade, reason } = cls;
+      let { grade, reason } = cls;
+      const { decisionId, optionId } = cls;
+      if (referee.mode === 'scrimmage' && !cls.exactMove && grade === 'great') {
+        grade = WRONG_PASS_TYPE_GRADE_CAP;
+        reason = GRADE_REASONS[grade];
+      }
       graded = [...graded, { tick, decisionId, optionId, grade, reason }];
       if (action.type === 'pass' && !hasLaterDecision(play, referee.humanRole, phaseId)) {
         pendingFinalPassTo = action.targetId;
@@ -251,22 +271,7 @@ export function stepReferee(
   const updated: RefereeState = { ...referee, graded, pendingFinalPassTo };
 
   // 4. Sim turnovers: the sim already emitted the mistake, so record it and request the reset.
-  const turnover = after.events.find((e) => e.type === 'mistake');
-  if (turnover !== undefined) {
-    return {
-      referee: {
-        ...updated,
-        outcome: {
-          kind: 'mistake',
-          tick: turnover.tick,
-          mistakeKind: turnover.kind,
-          reason: turnover.reason,
-        },
-      },
-      events: [],
-      resetRequested: true,
-    };
-  }
+  if (turnover !== undefined) return recordTurnover(updated, turnover);
 
   // 5. End of run: an unblocked human shot, or the final-decision pass completing.
   const shot = after.events.find(
@@ -288,6 +293,25 @@ export function stepReferee(
   if (finalCatch) return succeed(updated, tick);
 
   return { referee: updated, events: [], resetRequested: false };
+}
+
+function recordTurnover(
+  referee: RefereeState,
+  turnover: Extract<GameEvent, { type: 'mistake' }>,
+): StepResult {
+  return {
+    referee: {
+      ...referee,
+      outcome: {
+        kind: 'mistake',
+        tick: turnover.tick,
+        mistakeKind: turnover.kind,
+        reason: turnover.reason,
+      },
+    },
+    events: [],
+    resetRequested: true,
+  };
 }
 
 function succeed(referee: RefereeState, tick: number): StepResult {
