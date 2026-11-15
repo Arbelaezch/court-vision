@@ -123,6 +123,19 @@ describe('case discovery', () => {
     ]);
   });
 
+  it('lists the High Pick-and-Roll cases', () => {
+    const ids = CASES.filter((c) => c.play.id === 'highPickAndRoll').map(
+      (c) => `${c.mode.id}/${c.coverageId}`,
+    );
+    expect(ids).toEqual([
+      'practice/dropBig',
+      'scrimmage/dropBig',
+      'scrimmage/hedgeRecover',
+      'scrimmage/switchOnScreen',
+      'scrimmage/cornerHelp',
+    ]);
+  });
+
   it('adds cases for an extra play source with no test edit', () => {
     const extended = casesFor(
       loadPlaybook(roles, [

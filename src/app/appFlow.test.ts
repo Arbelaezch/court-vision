@@ -56,7 +56,11 @@ describe('sortPlayList', () => {
   });
 
   it('lists the bundled plays easiest first', () => {
-    expect(sortPlayList(CONTENT.plays).map((p) => p.id)).toEqual(['giveAndGo', 'dribbleHandoff']);
+    expect(sortPlayList(CONTENT.plays).map((p) => p.id)).toEqual([
+      'giveAndGo',
+      'dribbleHandoff',
+      'highPickAndRoll',
+    ]);
   });
 });
 
