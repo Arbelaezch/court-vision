@@ -3,14 +3,22 @@ import {
   bootApp,
   createAudioSettings,
   createControlSettings,
+  createDisplaySettings,
   createHumanInput,
+  createProgressReset,
   createSaveStore,
   handleMenuEvent,
 } from './app';
 import { bindUiClicks, mountAudio } from './audio';
 import { mountInput } from './input';
 import { mountRenderer, parseDevView } from './render';
-import { createControlsView, createCuePromptOverlay, createRunHud, createScreenMenus } from './ui';
+import {
+  createControlsView,
+  createCuePromptOverlay,
+  createReduceMotionOutput,
+  createRunHud,
+  createScreenMenus,
+} from './ui';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 if (app === null) {
@@ -25,6 +33,8 @@ if (dev === null) {
   const store = createSaveStore();
   const controls = createControlSettings({ store, input });
   const audioSettings = createAudioSettings({ store, output: audio.engine });
+  const display = createDisplaySettings({ store, output: createReduceMotionOutput(document) });
+  const progressReset = createProgressReset({ store });
   bindUiClicks(app, () => {
     audio.engine.play('uiClick');
   });
@@ -86,7 +96,13 @@ if (dev === null) {
   const menus = createScreenMenus({
     container: app,
     doc: document,
-    settingsView: createControlsView({ doc: document, controls, audio: audioSettings }),
+    settingsView: createControlsView({
+      doc: document,
+      controls,
+      audio: audioSettings,
+      display,
+      progressReset,
+    }),
     onEvent: (e) => {
       handleMenuEvent(flow, input, human, e);
     },

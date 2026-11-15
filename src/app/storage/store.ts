@@ -94,7 +94,7 @@ function repairSections(raw: Record<string, unknown>, warn: Warn): SaveDocument 
   };
   // Same order as SECTION_NAMES.
   return {
-    version: 3,
+    version: 4,
     progress: pick('progress'),
     settings: pick('settings'),
     bindings: pick('bindings'),

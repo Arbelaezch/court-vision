@@ -1,4 +1,4 @@
-// App layer: the v3 save document shape, its defaults and per-section validators.
+// App layer: the v4 save document shape, its defaults and per-section validators.
 // Each validator rebuilds a clean value (unknown fields dropped) or returns undefined when invalid.
 import {
   DEFAULT_BINDINGS,
@@ -34,6 +34,8 @@ export interface SettingsSection {
     readonly targetRings: boolean;
     readonly prompts: boolean;
   };
+  /** Turns off camera smoothing and the result banner animation. */
+  readonly reduceMotion: boolean;
 }
 
 export type BindingsSection = readonly Binding[];
@@ -42,7 +44,7 @@ export type BindingsSection = readonly Binding[];
 export type SeenTooltipsSection = readonly string[];
 
 export interface SaveDocument {
-  readonly version: 3;
+  readonly version: 4;
   readonly progress: ProgressSection;
   readonly settings: SettingsSection;
   readonly bindings: BindingsSection;
@@ -63,7 +65,7 @@ const PASS_TARGETINGS: readonly PassTargeting[] = ['numbered', 'aim', 'both'];
 /** Returns a fresh object each call, so callers may not share mutable state. */
 export function defaultSaveDocument(): SaveDocument {
   return {
-    version: 3,
+    version: 4,
     progress: { plays: {} },
     settings: {
       passTargeting: 'both',
@@ -71,6 +73,7 @@ export function defaultSaveDocument(): SaveDocument {
       aimSensitivity: 1,
       audio: { volume: 1, musicOn: false, sfxOn: true },
       cues: { floorArrows: true, targetRings: true, prompts: true },
+      reduceMotion: false,
     },
     bindings: DEFAULT_BINDINGS.map(copyBinding),
     seenTooltips: [],
@@ -137,7 +140,7 @@ function validateProgress(raw: unknown): ProgressSection | undefined {
 
 function validateSettings(raw: unknown): SettingsSection | undefined {
   if (!isRecord(raw) || !isRecord(raw.audio) || !isRecord(raw.cues)) return undefined;
-  const { passTargeting, doubleClickWindowMs, aimSensitivity, audio, cues } = raw;
+  const { passTargeting, doubleClickWindowMs, aimSensitivity, audio, cues, reduceMotion } = raw;
   if (!isOneOf(passTargeting, PASS_TARGETINGS)) return undefined;
   if (!isPositiveFinite(doubleClickWindowMs) || !isPositiveFinite(aimSensitivity)) return undefined;
   const { volume, musicOn, sfxOn } = audio;
@@ -145,12 +148,14 @@ function validateSettings(raw: unknown): SettingsSection | undefined {
   if (!isBoolean(musicOn) || !isBoolean(sfxOn)) return undefined;
   const { floorArrows, targetRings, prompts } = cues;
   if (!isBoolean(floorArrows) || !isBoolean(targetRings) || !isBoolean(prompts)) return undefined;
+  if (!isBoolean(reduceMotion)) return undefined;
   return {
     passTargeting,
     doubleClickWindowMs,
     aimSensitivity,
     audio: { volume, musicOn, sfxOn },
     cues: { floorArrows, targetRings, prompts },
+    reduceMotion,
   };
 }
 

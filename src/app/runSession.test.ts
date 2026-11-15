@@ -114,6 +114,18 @@ describe('run session progress', () => {
     expect(warnings).toEqual([]);
   });
 
+  it('a run with every cue toggle off still counts toward Mastery', () => {
+    const { store, session } = setup();
+    store.set('settings', {
+      ...store.get('settings'),
+      cues: { floorArrows: false, targetRings: false, prompts: false },
+    });
+    toFinish(session);
+    const shot = session.step([{ type: 'shoot' }]);
+    expect(shot.attempt?.success).toBe(true);
+    expect(store.get('progress').plays.giveAndGo?.practice).toEqual({ attempts: 1, successes: 1 });
+  });
+
   it('a mistake increments attempts only, run after run', () => {
     const { store, session } = setup();
     session.step([passTo(session.state().game, 'SF')]);

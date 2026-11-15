@@ -2,12 +2,15 @@ import {
   AIM_SENSITIVITY_RANGE,
   AUDIO_VOLUME_RANGE,
   CONTROL_ACTIONS,
+  CUE_TOGGLE_LABELS,
   DOUBLE_CLICK_WINDOW_RANGE,
   PASS_TARGETING_LABELS,
   controlDevice,
   inputLabel,
   type AudioSettings,
   type ControlSettings,
+  type DisplaySettings,
+  type ProgressReset,
 } from '../app';
 
 export interface ControlsView {
@@ -18,8 +21,10 @@ export function createControlsView(opts: {
   doc: Document;
   controls: ControlSettings;
   audio?: AudioSettings;
+  display?: DisplaySettings;
+  progressReset?: ProgressReset;
 }): ControlsView {
-  const { doc, controls, audio } = opts;
+  const { doc, controls, audio, display, progressReset } = opts;
 
   function el(tag: string, className?: string, text?: string): HTMLElement {
     const node = doc.createElement(tag);
@@ -115,6 +120,128 @@ export function createControlsView(opts: {
     root.appendChild(toggles);
   }
 
+  function toggle(label: string, on: boolean, onClick: () => void, key: string): HTMLElement {
+    const b = button('cv-menu-button cv-controls-toggle', label, onClick, key);
+    b.setAttribute('aria-pressed', String(on));
+    return b;
+  }
+
+  function confirmBox(
+    text: string,
+    confirmLabel: string,
+    confirmKey: string,
+    cancelKey: string,
+    onConfirm: () => void,
+    onCancel: () => void,
+  ): HTMLElement {
+    const box = el('div', 'cv-controls-confirm');
+    box.setAttribute('role', 'alert');
+    box.appendChild(el('span', undefined, text));
+    box.appendChild(button('cv-menu-button', confirmLabel, onConfirm, confirmKey));
+    box.appendChild(button('cv-menu-button', 'Cancel', onCancel, cancelKey));
+    return box;
+  }
+
+  function renderCues(root: HTMLElement, display: DisplaySettings): void {
+    const cues = display.cues();
+    root.appendChild(el('h3', undefined, 'Cue visibility'));
+    root.appendChild(
+      el(
+        'p',
+        'cv-controls-note',
+        'Modes still set the most cues you can see. Scrimmage shows fewer than Practice.',
+      ),
+    );
+    const row = el('div', 'cv-controls-row');
+    const keys = Object.keys(CUE_TOGGLE_LABELS) as (keyof typeof CUE_TOGGLE_LABELS)[];
+    for (const key of keys) {
+      const current = cues[key];
+      row.appendChild(
+        toggle(
+          CUE_TOGGLE_LABELS[key],
+          current,
+          () => {
+            display.setCueToggle(key, !current);
+          },
+          `cue-${key}`,
+        ),
+      );
+    }
+    root.appendChild(row);
+    const pending = display.pending();
+    if (pending !== null) {
+      root.appendChild(
+        confirmBox(
+          `Hide ${CUE_TOGGLE_LABELS[pending.cue].toLowerCase()} in Practice and Scrimmage? Runs still count toward Mastery.`,
+          'Hide',
+          'cue-confirm',
+          'cue-cancel',
+          () => {
+            display.confirm();
+          },
+          () => {
+            display.cancel();
+          },
+        ),
+      );
+    }
+  }
+
+  function renderMotion(root: HTMLElement, display: DisplaySettings): void {
+    const on = display.reduceMotion();
+    root.appendChild(el('h3', undefined, 'Accessibility'));
+    const row = el('div', 'cv-controls-row');
+    row.appendChild(
+      toggle(
+        'Reduce motion',
+        on,
+        () => {
+          display.setReduceMotion(!on);
+        },
+        'motion-reduce',
+      ),
+    );
+    root.appendChild(row);
+  }
+
+  function renderProgressReset(root: HTMLElement, reset: ProgressReset): void {
+    root.appendChild(el('h3', undefined, 'Progress'));
+    root.appendChild(
+      button(
+        'cv-menu-button',
+        'Reset progress',
+        () => {
+          reset.request();
+        },
+        'progress-reset',
+      ),
+    );
+    if (reset.pending()) {
+      root.appendChild(
+        confirmBox(
+          'Reset all progress? Attempts and successes go to zero and Mastered is removed for every play and mode, and seen tooltips are cleared. This cannot be undone.',
+          'Reset progress',
+          'progress-confirm',
+          'progress-cancel',
+          () => {
+            reset.confirm();
+          },
+          () => {
+            reset.cancel();
+          },
+        ),
+      );
+    }
+    const status = el('p', undefined, reset.message() ?? '');
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    root.appendChild(status);
+  }
+
+  // Which confirmation boxes the previous render showed, for the focus rules.
+  let prevCueBox: string | null = null;
+  let prevResetBox = false;
+
   function render(root: HTMLElement): void {
     const focusKey = doc.activeElement?.getAttribute('data-focus-key') ?? null;
     focusables = new Map();
@@ -124,6 +251,10 @@ export function createControlsView(opts: {
     const capture = controls.capture();
 
     if (audio !== undefined) renderAudio(root, audio);
+    if (display !== undefined) {
+      renderCues(root, display);
+      renderMotion(root, display);
+    }
 
     root.appendChild(el('h3', undefined, 'Controls'));
 
@@ -251,7 +382,19 @@ export function createControlsView(opts: {
       ),
     );
 
-    if (focusKey !== null) focusables.get(focusKey)?.focus();
+    if (progressReset !== undefined) renderProgressReset(root, progressReset);
+
+    const cueBox = display?.pending()?.cue ?? null;
+    const resetBox = progressReset?.pending() ?? false;
+    const target =
+      (cueBox !== null && prevCueBox === null ? focusables.get('cue-cancel') : undefined) ??
+      (resetBox && !prevResetBox ? focusables.get('progress-cancel') : undefined) ??
+      (focusKey !== null ? focusables.get(focusKey) : undefined) ??
+      (prevCueBox !== null && cueBox === null ? focusables.get(`cue-${prevCueBox}`) : undefined) ??
+      (prevResetBox && !resetBox ? focusables.get('progress-reset') : undefined);
+    target?.focus();
+    prevCueBox = cueBox;
+    prevResetBox = resetBox;
   }
 
   return {
@@ -287,12 +430,22 @@ export function createControlsView(opts: {
       const unsubscribeAudio = audio?.onChange(() => {
         render(root);
       });
+      const unsubscribeDisplay = display?.onChange(() => {
+        render(root);
+      });
+      const unsubscribeReset = progressReset?.onChange(() => {
+        render(root);
+      });
       render(root);
 
       return () => {
         unsubscribe();
         unsubscribeAudio?.();
+        unsubscribeDisplay?.();
+        unsubscribeReset?.();
         controls.cancel();
+        display?.cancel();
+        progressReset?.cancel();
         root.remove();
       };
     },

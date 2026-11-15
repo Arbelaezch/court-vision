@@ -9,8 +9,9 @@
 // per-cue toggles settings.cues = { floorArrows, targetRings, prompts } (decision g8).
 // v3 has the same shape as v2, but music defaults off: settings.audio.musicOn is set to false, since
 // any stored musicOn predates a music setting UI and is the old default rather than a player choice.
+// v4 adds settings.reduceMotion (camera smoothing and banner animation off), set to false on migration.
 
-export const CURRENT_VERSION = 3;
+export const CURRENT_VERSION = 4;
 
 export type Migration = (doc: Record<string, unknown>) => Record<string, unknown>;
 
@@ -41,7 +42,17 @@ export function migrateV2ToV3(doc: Record<string, unknown>): Record<string, unkn
   return out;
 }
 
+/** Never throws; a settings value that is not an object passes through for section repair. */
+export function migrateV3ToV4(doc: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...doc, version: 4 };
+  if (isRecord(doc.settings)) {
+    out.settings = { ...doc.settings, reduceMotion: false };
+  }
+  return out;
+}
+
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: migrateV1ToV2,
   2: migrateV2ToV3,
+  3: migrateV3ToV4,
 };
