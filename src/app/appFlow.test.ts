@@ -54,6 +54,10 @@ describe('sortPlayList', () => {
     const table = { b: make('b', 2), a2: make('a2', 1), a1: make('a1', 1) };
     expect(sortPlayList(table).map((p) => p.id)).toEqual(['a1', 'a2', 'b']);
   });
+
+  it('lists the bundled plays easiest first', () => {
+    expect(sortPlayList(CONTENT.plays).map((p) => p.id)).toEqual(['giveAndGo', 'dribbleHandoff']);
+  });
 });
 
 describe('app flow', () => {

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { GIVE_AND_GO_DATA } from '../../src/content/data/plays/giveAndGo';
+import { loadCastContent, loadPlaybook } from '../../src/content';
 
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -11,15 +11,29 @@ const SKIP_FILES = new Set(['src/content/playbook.ts', 'src/ai/testPlays.ts']);
 
 const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const FORBIDDEN_IDS = [
-  GIVE_AND_GO_DATA.id,
-  'GIVE_AND_GO',
-  ...GIVE_AND_GO_DATA.coverages.map((c) => c.id),
-  ...GIVE_AND_GO_DATA.decisions.map((d) => d.id),
-];
+const upperSnake = (id: string): string => id.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase();
+
+const PLAYS = Object.values(loadPlaybook(loadCastContent().roles));
+
+const FORBIDDEN_IDS = PLAYS.flatMap((play) => [
+  play.id,
+  upperSnake(play.id),
+  ...play.coverages.map((c) => c.id),
+  ...play.decisions.map((d) => d.id),
+]);
 const FORBIDDEN = [
   ...FORBIDDEN_IDS.map((id) => ({ label: id, re: new RegExp(`\\b${escapeRe(id)}\\b`) })),
-  { label: 'give-and-go', re: /give[-_ ]?and[-_ ]?go/i },
+  ...PLAYS.map((play) => ({
+    label: play.name,
+    re: new RegExp(
+      play.name
+        .split(/[^A-Za-z0-9]+/)
+        .filter(Boolean)
+        .map(escapeRe)
+        .join('[-_ ]?'),
+      'i',
+    ),
+  })),
 ];
 
 function stripComments(code: string): string {
@@ -74,5 +88,28 @@ describe('play-agnostic engine', () => {
     expect(findHits('const p = book.giveAndGo;')).not.toEqual([]);
     expect(findHits("if (c === 'helpOnCut') {}")).not.toEqual([]);
     expect(findHits('// e.g. giveAndGo.tracks.SF\nconst x = 1;')).toEqual([]);
+  });
+
+  it('forbids the ids of every bundled play', () => {
+    const labels = FORBIDDEN.map((f) => f.label);
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        'giveAndGo',
+        'helpOnCut',
+        'finishRead',
+        'GIVE_AND_GO',
+        'dribbleHandoff',
+        'DRIBBLE_HANDOFF',
+        'overTheTop',
+        'underTheScreen',
+        'switchOnHandoff',
+        'handoffRead',
+      ]),
+    );
+  });
+
+  it('matcher flags a coverage id but not a generic switch', () => {
+    expect(findHits("if (c === 'switchOnHandoff') {}")).not.toEqual([]);
+    expect(findHits('switch (x) {}')).toEqual([]);
   });
 });

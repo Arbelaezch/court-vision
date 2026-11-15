@@ -190,6 +190,57 @@ describe('defenderCommands', () => {
     expect(defenderCommands(game, { SF: steps.SF })).toHaveLength(1);
   });
 
+  describe('switch guards the named man', () => {
+    const SPOT = { x: 0, z: 0 };
+
+    /** The steer for the `keyed`-role defender, as a vector. */
+    function steerFor(game: GameState, keyed: RoleId, step: DefenderStep): CourtPoint {
+      const self = player(game, 'defense', keyed);
+      const cmd = defenderCommands(game, { [keyed]: step }).find(
+        (c) => c.type === 'steer' && c.playerId === self.id,
+      );
+      if (cmd === undefined || cmd.type !== 'steer') throw new Error('no steer command');
+      return { x: cmd.x, z: cmd.z };
+    }
+
+    function towardGuardPoint(game: GameState, keyed: RoleId, man: RoleId, steer: CourtPoint) {
+      const self = player(game, 'defense', keyed);
+      const gp = guardPoint(player(game, 'offense', man), GUARD_CUSHION_M);
+      const dx = gp.x - self.pos.x;
+      const dz = gp.z - self.pos.z;
+      return (steer.x * dx + steer.z * dz) / (Math.hypot(steer.x, steer.z) * Math.hypot(dx, dz));
+    }
+
+    function spread(): GameState {
+      const game = newGame();
+      place(player(game, 'offense', 'PG'), { x: 5, z: 2 });
+      place(player(game, 'offense', 'C'), { x: -4, z: -3 });
+      place(player(game, 'defense', 'PG'), { x: 0, z: 0 });
+      place(player(game, 'defense', 'C'), { x: 0, z: 0 });
+      return game;
+    }
+
+    it('a PG-keyed switch with guards C steers toward the C, not the PG', () => {
+      const game = spread();
+      const steer = steerFor(game, 'PG', { spot: SPOT, action: 'switch', guards: 'C' });
+      expect(towardGuardPoint(game, 'PG', 'C', steer)).toBeGreaterThan(0.9);
+      expect(towardGuardPoint(game, 'PG', 'PG', steer)).toBeLessThan(0.5);
+    });
+
+    it('a C-keyed switch with guards PG steers toward the PG', () => {
+      const game = spread();
+      const steer = steerFor(game, 'C', { spot: SPOT, action: 'switch', guards: 'PG' });
+      expect(towardGuardPoint(game, 'C', 'PG', steer)).toBeGreaterThan(0.9);
+      expect(towardGuardPoint(game, 'C', 'C', steer)).toBeLessThan(0.5);
+    });
+
+    it('a step with no guards still uses the keyed man', () => {
+      const game = spread();
+      const steer = steerFor(game, 'PG', { spot: SPOT, action: 'guard' });
+      expect(towardGuardPoint(game, 'PG', 'PG', steer)).toBeGreaterThan(0.9);
+    });
+  });
+
   it('throws a Court Vision error when a role has no defender', () => {
     const game = newGame();
     game.players = game.players.filter((p) => !(p.side === 'defense' && p.role === 'SF'));
