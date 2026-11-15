@@ -4,11 +4,21 @@
 import type { ModeId } from '../content';
 
 export type ScreenId =
-  'mainMenu' | 'tutorial' | 'settings' | 'progress' | 'playSelect' | 'inRun' | 'paused';
+  | 'mainMenu'
+  | 'tutorialMenu'
+  | 'tutorial'
+  | 'glossary'
+  | 'settings'
+  | 'progress'
+  | 'playSelect'
+  | 'inRun'
+  | 'paused';
 
 export type ScreenState =
   | { readonly screen: 'mainMenu' }
+  | { readonly screen: 'tutorialMenu' }
   | { readonly screen: 'tutorial' }
+  | { readonly screen: 'glossary' }
   | { readonly screen: 'settings' }
   | { readonly screen: 'progress' }
   | { readonly screen: 'playSelect'; readonly modeId: ModeId }
@@ -16,7 +26,9 @@ export type ScreenState =
   | { readonly screen: 'paused'; readonly modeId: ModeId; readonly playId: string };
 
 export type ScreenEvent =
+  | { readonly type: 'openTutorialMenu' }
   | { readonly type: 'openTutorial' }
+  | { readonly type: 'openGlossary' }
   | { readonly type: 'openPractice' }
   | { readonly type: 'openScrimmage' }
   | { readonly type: 'openSettings' }
@@ -39,8 +51,10 @@ export const SCRIMMAGE_MODE_ID: ModeId = 'scrimmage';
 export const INITIAL_SCREEN: ScreenState = { screen: 'mainMenu' };
 
 export const SCREEN_TRANSITIONS: Readonly<Record<ScreenId, readonly ScreenEventType[]>> = {
-  mainMenu: ['openTutorial', 'openPractice', 'openScrimmage', 'openSettings', 'openProgress'],
+  mainMenu: ['openTutorialMenu', 'openPractice', 'openScrimmage', 'openSettings', 'openProgress'],
+  tutorialMenu: ['openTutorial', 'openGlossary', 'back'],
   tutorial: ['back'],
+  glossary: ['back'],
   settings: ['back'],
   progress: ['back'],
   playSelect: ['back', 'selectPlay'],
@@ -57,8 +71,8 @@ export function transitionScreen(state: ScreenState, event: ScreenEvent): Transi
   switch (state.screen) {
     case 'mainMenu':
       switch (event.type) {
-        case 'openTutorial':
-          return accept({ screen: 'tutorial' });
+        case 'openTutorialMenu':
+          return accept({ screen: 'tutorialMenu' });
         case 'openPractice':
           return accept({ screen: 'playSelect', modeId: PRACTICE_MODE_ID });
         case 'openScrimmage':
@@ -70,7 +84,20 @@ export function transitionScreen(state: ScreenState, event: ScreenEvent): Transi
         default:
           return reject;
       }
+    case 'tutorialMenu':
+      switch (event.type) {
+        case 'openTutorial':
+          return accept({ screen: 'tutorial' });
+        case 'openGlossary':
+          return accept({ screen: 'glossary' });
+        case 'back':
+          return accept(INITIAL_SCREEN);
+        default:
+          return reject;
+      }
     case 'tutorial':
+    case 'glossary':
+      return event.type === 'back' ? accept({ screen: 'tutorialMenu' }) : reject;
     case 'settings':
     case 'progress':
       return event.type === 'back' ? accept(INITIAL_SCREEN) : reject;
@@ -109,7 +136,9 @@ export function escapeEvent(screen: ScreenId): ScreenEvent | null {
     case 'paused':
       return { type: 'resume' };
     case 'playSelect':
+    case 'tutorialMenu':
     case 'tutorial':
+    case 'glossary':
     case 'settings':
     case 'progress':
       return { type: 'back' };

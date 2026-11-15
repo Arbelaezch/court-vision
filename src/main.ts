@@ -13,6 +13,7 @@ import { bindUiClicks, mountAudio } from './audio';
 import { mountInput } from './input';
 import { mountRenderer, parseDevView } from './render';
 import {
+  createConceptTooltipOverlay,
   createControlsView,
   createCuePromptOverlay,
   createReduceMotionOutput,
@@ -41,6 +42,8 @@ if (dev === null) {
   const hud = createRunHud({ container: app, doc: document });
   const prompt = createCuePromptOverlay({ container: app, doc: document });
   prompt.show(null);
+  const tooltips = createConceptTooltipOverlay({ container: app, doc: document });
+  tooltips.show([]);
   const human = createHumanInput({
     held: () => ({
       axes: input.moveAxes(),
@@ -63,11 +66,13 @@ if (dev === null) {
         mounted.run?.draw(controller, frame);
         hud.update(frame.hud);
         prompt.show(frame.prompt);
+        tooltips.show(frame.tooltips);
       },
       clear() {
         mounted.run?.clear();
         hud.update(null);
         prompt.show(null);
+        tooltips.show([]);
       },
     },
     tutorialRenderer: {
@@ -85,6 +90,7 @@ if (dev === null) {
         mounted.run?.clear();
         hud.update(null);
         prompt.show(null);
+        tooltips.show([]);
       },
     },
     tutorialActionsFor: human.actionsForGame,
@@ -113,6 +119,7 @@ if (dev === null) {
     if (state.screen !== 'inRun' && state.screen !== 'paused' && state.screen !== 'tutorial') {
       hud.update(null);
       prompt.show(null);
+      tooltips.show([]);
     }
   };
   flow.onChange(render);

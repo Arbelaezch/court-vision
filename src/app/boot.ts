@@ -1,6 +1,8 @@
 // Content boot: loads all bundled content and builds the app flow. No DOM, no default store.
 import {
+  checkPhaseConcepts,
   loadCastContent,
+  loadGlossary,
   loadMasteryTuning,
   loadModes,
   loadPlaybook,
@@ -12,8 +14,12 @@ import { createAppFlow, type AppContent, type AppFlow, type AppFlowOptions } fro
 
 export function loadAppContent(): AppContent {
   const roles = loadCastContent().roles;
+  const plays = loadPlaybook(roles);
+  const glossary = loadGlossary();
+  checkPhaseConcepts(plays, glossary);
   return {
-    plays: loadPlaybook(roles),
+    plays,
+    glossary,
     modes: loadModes(),
     mastery: loadMasteryTuning(),
     movement: loadSimMovement(),

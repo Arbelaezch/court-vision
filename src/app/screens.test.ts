@@ -12,7 +12,9 @@ import {
 
 const SCREEN_IDS: readonly ScreenId[] = [
   'mainMenu',
+  'tutorialMenu',
   'tutorial',
+  'glossary',
   'settings',
   'progress',
   'playSelect',
@@ -22,7 +24,9 @@ const SCREEN_IDS: readonly ScreenId[] = [
 
 const STATES: Record<ScreenId, ScreenState> = {
   mainMenu: { screen: 'mainMenu' },
+  tutorialMenu: { screen: 'tutorialMenu' },
   tutorial: { screen: 'tutorial' },
+  glossary: { screen: 'glossary' },
   settings: { screen: 'settings' },
   progress: { screen: 'progress' },
   playSelect: { screen: 'playSelect', modeId: 'practice' },
@@ -31,7 +35,9 @@ const STATES: Record<ScreenId, ScreenState> = {
 };
 
 const EVENTS: Record<ScreenEventType, ScreenEvent> = {
+  openTutorialMenu: { type: 'openTutorialMenu' },
   openTutorial: { type: 'openTutorial' },
+  openGlossary: { type: 'openGlossary' },
   openPractice: { type: 'openPractice' },
   openScrimmage: { type: 'openScrimmage' },
   openSettings: { type: 'openSettings' },
@@ -69,13 +75,45 @@ describe('transitionScreen', () => {
   });
 
   it.each([
-    ['openTutorial', 'tutorial'],
+    ['openTutorialMenu', 'tutorialMenu'],
     ['openSettings', 'settings'],
     ['openProgress', 'progress'],
   ] as const)('%s reaches %s and back returns to the main menu', (type, screen) => {
     const machine = createScreenMachine();
     expect(machine.send({ type })).toEqual({ ok: true, state: { screen } });
     expect(machine.send({ type: 'back' })).toEqual({ ok: true, state: { screen: 'mainMenu' } });
+  });
+
+  it('walks tutorialMenu -> glossary -> back -> tutorialMenu -> back -> mainMenu', () => {
+    const machine = createScreenMachine();
+    const to = (event: ScreenEvent, screen: ScreenId): void => {
+      expect(machine.send(event)).toEqual({ ok: true, state: STATES[screen] });
+    };
+    to({ type: 'openTutorialMenu' }, 'tutorialMenu');
+    to({ type: 'openGlossary' }, 'glossary');
+    to({ type: 'back' }, 'tutorialMenu');
+    to({ type: 'back' }, 'mainMenu');
+  });
+
+  it('walks tutorialMenu -> openTutorial -> tutorial -> back -> tutorialMenu', () => {
+    const machine = createScreenMachine();
+    machine.send({ type: 'openTutorialMenu' });
+    expect(machine.send({ type: 'openTutorial' })).toEqual({
+      ok: true,
+      state: { screen: 'tutorial' },
+    });
+    expect(machine.send({ type: 'back' })).toEqual({
+      ok: true,
+      state: { screen: 'tutorialMenu' },
+    });
+  });
+
+  it('rejects openTutorial from the main menu', () => {
+    expect(transitionScreen(STATES.mainMenu, { type: 'openTutorial' })).toEqual({
+      ok: false,
+      from: 'mainMenu',
+      event: 'openTutorial',
+    });
   });
 
   it('openScrimmage opens Play Select for scrimmage, which selects into a run and backs out', () => {
@@ -167,7 +205,14 @@ describe('escapeEvent', () => {
     expect(escapeEvent('inRun')).toEqual({ type: 'pause' });
     expect(escapeEvent('paused')).toEqual({ type: 'resume' });
     expect(escapeEvent('mainMenu')).toBeNull();
-    for (const screen of ['playSelect', 'tutorial', 'settings', 'progress'] as const) {
+    for (const screen of [
+      'playSelect',
+      'tutorialMenu',
+      'tutorial',
+      'glossary',
+      'settings',
+      'progress',
+    ] as const) {
       expect(escapeEvent(screen)).toEqual({ type: 'back' });
     }
   });

@@ -316,3 +316,38 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decided by: assumed on 2026-11-14
 - Why: keeps the design doc ordering
 - Source: DESIGN_DOC.md section 9; issue #35
+
+## How to evidence AC1 without screenshots, and who picks the offense vs defense non-color channel
+- Kind: product
+- Decision: Option 1: accept unit tests asserting a non-color channel per element plus a PR table, screenshots left to the reviewer; the planner picks data-driven team channels in teams.ts
+- Decided by: user on 2026-11-15
+
+## How should the aggressiveCloseout coverage's best read be graded?
+- Kind: product
+- Decision: Option 3: ship option 1 now (sprint-by graded as the finish/shoot) and open a follow-up issue for play-agnostic sprint/movement grading in the shared engine. Follow-up scope: sprint-by an aggressive closeout is graded positively; letting the closeout happen then recovering is poor but not run-ending; if the rim-side defender then switches to cut off the sprinting attacker, scoring through is okay, but dishing to the newly free teammate is the best next read.
+- Decided by: user on 2026-11-15
+- Why: Sprinting by an aggressive closeout should be rewarded; recovering after allowing it is weak but not fatal; after the switch, the pass to the free man is the best outcome.
+
+## High Pick-and-Roll (#37): which coverage is the Practice standard?
+- Kind: implementation
+- Decision: dropBig (Drop coverage); correct read is the pull-up. Coverage ids: dropBig, hedgeRecover, switchOnScreen, cornerHelp; corner help comes from the weak-side corner
+- Decided by: assumed on 2026-11-15
+- Why: Drop is the most common base pick-and-roll defense, matching g1's single most standard placement; issue #37 delegates the choice
+
+## #34: Where does the glossary sit under Tutorial?
+- Kind: implementation
+- Decision: Main-menu Tutorial opens a submenu (Controls tutorial / Glossary / Back); leaving either returns to that submenu
+- Decided by: assumed on 2026-11-15
+- Why: DESIGN_DOC M8 says the glossary is under Tutorial; a submenu is the simplest fit and keeps the controls sandbox unchanged
+
+## #34: How do concept tooltips behave in a run (cue levels, duration, seen state, motion)?
+- Kind: implementation
+- Decision: Tooltips are not cues: they ignore mode cue level and cue toggles and show in Practice and Scrimmage; seen state is per glossary term across plays, marked seen when first shown; each lasts 6s of game time (tooltipSeconds in glossary data), timer stops while paused, dropped on quit; no animation so reduce motion needs nothing; at most 2 concepts per phase
+- Decided by: assumed on 2026-11-15
+- Why: DESIGN_DOC's Cue covers arrows, rings and prompts only; issue requires non-blocking first-time tooltips; values are data and easy to change
+
+## #34: Which terms does the glossary include?
+- Kind: implementation
+- Decision: The issue's list plus DESIGN_DOC section 2 terms (21 entries); later modes Live Play and Free Play and the coverage examples drop/hedge/switch are left out
+- Decided by: assumed on 2026-11-15
+- Why: Live/Free Play are unreachable later modes; drop/hedge/switch are examples inside the Coverage entry, not section 2 terms

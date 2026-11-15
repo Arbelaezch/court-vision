@@ -6,6 +6,7 @@
 // defenders are keyed by offensive role (a defender is keyed by the role it guards at setup). Each
 // decision option grades every coverage great/good/bad; anything not listed is off-script. Exactly
 // one coverage is the Practice standard, and its script places the Practice cones.
+// `concepts` lists glossary term ids (src/content/data/glossary.ts) introduced in a phase.
 
 export const DRIBBLE_HANDOFF_FILE = 'src/content/data/plays/dribbleHandoff.ts';
 
@@ -60,6 +61,7 @@ export const DRIBBLE_HANDOFF_DATA = {
     },
     {
       id: 'handoff',
+      concepts: ['handoff'],
       transitions: [{ to: 'attack', trigger: { kind: 'passCompleted', from: 'C', to: 'PG' } }],
       cues: {
         full: [
@@ -92,6 +94,7 @@ export const DRIBBLE_HANDOFF_DATA = {
     },
     {
       id: 'read',
+      concepts: ['floater', 'mismatch'],
       transitions: [],
       cues: {
         full: [

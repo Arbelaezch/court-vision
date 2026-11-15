@@ -77,13 +77,33 @@ export function createScreenMenus(opts: {
       case 'mainMenu': {
         const p = panel('Court Vision', 'h1');
         const items: [string, ScreenEvent][] = [
-          ['Tutorial', { type: 'openTutorial' }],
+          ['Tutorial', { type: 'openTutorialMenu' }],
           ['Practice', { type: 'openPractice' }],
           ['Scrimmage', { type: 'openScrimmage' }],
           ['Settings', { type: 'openSettings' }],
           ['Progress', { type: 'openProgress' }],
         ];
         for (const [label, event] of items) p.appendChild(button('cv-menu-button', label, event));
+        root.appendChild(p);
+        return;
+      }
+      case 'tutorialMenu': {
+        const p = panel('Tutorial', 'h2');
+        p.appendChild(button('cv-menu-button', 'Controls tutorial', { type: 'openTutorial' }));
+        p.appendChild(button('cv-menu-button', 'Glossary', { type: 'openGlossary' }));
+        p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
+        root.appendChild(p);
+        return;
+      }
+      case 'glossary': {
+        const p = panel('Glossary', 'h2');
+        const list = el('dl', 'cv-glossary-list');
+        for (const entry of labels.glossary) {
+          list.appendChild(el('dt', undefined, entry.term));
+          list.appendChild(el('dd', undefined, entry.text));
+        }
+        p.appendChild(list);
+        p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
         root.appendChild(p);
         return;
       }

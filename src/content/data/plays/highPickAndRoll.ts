@@ -6,6 +6,7 @@
 // defenders are keyed by offensive role (a defender is keyed by the role it guards at setup). Each
 // decision option grades every coverage great/good/bad; anything not listed is off-script. Exactly
 // one coverage is the Practice standard, and its script places the Practice cones.
+// `concepts` lists glossary term ids (src/content/data/glossary.ts) introduced in a phase.
 
 export const HIGH_PICK_AND_ROLL_FILE = 'src/content/data/plays/highPickAndRoll.ts';
 
@@ -52,6 +53,7 @@ export const HIGH_PICK_AND_ROLL_DATA = {
   phases: [
     {
       id: 'screen',
+      concepts: ['screen', 'pickAndRoll'],
       transitions: [{ to: 'comeOff', trigger: { kind: 'screenSet', screener: 'C' } }],
       cues: {
         full: [
@@ -85,6 +87,7 @@ export const HIGH_PICK_AND_ROLL_DATA = {
     },
     {
       id: 'attack',
+      concepts: ['coverage', 'bouncePass'],
       transitions: [{ to: 'read', trigger: { kind: 'reachedSpot', role: 'PG', spot: READ_SPOT } }],
       cues: {
         full: [
@@ -101,6 +104,7 @@ export const HIGH_PICK_AND_ROLL_DATA = {
     },
     {
       id: 'read',
+      concepts: ['lob', 'closeout'],
       transitions: [],
       cues: {
         full: [

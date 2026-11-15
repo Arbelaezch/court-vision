@@ -60,6 +60,10 @@ const labels: MenuLabels = {
     })),
   })),
   masteredSuccesses: 10,
+  glossary: [
+    { id: 'screen', term: 'Screen', text: 'A teammate blocks a defender.' },
+    { id: 'cut', term: 'Cut', text: 'A sudden run toward the basket.' },
+  ],
 };
 
 function setup() {
@@ -106,9 +110,40 @@ describe('createScreenMenus', () => {
       'Settings',
       'Progress',
     ]);
+    bs[0]!.click();
     bs[1]!.click();
     bs[2]!.click();
-    expect(events).toEqual([{ type: 'openPractice' }, { type: 'openScrimmage' }]);
+    expect(events).toEqual([
+      { type: 'openTutorialMenu' },
+      { type: 'openPractice' },
+      { type: 'openScrimmage' },
+    ]);
+  });
+
+  it('renders the tutorial menu buttons and sends their events', () => {
+    const { menus, root, events } = setup();
+    menus.show({ screen: 'tutorialMenu' }, labels);
+    const bs = buttons(root);
+    expect(bs.map((b) => b.textContent)).toEqual(['Controls tutorial', 'Glossary', 'Back']);
+    bs.forEach((b) => b.click());
+    expect(events).toEqual([{ type: 'openTutorial' }, { type: 'openGlossary' }, { type: 'back' }]);
+  });
+
+  it('renders one dt/dd per glossary entry in order, then Back', () => {
+    const { menus, root, events } = setup();
+    menus.show({ screen: 'glossary' }, labels);
+    const dl = find(root, (n) => n.tagName === 'dl')!;
+    expect(dl.className).toBe('cv-glossary-list');
+    expect(dl.children.map((c) => [c.tagName, c.textContent])).toEqual([
+      ['dt', 'Screen'],
+      ['dd', 'A teammate blocks a defender.'],
+      ['dt', 'Cut'],
+      ['dd', 'A sudden run toward the basket.'],
+    ]);
+    const bs = buttons(root);
+    expect(bs.map((b) => b.textContent)).toEqual(['Back']);
+    bs[0]!.click();
+    expect(events).toEqual([{ type: 'back' }]);
   });
 
   it('renders play select in label order and selects by id', () => {

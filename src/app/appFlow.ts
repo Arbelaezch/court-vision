@@ -1,7 +1,15 @@
 // App flow controller: owns the screen machine, the single live run session, the visibility binding
 // and a renderer port. DOM-free (only EventTarget types), so node tests and the browser share it.
 import type { RunControllerOptions, RunControllerState } from '../ai';
-import type { MasteryTuningSpec, ModeId, ModeTable, PlayScenario, ScenarioTable } from '../content';
+import type {
+  Glossary,
+  GlossaryEntry,
+  MasteryTuningSpec,
+  ModeId,
+  ModeTable,
+  PlayScenario,
+  ScenarioTable,
+} from '../content';
 import type { PressAction } from '../input';
 import type { GameEvent, GameEventSink, GameState, SimAction } from '../sim';
 import {
@@ -10,6 +18,7 @@ import {
   type PlayProgressRow,
   type ProgressModeLabel,
 } from './progressView';
+import { createConceptTooltipTracker, type ConceptTooltipTracker } from './conceptTooltips';
 import { bindRunVisibilityPause } from './runClock';
 import { buildRunFrame, type RunFrame } from './runFrame';
 import { createRunSession, type RunSession } from './runSession';
@@ -56,10 +65,12 @@ export interface MenuLabels {
   readonly progressModes: readonly ProgressModeLabel[];
   readonly progress: readonly PlayProgressRow[];
   readonly masteredSuccesses: number;
+  readonly glossary: readonly GlossaryEntry[];
 }
 
 export interface AppContent {
   readonly plays: ScenarioTable;
+  readonly glossary: Glossary;
   readonly modes: ModeTable;
   readonly mastery: MasteryTuningSpec;
   readonly movement: MovementSetup;
@@ -135,12 +146,19 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
   const playIds = plays.map((p) => p.id);
   const progressModes = progressModeLabels(content.modes);
   const masteredSuccesses = content.mastery.masteredSuccesses;
-  const staticLabels = { plays, modeNames, progressModes, masteredSuccesses };
+  const staticLabels = {
+    plays,
+    modeNames,
+    progressModes,
+    masteredSuccesses,
+    glossary: content.glossary.terms,
+  };
 
   let session: RunSession | null = null;
   let activePlay: PlayScenario | null = null;
   let unbindVisibility: (() => void) | null = null;
   let tutorial: TutorialSession | null = null;
+  let tooltips: ConceptTooltipTracker | null = null;
 
   function handleClockPause(): void {
     if (machine.state().screen === 'inRun') machine.send({ type: 'pause' });
@@ -159,6 +177,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
     renderer.clear();
     session = null;
     activePlay = null;
+    tooltips = null;
     unbindVisibility = null;
   }
 
@@ -201,6 +220,7 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
           });
         }
         activePlay = play;
+        tooltips = createConceptTooltipTracker({ play, glossary: content.glossary, store });
         return machine.send(event);
       }
       case 'pause': {
@@ -288,7 +308,16 @@ export function createAppFlow(options: AppFlowOptions): AppFlow {
         for (const sink of stepSinks) sink(flowStep);
       }
       const state = session.state();
-      renderer.drawRun(state, buildRunFrame(activePlay, state, steps, store.get('settings').cues));
+      const shown =
+        tooltips?.update({
+          phaseId: state.run.phaseId,
+          playing: state.status === 'playing',
+          simSteps: steps.length,
+        }) ?? [];
+      renderer.drawRun(
+        state,
+        buildRunFrame(activePlay, state, steps, store.get('settings').cues, shown),
+      );
     },
     labels: () => ({
       ...staticLabels,

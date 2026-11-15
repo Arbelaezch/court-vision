@@ -6,6 +6,7 @@
 // defenders are keyed by offensive role (a defender is keyed by the role it guards at setup). Each
 // decision option grades every coverage great/good/bad; anything not listed is off-script. Exactly
 // one coverage is the Practice standard, and its script places the Practice cones.
+// `concepts` lists glossary term ids (src/content/data/glossary.ts) introduced in a phase.
 
 export const GIVE_AND_GO_FILE = 'src/content/data/plays/giveAndGo.ts';
 
@@ -30,6 +31,7 @@ export const GIVE_AND_GO_DATA = {
   phases: [
     {
       id: 'entry',
+      concepts: ['positions', 'spacing'],
       transitions: [{ to: 'cut', trigger: { kind: 'passCompleted', from: 'PG', to: 'SG' } }],
       cues: {
         full: [
@@ -47,6 +49,7 @@ export const GIVE_AND_GO_DATA = {
     },
     {
       id: 'cut',
+      concepts: ['cut'],
       transitions: [{ to: 'finish', trigger: { kind: 'passCompleted', from: 'SG', to: 'PG' } }],
       cues: {
         full: [
@@ -63,6 +66,7 @@ export const GIVE_AND_GO_DATA = {
     },
     {
       id: 'finish',
+      concepts: ['helpDefense', 'decisionPoint'],
       transitions: [],
       cues: {
         full: [
