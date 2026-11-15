@@ -369,3 +369,30 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Loop over every play in the registry (four today, picks up the fifth automatically). Verify in Vitest with a fake renderer that mimics three.js info.memory counting (+1 on first render of a geometry/texture, -1 on its dispose event); after 20 switches through every play both counts equal baseline.
 - Decided by: assumed on 2026-11-15
 - Why: Decision g11 and src/render/dispose.test.ts set stub-renderer, no-headless-WebGL testing as the convention; looping the registry meets the five-play criterion once the fifth play exists.
+
+## How should AC1 (draw call screenshot) and AC3 (laptop FPS) be evidenced?
+- Kind: product
+- Decision: Option 1: Ship the ?stats dev overlay plus a Vitest test asserting under 100 render-list draw items for a Horns Scrimmage frame; the PR lists the screenshot and 1080p FPS reading for the user to capture before merge
+- Decided by: user on 2026-11-15
+
+## Whether to run another fix-and-review round for the line 258/229 wording or ship the current diff as is
+- Kind: implementation
+- Decision: Run another round: fix lines 258 and 229, then review again
+- Decided by: user on 2026-11-15
+
+## Commit or discard the pending .factory/decisions.md change on main, then requeue #85
+- Kind: implementation
+- Decision: Option 1: commit the decisions.md change to main, then requeue #85
+- Decided by: user on 2026-11-15
+
+## #92: How is recovering after letting the aggressive closeout arrive graded, and does it whistle in Practice?
+- Kind: product
+- Decision: Option (a): in Scrimmage the recovery is graded Good, so the run continues (Bad would end it as unsuccessful). Practice keeps g3: any below-Great read whistles and resets. A grade for wrong-but-recoverable actions is a separate follow-up.
+- Decided by: user on 2026-11-15
+- Why: Smallest change that keeps the run going in Scrimmage; a fuller recoverable-grade model is tracked separately
+
+## #33/#40: replace manual screenshot and FPS evidence, and what is the frame-rate target?
+- Kind: product
+- Decision: Drop every manual capture (grayscale screenshots in #33, the draw-call screenshot and the laptop FPS reading in #40); evidence is automated tests only: per-element non-color tests (#33), a Vitest draw-item count under 100 for a Horns Scrimmage frame, and a per-frame CPU time budget test for sim step plus render prep (#40). Frame-rate target is 30 FPS minimum on a typical laptop, higher is better; this replaces the 60 FPS target in DESIGN_DOC.md:96 and :447. Both issues may auto-merge.
+- Decided by: user on 2026-11-15
+- Why: No one should have to capture evidence by hand; 60 FPS was never a real requirement

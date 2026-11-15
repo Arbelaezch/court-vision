@@ -4,7 +4,7 @@
 
 Court Vision is a browser game built with three.js. You control a single player (starting with the point guard) and run real basketball plays, first with no defenders and heavy guidance, then against defenders who react. Shot-making skill is de-emphasized. What matters is where you move, who you pass to, and whether you take a good look.
 
-**Play it:** `https://arbelaezch.github.io/court-vision/` *(live once the first deploy completes)*
+**Play it:** [arbelaezch.github.io/court-vision](https://arbelaezch.github.io/court-vision/) (deployed from `main` on every merge)
 
 ## Modes
 
