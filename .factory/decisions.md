@@ -281,3 +281,38 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Yes, music continues across screens and while a run is paused
 - Decided by: assumed on 2026-11-14
 - Why: Low-impact, reversible behaviour choice
+
+## How does a coverage switch defenders?
+- Kind: implementation
+- Decision: a coverage defender step with action 'switch' must name guards: <role>. From that phase on, the defender guards that role's man with the guard behaviour (cushion and lane-shift). guards is rejected on any other action and when it names the defender's own role.
+- Decided by: assumed on 2026-11-14
+- Why: defenders are keyed by setup role and switch was spot-only, so no coverage could hand a defender a new man. A per-step field is shared by every screen play and adds no play-specific engine code.
+- Source: issue #35; src/ai/defense.ts; src/content/plays.ts
+
+## Which coverage is Dribble Handoff's Practice standard?
+- Kind: implementation
+- Decision: overTheTop (Chase over the top). The cones sit on its scripted defender spots. Standard path: PG passes to the C (entry), runs off the C's handoff (automatic), drives to READ_SPOT (-0.6, -2.8), then takes the floater. underTheScreen and switchOnHandoff appear only in Scrimmage.
+- Decided by: assumed on 2026-11-14
+- Why: g1 says Practice uses the single most standard defense placement; getting downhill off the handoff is the play's base lesson, and under and switch are the counter reads.
+- Source: DESIGN_DOC.md:300-309; g1; issue #35
+
+## Which Dribble Handoff actions are graded decision points?
+- Kind: implementation
+- Decision: one decision, handoffRead, at the read phase. hitScreener (bouncePass to C): overTheTop bad, underTheScreen bad, switchOnHandoff great. downhill (floater): overTheTop great, underTheScreen good, switchOnHandoff great. pullUp (shoot): overTheTop good, underTheScreen great, switchOnHandoff bad. The floater stands for "go downhill" because grading matches only on move and a decision allows one shoot and one floater option. In a switch, hitting the C and attacking the big are both great. The entry pass and the handoff are on-path track steps, and the handoff is automatic (g4).
+- Decided by: assumed on 2026-11-14
+- Why: issue #35 text for the switch; grading constraints force the move mapping
+- Source: issue #35; g4; src/content/plays.ts
+
+## What are Dribble Handoff's Reduced (Scrimmage) cues?
+- Kind: implementation
+- Decision: entry target ring on the C; handoff and attack floor arrows; read prompt "Read your defender" with no reason.
+- Decided by: assumed on 2026-11-14
+- Why: matches Give-and-Go's reduced cues: location hints stay, the reasoning is hidden
+- Source: issue #35; Give-and-Go decisions
+
+## What difficulty is Dribble Handoff?
+- Kind: implementation
+- Decision: 3, its number in DESIGN_DOC section 9, so Play Select lists it after Give-and-Go and leaves 2 for Drive-and-Kick.
+- Decided by: assumed on 2026-11-14
+- Why: keeps the design doc ordering
+- Source: DESIGN_DOC.md section 9; issue #35

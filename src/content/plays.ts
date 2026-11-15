@@ -146,9 +146,17 @@ export interface TrackStep {
 export interface DefenderStep {
   readonly spot: CourtPoint;
   readonly action: DefenderAction;
+  /**
+   * Only on a `switch` step: the offensive role this defender guards from this phase on (it takes
+   * over that man). Omitted means the role the defender is keyed to.
+   */
+  readonly guards?: RoleId;
 }
 
-/** Defender placements for a phase, keyed by the offensive role each defender guards at setup. */
+/**
+ * Defender placements for a phase, keyed by the offensive role each defender guards at setup. A
+ * `switch` step can hand a defender a different man.
+ */
 export interface CoverageStep {
   readonly phase: string;
   readonly defenders: Readonly<Record<RoleId, DefenderStep>>;
@@ -233,7 +241,7 @@ const TRANSITION_KEYS = ['to', 'trigger'] as const;
 const TRACK_STEP_KEYS = ['phase', 'action', 'spot', 'target'] as const;
 const COVERAGE_KEYS = ['id', 'name', 'practiceStandard', 'script'] as const;
 const COVERAGE_STEP_KEYS = ['phase', 'defenders'] as const;
-const DEFENDER_STEP_KEYS = ['spot', 'action'] as const;
+const DEFENDER_STEP_KEYS = ['spot', 'action', 'guards'] as const;
 const DECISION_KEYS = ['id', 'role', 'phase', 'options'] as const;
 const OPTION_KEYS = ['id', 'move', 'target', 'grades'] as const;
 
@@ -504,13 +512,22 @@ function readTracks(
   });
 }
 
-function readDefenderStep(value: unknown, at: FieldPath): DefenderStep {
+function readDefenderStep(value: unknown, at: FieldPath, role: RoleId): DefenderStep {
   const obj = readObject(value, at);
   rejectUnknownKeys(obj, DEFENDER_STEP_KEYS, at);
   const spotField = getField(obj, 'spot', at);
   const spot = readCourtPoint(spotField.value, spotField.at);
   const actionField = getField(obj, 'action', at);
   const action = readEnum(actionField.value, DEFENDER_ACTIONS, actionField.at);
+  if (action === 'switch') {
+    const guardsField = getField(obj, 'guards', at);
+    const guards = readRole(guardsField.value, guardsField.at);
+    if (guards === role) fail(guardsField.at, `expected a role other than ${role}`);
+    return { spot, action, guards };
+  }
+  if (hasValue(obj, 'guards')) {
+    fail(childPath(at, 'guards'), `unexpected field for action "${action}"`);
+  }
   return { spot, action };
 }
 

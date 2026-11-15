@@ -148,6 +148,55 @@ describe('readPlay via loadScenario', () => {
     expect(error.message).toMatch(/expected a great option for coverage "helpOnCut"/);
   });
 
+  describe('defender switch guards', () => {
+    function switchData(): any {
+      const data = clone();
+      const defenders = data.coverages[1].script[1].defenders;
+      defenders.PG = { spot: { x: 0.5, z: -1 }, action: 'switch', guards: 'SG' };
+      defenders.SG = { spot: { x: 5, z: -2 }, action: 'switch', guards: 'PG' };
+      return data;
+    }
+
+    it('loads a switch step with guards and keeps the field', () => {
+      const play = load(switchData());
+      if (play.kind !== 'play') throw new Error('expected a play');
+      const step = play.coverages[1]?.script[1]?.defenders;
+      expect(step?.PG.guards).toBe('SG');
+      expect(step?.SG.guards).toBe('PG');
+      expect(step?.C).not.toHaveProperty('guards');
+    });
+
+    it('rejects a switch step without guards', () => {
+      const data = switchData();
+      delete data.coverages[1].script[1].defenders.PG.guards;
+      const error = catchError(() => load(data));
+      expect(error.field).toBe('giveAndGo.coverages[1].script[1].defenders.PG.guards');
+    });
+
+    it('rejects guards on a non-switch action', () => {
+      const data = switchData();
+      data.coverages[1].script[1].defenders.SF.guards = 'PG';
+      const error = catchError(() => load(data));
+      expect(error.field).toBe('giveAndGo.coverages[1].script[1].defenders.SF.guards');
+      expect(error.message).toMatch(/unexpected field/);
+    });
+
+    it('rejects guards equal to the keyed role', () => {
+      const data = switchData();
+      data.coverages[1].script[1].defenders.PG.guards = 'PG';
+      const error = catchError(() => load(data));
+      expect(error.field).toBe('giveAndGo.coverages[1].script[1].defenders.PG.guards');
+      expect(error.message).toMatch(/expected a role other than PG/);
+    });
+
+    it('rejects guards that is not a role', () => {
+      const data = switchData();
+      data.coverages[1].script[1].defenders.PG.guards = 'XX';
+      const error = catchError(() => load(data));
+      expect(error.field).toBe('giveAndGo.coverages[1].script[1].defenders.PG.guards');
+    });
+  });
+
   it('rejects a callForScreen option', () => {
     const data = clone();
     data.decisions[0].options[1].move = 'callForScreen';

@@ -111,6 +111,18 @@ describe('case discovery', () => {
     expect(ids).toEqual(['practice/ballWatch', 'scrimmage/ballWatch', 'scrimmage/helpOnCut']);
   });
 
+  it('lists the Dribble Handoff cases', () => {
+    const ids = CASES.filter((c) => c.play.id === 'dribbleHandoff').map(
+      (c) => `${c.mode.id}/${c.coverageId}`,
+    );
+    expect(ids).toEqual([
+      'practice/overTheTop',
+      'scrimmage/overTheTop',
+      'scrimmage/underTheScreen',
+      'scrimmage/switchOnHandoff',
+    ]);
+  });
+
   it('adds cases for an extra play source with no test edit', () => {
     const extended = casesFor(
       loadPlaybook(roles, [

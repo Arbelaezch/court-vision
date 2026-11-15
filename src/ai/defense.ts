@@ -8,8 +8,9 @@
 //     state and step always give the same command.
 //   - Decision g5: no steals on the dribbler. Behaviors never emit `pass` or `place` and never touch
 //     the ball. Blocks happen only through `takeShot`, interceptions only through `passing.ts`.
-//   - Each coverage defender is keyed by the offensive role it guards: its `man` is the offense
-//     player with that role, and `self` is the defense player with that role.
+//   - Each coverage defender is keyed by the offensive role it guards at setup: its `man` is the
+//     offense player with `step.guards` (a switch), else with the keyed role, and `self` is the
+//     defense player with the keyed role.
 //
 // Behaviors per action:
 //   guard       hold a cushion (GUARD_CUSHION_M) from the man toward the rim, mirroring the man's
@@ -21,7 +22,8 @@
 //   closeoutHard over-aggressive: full sprint straight at the man with no breakdown, so it overruns
 //               and has to brake and reverse when the man drives past;
 //   sag, help   seek the scripted spot; help steps up on a ball holder near the rim to contest;
-//   chaseOver, goUnder, switch, drop, hedge
+//   switch      guard the `guards` man (cushion and lane-shift, like guard);
+//   chaseOver, goUnder, drop, hedge
 //               generic "go to the scripted spot" until a screen play needs more.
 //
 // Known sim exemption (A1): when a defender reaches the baseline, a sideline or the half-court line,
@@ -262,7 +264,8 @@ export const DEFENDER_BEHAVIORS: Readonly<Record<DefenderAction, DefenderBehavio
   // Generic "go to the scripted spot" behavior until a screen play needs more.
   chaseOver: spot,
   goUnder: spot,
-  switch: spot,
+  // A switching defender guards its new man (`step.guards`) exactly like `guard`.
+  switch: guard,
   drop: spot,
   hedge: spot,
 };
@@ -280,12 +283,13 @@ export function defenderCommands(
     const step = steps[role];
     if (step === undefined) continue;
     const self = game.players.find((p) => p.side === 'defense' && p.role === role);
-    const man = game.players.find((p) => p.side === 'offense' && p.role === role);
+    const manRole = step.guards ?? role;
+    const man = game.players.find((p) => p.side === 'offense' && p.role === manRole);
     if (self === undefined) {
       throw new Error(`Court Vision: no defense player with role ${role} in game state`);
     }
     if (man === undefined) {
-      throw new Error(`Court Vision: no offense player with role ${role} in game state`);
+      throw new Error(`Court Vision: no offense player with role ${manRole} in game state`);
     }
     if (self.id === game.controlledPlayerId) continue;
     const behavior = DEFENDER_BEHAVIORS[step.action];
