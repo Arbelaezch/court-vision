@@ -11,5 +11,7 @@ export * from './runFrame';
 export * from './menuEvents';
 export * from './controlSettings';
 export * from './audioSettings';
+export * from './displaySettings';
+export * from './progressReset';
 export * from './tutorialSession';
 export * from './tutorialPrompt';

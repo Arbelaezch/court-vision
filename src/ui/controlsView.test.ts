@@ -4,6 +4,8 @@ import {
   type AudioSettings,
   type CaptureState,
   type ControlSettings,
+  type DisplaySettings,
+  type ProgressReset,
 } from '../app';
 import { DEFAULT_BINDINGS } from '../input';
 import { createControlsView } from './controlsView';
@@ -310,5 +312,176 @@ describe('createControlsView', () => {
     const { cleanup, audioUnsubscribe } = setup(true);
     cleanup();
     expect(audioUnsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('has no display or progress sections without those options', () => {
+    const { root } = setup();
+    for (const h of ['Cue visibility', 'Accessibility', 'Progress']) {
+      expect(all(root, (n) => n.textContent === h)).toHaveLength(0);
+    }
+  });
+});
+
+function setupExtras() {
+  const base = setup();
+  const state = {
+    cues: { floorArrows: true, targetRings: false, prompts: true },
+    reduceMotion: false,
+    cuePending: null as { kind: 'cueOff'; cue: 'floorArrows' } | null,
+    resetPending: false,
+    resetMessage: null as string | null,
+  };
+  const listeners: (() => void)[] = [];
+  const unsubs = { display: vi.fn(), reset: vi.fn() };
+  const display = {
+    cues: () => state.cues,
+    reduceMotion: () => state.reduceMotion,
+    setCueToggle: vi.fn(),
+    pending: () => state.cuePending,
+    confirm: vi.fn(),
+    cancel: vi.fn(),
+    setReduceMotion: vi.fn(),
+    onChange: (l: () => void) => {
+      listeners.push(l);
+      return unsubs.display;
+    },
+    dispose: vi.fn(),
+  };
+  const progressReset = {
+    pending: () => state.resetPending,
+    message: () => state.resetMessage,
+    request: vi.fn(),
+    confirm: vi.fn(),
+    cancel: vi.fn(),
+    onChange: (l: () => void) => {
+      listeners.push(l);
+      return unsubs.reset;
+    },
+    dispose: vi.fn(),
+  };
+  const view = createControlsView({
+    doc: base.doc as unknown as Document,
+    controls: base.controls as unknown as ControlSettings,
+    display: display as unknown as DisplaySettings,
+    progressReset: progressReset as unknown as ProgressReset,
+  });
+  const parent = new FakeEl();
+  const cleanup = view.mount(parent as unknown as HTMLElement);
+  const root = parent.children[0]!;
+  const byKey = (key: string): FakeEl =>
+    all(root, (n) => n.attrs['data-focus-key'] === key)[0] as FakeEl;
+  return {
+    state,
+    display,
+    progressReset,
+    unsubs,
+    root,
+    cleanup,
+    byKey,
+    doc: base.doc,
+    // Every listener re-renders the whole view, so one is enough (firing both would render twice).
+    fire: () => {
+      listeners[0]?.();
+    },
+  };
+}
+
+describe('createControlsView display and progress sections', () => {
+  it('renders the three cue toggles with aria-pressed from the stored values', () => {
+    const { root, byKey } = setupExtras();
+    expect(all(root, (n) => n.textContent === 'Cue visibility')).toHaveLength(1);
+    expect(byKey('cue-floorArrows').attrs['aria-pressed']).toBe('true');
+    expect(byKey('cue-targetRings').attrs['aria-pressed']).toBe('false');
+    expect(byKey('cue-prompts').attrs['aria-pressed']).toBe('true');
+    expect(all(root, (n) => n.className === 'cv-controls-note').map((n) => n.textContent)).toEqual([
+      'Modes still set the most cues you can see. Scrimmage shows fewer than Practice.',
+    ]);
+  });
+
+  it('toggles a cue through setCueToggle', () => {
+    const { byKey, display } = setupExtras();
+    byKey('cue-floorArrows').click();
+    expect(display.setCueToggle).toHaveBeenCalledWith('floorArrows', false);
+    byKey('cue-targetRings').click();
+    expect(display.setCueToggle).toHaveBeenCalledWith('targetRings', true);
+  });
+
+  it('renders the cue confirmation with Hide and Cancel and focuses Cancel', () => {
+    const { root, state, display, fire, byKey } = setupExtras();
+    expect(all(root, (n) => n.attrs['role'] === 'alert')).toHaveLength(0);
+    state.cuePending = { kind: 'cueOff', cue: 'floorArrows' };
+    fire();
+    const alert = all(root, (n) => n.attrs['role'] === 'alert')[0]!;
+    expect(alert.children[0]!.textContent).toBe(
+      'Hide floor arrows in Practice and Scrimmage? Runs still count toward Mastery.',
+    );
+    const bs = all(alert, (n) => n.tagName === 'button');
+    expect(bs.map((b) => b.textContent)).toEqual(['Hide', 'Cancel']);
+    expect(byKey('cue-cancel').focused).toBe(1);
+    bs[0]!.click();
+    bs[1]!.click();
+    expect(display.confirm).toHaveBeenCalledTimes(1);
+    expect(display.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns focus to the cue toggle when its confirmation closes', () => {
+    const { state, doc, fire, byKey } = setupExtras();
+    state.cuePending = { kind: 'cueOff', cue: 'floorArrows' };
+    fire();
+    doc.activeElement = byKey('cue-cancel');
+    state.cuePending = null;
+    fire();
+    expect(byKey('cue-floorArrows').focused).toBe(1);
+  });
+
+  it('toggles Reduce motion', () => {
+    const { byKey, display, state, fire } = setupExtras();
+    expect(byKey('motion-reduce').attrs['aria-pressed']).toBe('false');
+    byKey('motion-reduce').click();
+    expect(display.setReduceMotion).toHaveBeenCalledWith(true);
+    state.reduceMotion = true;
+    fire();
+    expect(byKey('motion-reduce').attrs['aria-pressed']).toBe('true');
+    byKey('motion-reduce').click();
+    expect(display.setReduceMotion).toHaveBeenLastCalledWith(false);
+  });
+
+  it('requests a progress reset and renders the confirmation', () => {
+    const { root, state, progressReset, fire, byKey } = setupExtras();
+    byKey('progress-reset').click();
+    expect(progressReset.request).toHaveBeenCalledTimes(1);
+    state.resetPending = true;
+    fire();
+    const alert = all(root, (n) => n.attrs['role'] === 'alert')[0]!;
+    expect(alert.children[0]!.textContent).toContain('This cannot be undone.');
+    expect(byKey('progress-cancel').focused).toBe(1);
+    byKey('progress-confirm').click();
+    byKey('progress-cancel').click();
+    expect(progressReset.confirm).toHaveBeenCalledTimes(1);
+    expect(progressReset.cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts Progress last and shows the reset message in the status element', () => {
+    const { root, state, fire } = setupExtras();
+    state.resetMessage = 'Progress reset.';
+    fire();
+    const status = all(
+      root,
+      (n) => n.attrs['aria-live'] === 'polite' && n.attrs['role'] === 'status',
+    );
+    expect(status.map((s) => s.textContent)).toContain('Progress reset.');
+    const last = root.children[root.children.length - 1]!;
+    expect(last).toBe(status[status.length - 1]);
+    const headings = all(root, (n) => n.tagName === 'h3').map((h) => h.textContent);
+    expect(headings[headings.length - 1]).toBe('Progress');
+  });
+
+  it('cleanup unsubscribes and cancels display and reset confirmations', () => {
+    const { cleanup, unsubs, display, progressReset } = setupExtras();
+    cleanup();
+    expect(unsubs.display).toHaveBeenCalledTimes(1);
+    expect(unsubs.reset).toHaveBeenCalledTimes(1);
+    expect(display.cancel).toHaveBeenCalledTimes(1);
+    expect(progressReset.cancel).toHaveBeenCalledTimes(1);
   });
 });

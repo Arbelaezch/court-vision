@@ -75,7 +75,8 @@ function fits(camera: THREE.PerspectiveCamera, points: THREE.Vector3[]): boolean
 
 /**
  * Keeps FOV and pitch fixed and dollies along the view axis to the closest
- * distance at which the whole half court fits. Smoothing and pan limits arrive with a follow target.
+ * distance at which the whole half court fits. The camera snaps to this fit with no smoothing. Any future
+ * follow target or smoothing must be skipped when settings.reduceMotion is true (issue #32).
  */
 export function fitTacticalCamera(
   camera: THREE.PerspectiveCamera,

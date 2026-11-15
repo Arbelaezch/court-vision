@@ -27,6 +27,7 @@ const CUSTOM_SETTINGS: SettingsSection = {
   aimSensitivity: 0.8,
   audio: { volume: 0.5, musicOn: false, sfxOn: true },
   cues: { floorArrows: true, targetRings: false, prompts: true },
+  reduceMotion: false,
 };
 
 const CUSTOM_BINDINGS = [
@@ -34,14 +35,29 @@ const CUSTOM_BINDINGS = [
   { input: 'KeyF', action: 'shoot' as const },
 ];
 
-const V3_FIXTURE: SaveDocument = {
-  version: 3,
+const V4_FIXTURE: SaveDocument = {
+  version: 4,
   progress: {
     plays: { 'give-and-go': { practice: { attempts: 3, successes: 2 } }, 'pick-and-roll': {} },
   },
   settings: CUSTOM_SETTINGS,
   bindings: CUSTOM_BINDINGS,
   seenTooltips: ['sprint', 'pass'],
+};
+
+/** Settings as a v2 or v3 save stores them: no reduceMotion field. */
+const { reduceMotion: _noReduceMotion, ...PRE_V4_SETTINGS } = CUSTOM_SETTINGS;
+void _noReduceMotion;
+
+/** A v3 save with non-default audio and cue settings. */
+const V3_FIXTURE = {
+  ...V4_FIXTURE,
+  version: 3,
+  settings: {
+    ...PRE_V4_SETTINGS,
+    audio: { volume: 0.4, musicOn: false, sfxOn: false },
+    cues: { floorArrows: false, targetRings: true, prompts: false },
+  },
 };
 
 function setup(blob?: string): { fake: FakeStorage; warnings: string[] } {
@@ -66,11 +82,11 @@ describe('createSaveStore load', () => {
     expect(fake.data.size).toBe(0);
   });
 
-  it('keeps a valid v3 document as is without warning or rewriting', () => {
-    const blob = JSON.stringify(V3_FIXTURE);
+  it('keeps a valid v4 document as is without warning or rewriting', () => {
+    const blob = JSON.stringify(V4_FIXTURE);
     const { fake, warnings } = setup(blob);
     const store = open(fake, warnings);
-    expect(store.snapshot()).toEqual(V3_FIXTURE);
+    expect(store.snapshot()).toEqual(V4_FIXTURE);
     expect(warnings).toEqual([]);
     expect(fake.data.get(SAVE_STORAGE_KEY)).toBe(blob);
   });
@@ -92,7 +108,7 @@ describe('createSaveStore load', () => {
   });
 
   it('uses defaults with a warning for a version newer than current', () => {
-    const { fake, warnings } = setup(JSON.stringify({ ...V3_FIXTURE, version: 99 }));
+    const { fake, warnings } = setup(JSON.stringify({ ...V4_FIXTURE, version: 99 }));
     const store = open(fake, warnings);
     expect(store.snapshot()).toEqual(defaultSaveDocument());
     expect(warnings).toHaveLength(1);
@@ -100,7 +116,7 @@ describe('createSaveStore load', () => {
   });
 
   it('never overwrites a newer-version save, even after set() and reset()', () => {
-    const blob = JSON.stringify({ ...V3_FIXTURE, version: 99 });
+    const blob = JSON.stringify({ ...V4_FIXTURE, version: 99 });
     const { fake, warnings } = setup(blob);
     const store = open(fake, warnings);
     store.set('settings', CUSTOM_SETTINGS);
@@ -123,32 +139,32 @@ describe('createSaveStore load', () => {
   });
 
   it('resets only an invalid settings section and rewrites the blob', () => {
-    const { fake, warnings } = setup(JSON.stringify({ ...V3_FIXTURE, settings: 'oops' }));
+    const { fake, warnings } = setup(JSON.stringify({ ...V4_FIXTURE, settings: 'oops' }));
     const store = open(fake, warnings);
     expect(store.get('settings')).toEqual(defaultSaveDocument().settings);
-    expect(store.get('progress')).toEqual(V3_FIXTURE.progress);
-    expect(store.get('bindings')).toEqual(V3_FIXTURE.bindings);
-    expect(store.get('seenTooltips')).toEqual(V3_FIXTURE.seenTooltips);
+    expect(store.get('progress')).toEqual(V4_FIXTURE.progress);
+    expect(store.get('bindings')).toEqual(V4_FIXTURE.bindings);
+    expect(store.get('seenTooltips')).toEqual(V4_FIXTURE.seenTooltips);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/^Court Vision: saved section "settings" is invalid/);
-    expect(stored(fake)).toEqual({ ...V3_FIXTURE, settings: defaultSaveDocument().settings });
+    expect(stored(fake)).toEqual({ ...V4_FIXTURE, settings: defaultSaveDocument().settings });
   });
 
   it('resets only bindings with an unknown action and rewrites the blob', () => {
-    const bad = { ...V3_FIXTURE, bindings: [{ input: 'KeyW', action: 'notAnAction' }] };
+    const bad = { ...V4_FIXTURE, bindings: [{ input: 'KeyW', action: 'notAnAction' }] };
     const { fake, warnings } = setup(JSON.stringify(bad));
     const store = open(fake, warnings);
     expect(store.get('bindings')).toEqual(DEFAULT_BINDINGS);
-    expect(store.get('progress')).toEqual(V3_FIXTURE.progress);
-    expect(store.get('settings')).toEqual(V3_FIXTURE.settings);
-    expect(store.get('seenTooltips')).toEqual(V3_FIXTURE.seenTooltips);
+    expect(store.get('progress')).toEqual(V4_FIXTURE.progress);
+    expect(store.get('settings')).toEqual(V4_FIXTURE.settings);
+    expect(store.get('seenTooltips')).toEqual(V4_FIXTURE.seenTooltips);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/^Court Vision: saved section "bindings" is invalid/);
-    expect(stored(fake)).toEqual({ ...V3_FIXTURE, bindings: DEFAULT_BINDINGS });
+    expect(stored(fake)).toEqual({ ...V4_FIXTURE, bindings: DEFAULT_BINDINGS });
   });
 
   it('resets a missing section and drops unknown keys and fields', () => {
-    const { seenTooltips: _omit, ...rest } = V3_FIXTURE;
+    const { seenTooltips: _omit, ...rest } = V4_FIXTURE;
     void _omit;
     const doc = {
       ...rest,
@@ -157,10 +173,10 @@ describe('createSaveStore load', () => {
     };
     const { fake, warnings } = setup(JSON.stringify(doc));
     const store = open(fake, warnings);
-    expect(store.snapshot()).toEqual({ ...V3_FIXTURE, seenTooltips: [] });
+    expect(store.snapshot()).toEqual({ ...V4_FIXTURE, seenTooltips: [] });
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/^Court Vision: saved section "seenTooltips" is invalid/);
-    expect(stored(fake)).toEqual({ ...V3_FIXTURE, seenTooltips: [] });
+    expect(stored(fake)).toEqual({ ...V4_FIXTURE, seenTooltips: [] });
   });
 
   const BAD_PROGRESS: [string, unknown][] = [
@@ -170,7 +186,7 @@ describe('createSaveStore load', () => {
     ['plays not an object', { plays: [] }],
   ];
   it.each(BAD_PROGRESS)('resets progress with %s', (_label, progress) => {
-    const { fake, warnings } = setup(JSON.stringify({ ...V3_FIXTURE, progress }));
+    const { fake, warnings } = setup(JSON.stringify({ ...V4_FIXTURE, progress }));
     const store = open(fake, warnings);
     expect(store.get('progress')).toEqual({ plays: {} });
     expect(store.get('settings')).toEqual(CUSTOM_SETTINGS);
@@ -184,7 +200,7 @@ describe('createSaveStore load', () => {
         p: { practice: { attempts: 2, successes: 1 }, freePlay: { attempts: 1, successes: 1 } },
       },
     };
-    const doc = { ...V3_FIXTURE, progress };
+    const doc = { ...V4_FIXTURE, progress };
     const { fake, warnings } = setup(JSON.stringify(doc));
     const store = open(fake, warnings);
     expect(store.get('progress')).toEqual(progress);
@@ -197,23 +213,24 @@ describe('createSaveStore load', () => {
     ['zero double-click window', { ...CUSTOM_SETTINGS, doubleClickWindowMs: 0 }],
     ['unknown targeting', { ...CUSTOM_SETTINGS, passTargeting: 'mind' }],
     ['non-boolean cue', { ...CUSTOM_SETTINGS, cues: { ...CUSTOM_SETTINGS.cues, prompts: 1 } }],
+    ['missing reduceMotion', PRE_V4_SETTINGS],
   ];
   it.each(BAD_SETTINGS)('resets settings with %s', (_label, settings) => {
-    const { fake, warnings } = setup(JSON.stringify({ ...V3_FIXTURE, settings }));
+    const { fake, warnings } = setup(JSON.stringify({ ...V4_FIXTURE, settings }));
     expect(open(fake, warnings).get('settings')).toEqual(defaultSaveDocument().settings);
     expect(warnings).toHaveLength(1);
   });
 
   it('deduplicates seen tooltips and rejects empty ids', () => {
-    const dup = setup(JSON.stringify({ ...V3_FIXTURE, seenTooltips: ['a', 'b', 'a'] }));
+    const dup = setup(JSON.stringify({ ...V4_FIXTURE, seenTooltips: ['a', 'b', 'a'] }));
     expect(open(dup.fake, dup.warnings).get('seenTooltips')).toEqual(['a', 'b']);
     expect(dup.warnings).toEqual([]);
-    const empty = setup(JSON.stringify({ ...V3_FIXTURE, seenTooltips: ['a', ''] }));
+    const empty = setup(JSON.stringify({ ...V4_FIXTURE, seenTooltips: ['a', ''] }));
     expect(open(empty.fake, empty.warnings).get('seenTooltips')).toEqual([]);
     expect(empty.warnings).toHaveLength(1);
   });
 
-  it('migrates a v1 document to v3 and rewrites the stored blob', () => {
+  it('migrates a v1 document to v4 and rewrites the stored blob', () => {
     const { fake, warnings } = setup(JSON.stringify(V1_FIXTURE));
     const store = open(fake, warnings);
     expect(store.get('settings')).toEqual({
@@ -222,31 +239,59 @@ describe('createSaveStore load', () => {
       aimSensitivity: 1.5,
       audio: { volume: 0.4, musicOn: false, sfxOn: true },
       cues: { floorArrows: false, targetRings: false, prompts: false },
+      reduceMotion: false,
     });
     expect(store.get('progress')).toEqual(V1_FIXTURE.progress);
     expect(store.get('seenTooltips')).toEqual(['sprint']);
-    expect(store.snapshot().version).toBe(3);
-    expect(stored(fake).version).toBe(3);
+    expect(store.snapshot().version).toBe(4);
+    expect(stored(fake).version).toBe(4);
     expect(stored(fake)).toEqual(store.snapshot());
     expect(warnings).toEqual([]);
   });
 
-  it('migrates a v2 document to v3 with music off and rewrites the stored blob', () => {
+  it('migrates a v2 document to v4 with music off and rewrites the stored blob', () => {
     const v2 = {
-      ...V3_FIXTURE,
+      ...V4_FIXTURE,
       version: 2,
-      settings: { ...CUSTOM_SETTINGS, audio: { volume: 0.5, musicOn: true, sfxOn: false } },
+      settings: { ...PRE_V4_SETTINGS, audio: { volume: 0.5, musicOn: true, sfxOn: false } },
     };
     const { fake, warnings } = setup(JSON.stringify(v2));
     const store = open(fake, warnings);
     expect(store.snapshot()).toEqual({
-      ...V3_FIXTURE,
+      ...V4_FIXTURE,
       settings: { ...CUSTOM_SETTINGS, audio: { volume: 0.5, musicOn: false, sfxOn: false } },
     });
-    expect(store.snapshot().version).toBe(3);
+    expect(store.snapshot().version).toBe(4);
     expect(store.get('settings').audio.musicOn).toBe(false);
     expect(stored(fake)).toEqual(store.snapshot());
     expect(warnings).toEqual([]);
+  });
+
+  it('migrates a v3 document to v4 keeping custom audio and cues, with reduce motion off', () => {
+    const { fake, warnings } = setup(JSON.stringify(V3_FIXTURE));
+    const store = open(fake, warnings);
+    expect(store.get('settings')).toEqual({
+      ...CUSTOM_SETTINGS,
+      audio: { volume: 0.4, musicOn: false, sfxOn: false },
+      cues: { floorArrows: false, targetRings: true, prompts: false },
+      reduceMotion: false,
+    });
+    expect(store.get('progress')).toEqual(V3_FIXTURE.progress);
+    expect(store.get('bindings')).toEqual(V3_FIXTURE.bindings);
+    expect(store.get('seenTooltips')).toEqual(V3_FIXTURE.seenTooltips);
+    expect(warnings).toEqual([]);
+    expect(stored(fake).version).toBe(4);
+    expect(stored(fake)).toEqual(store.snapshot());
+  });
+
+  it('resets settings with a non-boolean reduceMotion in a v4 document', () => {
+    const settings = { ...CUSTOM_SETTINGS, reduceMotion: 'yes' };
+    const { fake, warnings } = setup(JSON.stringify({ ...V4_FIXTURE, settings }));
+    const store = open(fake, warnings);
+    expect(store.get('settings')).toEqual(defaultSaveDocument().settings);
+    expect(store.get('progress')).toEqual(V4_FIXTURE.progress);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/^Court Vision: saved section "settings" is invalid/);
   });
 
   it('defaults to music off', () => {
@@ -256,7 +301,12 @@ describe('createSaveStore load', () => {
       musicOn: false,
       sfxOn: true,
     });
-    expect(defaultSaveDocument().version).toBe(3);
+    expect(defaultSaveDocument().version).toBe(4);
+  });
+
+  it('defaults to reduce motion off', () => {
+    const { fake, warnings } = setup();
+    expect(open(fake, warnings).get('settings').reduceMotion).toBe(false);
   });
 
   it('does not throw when the storage getter fails', () => {
@@ -301,12 +351,21 @@ describe('createSaveStore writes', () => {
     expect(warnings).toEqual([]);
   });
 
+  it('keeps reduceMotion true across a reopen of the same storage', () => {
+    const { fake, warnings } = setup();
+    const store = open(fake, warnings);
+    store.set('settings', { ...store.get('settings'), reduceMotion: true });
+    expect(store.get('settings').reduceMotion).toBe(true);
+    expect(open(fake, warnings).get('settings').reduceMotion).toBe(true);
+    expect(warnings).toEqual([]);
+  });
+
   it('resetProgress() clears progress and seen tooltips only', () => {
-    const { fake, warnings } = setup(JSON.stringify(V3_FIXTURE));
+    const { fake, warnings } = setup(JSON.stringify(V4_FIXTURE));
     const store = open(fake, warnings);
     store.resetProgress();
     expect(store.snapshot()).toEqual({
-      ...V3_FIXTURE,
+      ...V4_FIXTURE,
       progress: { plays: {} },
       seenTooltips: [],
     });
@@ -314,7 +373,7 @@ describe('createSaveStore writes', () => {
   });
 
   it("reset('bindings') restores the default bindings", () => {
-    const { fake, warnings } = setup(JSON.stringify(V3_FIXTURE));
+    const { fake, warnings } = setup(JSON.stringify(V4_FIXTURE));
     const store = open(fake, warnings);
     store.reset('bindings');
     expect(store.get('bindings')).toEqual(DEFAULT_BINDINGS);
@@ -324,7 +383,7 @@ describe('createSaveStore writes', () => {
 
   it('is exported from the app barrel', () => {
     expect(app.createSaveStore).toBe(createSaveStore);
-    expect(app.CURRENT_VERSION).toBe(3);
+    expect(app.CURRENT_VERSION).toBe(4);
   });
 
   it('uses a custom key', () => {

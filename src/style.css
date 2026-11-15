@@ -191,6 +191,19 @@ body {
   border-radius: 8px;
 }
 
+.cv-controls-confirm {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 2px solid #ffd54a;
+  border-radius: 8px;
+}
+
+.cv-controls-note {
+  margin: 4px 0;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
 .cv-hud {
   position: absolute;
   top: 12px;
@@ -272,6 +285,28 @@ body {
   font: bold 24px sans-serif;
   color: #fff;
   border-radius: 8px;
+  animation: cv-result-banner-in 220ms ease-out;
+}
+
+@keyframes cv-result-banner-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+.cv-reduce-motion .cv-result-banner {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-result-banner {
+    animation: none;
+  }
 }
 
 .cv-result-success {

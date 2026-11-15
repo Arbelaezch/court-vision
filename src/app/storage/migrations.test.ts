@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_BINDINGS } from '../../input';
-import { CURRENT_VERSION, MIGRATIONS, migrateV1ToV2, migrateV2ToV3 } from './migrations';
+import {
+  CURRENT_VERSION,
+  MIGRATIONS,
+  migrateV1ToV2,
+  migrateV2ToV3,
+  migrateV3ToV4,
+} from './migrations';
+import { SECTION_VALIDATORS } from './schema';
 
 const V1_FIXTURE: Record<string, unknown> = {
   version: 1,
@@ -104,28 +111,77 @@ describe('migrateV2ToV3', () => {
   });
 });
 
+const V3_FIXTURE: Record<string, unknown> = {
+  ...V2_FIXTURE,
+  version: 3,
+  settings: {
+    passTargeting: 'aim',
+    doubleClickWindowMs: 300,
+    aimSensitivity: 1.5,
+    audio: { volume: 0.4, musicOn: true, sfxOn: false },
+    cues: { floorArrows: false, targetRings: true, prompts: false },
+  },
+};
+
+describe('migrateV3ToV4', () => {
+  it('adds reduceMotion off and keeps audio, cues and everything else', () => {
+    expect(migrateV3ToV4(V3_FIXTURE)).toEqual({
+      ...V3_FIXTURE,
+      version: 4,
+      settings: {
+        passTargeting: 'aim',
+        doubleClickWindowMs: 300,
+        aimSensitivity: 1.5,
+        audio: { volume: 0.4, musicOn: true, sfxOn: false },
+        cues: { floorArrows: false, targetRings: true, prompts: false },
+        reduceMotion: false,
+      },
+    });
+  });
+
+  it('does not mutate its input', () => {
+    const input = structuredClone(V3_FIXTURE);
+    migrateV3ToV4(input);
+    expect(input).toEqual(V3_FIXTURE);
+  });
+
+  it('only bumps the version when settings is not an object', () => {
+    expect(migrateV3ToV4({ version: 3 })).toEqual({ version: 4 });
+    expect(migrateV3ToV4({ version: 3, settings: 'oops' })).toEqual({
+      version: 4,
+      settings: 'oops',
+    });
+  });
+});
+
 describe('MIGRATIONS', () => {
   it('registers the v1 step', () => {
     expect(MIGRATIONS[1]).toBe(migrateV1ToV2);
   });
 
-  it('registers the v2 step and targets version 3', () => {
+  it('registers the v2 step', () => {
     expect(MIGRATIONS[2]).toBe(migrateV2ToV3);
-    expect(CURRENT_VERSION).toBe(3);
   });
 
-  it('chains v1 through v3 and ends with music off', () => {
+  it('registers the v3 step and targets version 4', () => {
+    expect(MIGRATIONS[3]).toBe(migrateV3ToV4);
+    expect(CURRENT_VERSION).toBe(4);
+  });
+
+  it('chains v1 through v4, ends with music and reduce motion off and valid settings', () => {
     const v1 = {
       ...V1_FIXTURE,
       settings: { ...(V1_FIXTURE.settings as Record<string, unknown>), musicOn: true },
     };
     let doc: Record<string, unknown> = v1;
     for (let v = 1; v < CURRENT_VERSION; v++) doc = MIGRATIONS[v]!(doc);
-    expect(doc.version).toBe(3);
+    expect(doc.version).toBe(4);
     expect((doc.settings as { audio: unknown }).audio).toEqual({
       volume: 0.4,
       musicOn: false,
       sfxOn: true,
     });
+    expect((doc.settings as { reduceMotion: unknown }).reduceMotion).toBe(false);
+    expect(SECTION_VALIDATORS.settings(doc.settings)).toBeDefined();
   });
 });

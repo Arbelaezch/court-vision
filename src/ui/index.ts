@@ -5,5 +5,6 @@ export { createRunHud } from './runHud';
 export type { RunHud } from './runHud';
 export { createControlsView } from './controlsView';
 export type { ControlsView } from './controlsView';
+export { REDUCE_MOTION_CLASS, createReduceMotionOutput } from './reduceMotion';
 export { createScreenMenus } from './menus';
 export type { ScreenMenus } from './menus';

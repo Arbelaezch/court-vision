@@ -24,6 +24,7 @@ export {
   MIGRATIONS,
   migrateV1ToV2,
   migrateV2ToV3,
+  migrateV3ToV4,
   type Migration,
 } from './migrations';
 export { SAVE_STORAGE_KEY, createSaveStore, type SaveStore, type SaveStoreOptions } from './store';

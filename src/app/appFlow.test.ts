@@ -253,6 +253,40 @@ describe('app flow', () => {
     expect(frames[frames.length - 1]!.hud.shotClockSeconds).toBe(24);
   });
 
+  it.each(['openPractice', 'openScrimmage'] as const)(
+    'cue toggles hide their cue kinds in a %s run, and default toggles show them',
+    (open) => {
+      const run = (hide: boolean) => {
+        const frames: RunFrame[] = [];
+        const store = createSaveStore({ storage: createFakeStorage({}), warn: () => {} });
+        if (hide) {
+          store.set('settings', {
+            ...store.get('settings'),
+            cues: { floorArrows: false, targetRings: false, prompts: false },
+          });
+        }
+        const flow = createAppFlow({
+          content: CONTENT,
+          store,
+          renderer: { drawRun: (_c, f) => frames.push(f), clear: () => {} },
+          seed: () => 1,
+        });
+        flow.send({ type: open });
+        flow.send({ type: 'selectPlay', playId: GIVE_AND_GO.id });
+        for (let i = 0; i < 120; i += 1) flow.frame(16);
+        return frames;
+      };
+      const shown = run(false);
+      expect(shown.some((f) => f.cues.length > 0)).toBe(true);
+      const hidden = run(true);
+      expect(hidden.length).toBeGreaterThan(0);
+      for (const f of hidden) {
+        expect(f.cues).toEqual([]);
+        expect(f.prompt).toBeNull();
+      }
+    },
+  );
+
   it('labels reflect a run recorded after the flow was created', () => {
     const { flow, store } = setup();
     recordRunAttempt(store, { playId: 'giveAndGo', modeId: 'practice', success: true });
