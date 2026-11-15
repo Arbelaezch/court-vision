@@ -9,7 +9,9 @@
 // graded `great` for the run's coverage. With no decision, make the on-path pass (the human's
 // active pass/handOff track step, else the phase's passCompleted trigger from the human), once the
 // target has reached its own active spot (the gate the AI uses). Otherwise walk toward the
-// human's active step spot (or setup spot when it has no step yet).
+// human's active step spot (or setup spot when it has no step yet). A route option (move `move`
+// with a `branch`) is "played" by walking to its branch's reachedSpot transition spot, whether or
+// not the human holds the ball.
 //
 // Wrong read: act like the correct-read bot until the human holds the ball at a decision, then
 // pick the first of: an option graded `bad` for this coverage, a pass to a teammate the referee
@@ -28,7 +30,7 @@ import {
   type RoleId,
   type SimAction,
 } from '../sim';
-import { classifyAction, findDecisionPoint } from './grading';
+import { classifyAction, findDecisionPoint, routeSpot } from './grading';
 import { REACHED_SPOT_RADIUS_M, type PlayRunState } from './playRun';
 import type { RefereeState, RunMode } from './referee';
 
@@ -43,6 +45,7 @@ export type PlayBot = (state: PlayBotView) => SimAction[];
 export interface BotMove {
   readonly move: MoveId;
   readonly target?: RoleId;
+  readonly branch?: string;
 }
 
 /** The first option of `decision` graded `great` for `coverageId`. */
@@ -196,8 +199,14 @@ function createBot(
     const { game, run, referee } = state;
     const human = offensePlayer(game, run.humanRole);
     const holds = game.ball.kind === 'held' && game.ball.holderId === human.id;
-    const decision = holds ? findDecisionPoint(play, run.humanRole, run.phaseId) : null;
-    if (decision !== null) return [toSimAction(game, pick(decision, referee))];
+    const decision = findDecisionPoint(play, run.humanRole, run.phaseId);
+    if (decision !== null && (holds || decision.options.some((o) => o.branch !== undefined))) {
+      const move = pick(decision, referee);
+      if (move.branch !== undefined) {
+        return [moveToward(game, routeSpot(play, decision, move.branch))];
+      }
+      if (holds) return [toSimAction(game, move)];
+    }
     return pathActions(play, state);
   };
 }

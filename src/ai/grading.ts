@@ -14,10 +14,11 @@
 //   passes to it in that phase; otherwise it is a wrong teammate.
 // - A shoot or floater matches an option with the same move, then the first shoot/floater option,
 //   else it is off script.
-// - Movement is never graded.
+// - A route option (move `move`, `branch`) matches when the run leaves the decision's phase for
+//   `branch` (classifyRoute). Other movement is never graded.
 import { PASS_MOVES } from '../content';
 import type { DecisionGrade, DecisionOption, DecisionPoint, PlayScenario } from '../content';
-import type { RoleId, SimAction } from '../sim';
+import type { CourtPoint, RoleId, SimAction } from '../sim';
 
 export const MISTAKE_REASONS = {
   wrongTeammate: 'Wrong teammate',
@@ -135,4 +136,34 @@ export function classifyAction(
     options.find((o) => o.move === 'shoot' || o.move === 'floater');
   if (decision && match) return optionClass(play, decision, match, coverageId);
   return { kind: 'offScript', reason: MISTAKE_REASONS.offScript };
+}
+
+/**
+ * The route option `role` took by leaving `phaseId` for `nextPhaseId`, graded for `coverageId`;
+ * null when the phase did not change, there is no decision there, or no option routes to it.
+ */
+export function classifyRoute(
+  play: PlayScenario,
+  input: { role: RoleId; phaseId: string; nextPhaseId: string; coverageId: string },
+): Extract<ActionClass, { kind: 'option' }> | null {
+  const { role, phaseId, nextPhaseId, coverageId } = input;
+  if (nextPhaseId === phaseId) return null;
+  const decision = findDecisionPoint(play, role, phaseId);
+  if (decision === null) return null;
+  const option = decision.options.find((o) => o.branch === nextPhaseId);
+  if (option === undefined) return null;
+  return optionClass(play, decision, option, coverageId);
+}
+
+/** The spot of the decision phase's `reachedSpot` transition (for the decision's role) to `branch`. */
+export function routeSpot(play: PlayScenario, decision: DecisionPoint, branch: string): CourtPoint {
+  const phase = play.phases.find((p) => p.id === decision.phase);
+  for (const t of phase?.transitions ?? []) {
+    if (t.to === branch && t.trigger.kind === 'reachedSpot' && t.trigger.role === decision.role) {
+      return t.trigger.spot;
+    }
+  }
+  throw new Error(
+    `Court Vision: decision ${decision.id} of play ${play.id} has no reachedSpot transition to ${branch}`,
+  );
 }

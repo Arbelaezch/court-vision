@@ -40,6 +40,7 @@ export {
   TARGETED_TRACK_ACTIONS,
   TRACK_ACTIONS,
   TRIGGER_KINDS,
+  phasesReachableFrom,
   readPlay,
 } from './plays';
 export type {

@@ -60,6 +60,7 @@ describe('sortPlayList', () => {
       'giveAndGo',
       'dribbleHandoff',
       'highPickAndRoll',
+      'hornsSet',
     ]);
   });
 });

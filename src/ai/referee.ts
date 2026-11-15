@@ -21,17 +21,25 @@
 // OUTCOME_RULES is the single place where mode-dependent outcomes live: each entry is a one-line
 // change between 'mistake' (whistle, reset) and 'unsuccessful' (no whistle, no reset).
 //
+// Route options (a decision option with move `move` and a `branch`): when the run leaves a decision
+// phase for an option's branch, that option is graded through the same rules as a ball action
+// (Practice: not great is off path; Scrimmage: bad is a Bad read, good continues as Good).
+//
 // A run ends on the first of: an unblocked human shot resolving, the human's final-decision pass
 // completing, any mistake, or a rule outcome of 'unsuccessful'. After that the referee ignores the
-// rest of the run, so a later interception of a wrong-teammate pass is not a second outcome.
+// rest of the run, so a later interception of a wrong-teammate pass is not a second outcome. A
+// pass is final when no decision of the human's role is in a phase reachable from the pass's phase
+// through transitions ("later" means reachable, not later in the phases array).
 //
 // Pure and deterministic: no mutation of inputs, no Math.random, no wall clock.
+import { phasesReachableFrom } from '../content';
 import type { DecisionGrade, ModeRules, PlayScenario } from '../content';
 import type { GameEvent, GameState, MistakeKind, RoleId, RunGrade, SimAction } from '../sim';
 import {
   GRADE_REASONS,
   MISTAKE_REASONS,
   classifyAction,
+  classifyRoute,
   findDecisionPoint,
   type ResolvingAction,
 } from './grading';
@@ -162,10 +170,12 @@ function teammateRole(game: GameState, id: number, humanId: number): RoleId | nu
   return player !== undefined && player.side === 'offense' ? player.role : null;
 }
 
-/** Whether the play has a decision for `role` in a phase after `phaseId`. */
+/** Whether the play has a decision for `role` in a phase reachable from `phaseId`. */
 function hasLaterDecision(play: PlayScenario, role: RoleId, phaseId: string): boolean {
-  const index = play.phases.findIndex((p) => p.id === phaseId);
-  return play.phases.some((p, i) => i > index && findDecisionPoint(play, role, p.id) !== null);
+  for (const id of phasesReachableFrom(play.phases, phaseId)) {
+    if (findDecisionPoint(play, role, id) !== null) return true;
+  }
+  return false;
 }
 
 function successQuality(mode: RunMode, graded: readonly GradedDecision[]): RunQuality {
@@ -196,20 +206,27 @@ function applyRule(
 }
 
 /**
- * Advances the referee by one run step. `phaseId` is the run's phase before the step and `after`
- * is the state the step produced. Pure: returns a new referee and the events it emits.
+ * Advances the referee by one run step. `phaseId` is the run's phase before the step,
+ * `nextPhaseId` the run's phase after it, and `after` is the state the step produced. Pure: returns
+ * a new referee and the events it emits.
  */
 export function stepReferee(
   play: PlayScenario,
   referee: RefereeState,
-  step: { before: GameState; phaseId: string; actions: readonly SimAction[]; after: GameState },
+  step: {
+    before: GameState;
+    phaseId: string;
+    nextPhaseId: string;
+    actions: readonly SimAction[];
+    after: GameState;
+  },
 ): StepResult {
   if (play.id !== referee.playId) {
     throw new Error(`Court Vision: referee is for play ${referee.playId}, got play ${play.id}`);
   }
   if (referee.outcome !== null) return { referee, events: [], resetRequested: false };
 
-  const { before, phaseId, actions, after } = step;
+  const { before, phaseId, nextPhaseId, actions, after } = step;
   const tick = before.tick + 1;
   const humanId = before.controlledPlayerId;
   let graded = referee.graded;
@@ -268,6 +285,29 @@ export function stepReferee(
         pendingFinalPassTo = action.targetId;
       }
     }
+  }
+
+  // Route options: the run left the decision's phase for an option's branch.
+  const route = classifyRoute(play, {
+    role: referee.humanRole,
+    phaseId,
+    nextPhaseId,
+    coverageId: referee.coverageId,
+  });
+  if (route !== null) {
+    if (referee.mode === 'practice' && route.grade !== 'great') {
+      return applyRule(
+        referee,
+        OUTCOME_RULES.practiceOffPath,
+        tick,
+        MISTAKE_REASONS.notThePlaysRead,
+      );
+    }
+    if (referee.mode === 'scrimmage' && route.grade === 'bad') {
+      return applyRule(referee, OUTCOME_RULES.badRead, tick, GRADE_REASONS.bad);
+    }
+    const { decisionId, optionId, grade, reason } = route;
+    graded = [...graded, { tick, decisionId, optionId, grade, reason }];
   }
   const updated: RefereeState = { ...referee, graded, pendingFinalPassTo };
 
