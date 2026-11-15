@@ -374,6 +374,7 @@ describe('app flow', () => {
       stepSinks: [(s) => calls.push(s)],
       seed: () => 5,
     });
+    flow.send({ type: 'openTutorialMenu' });
     flow.send({ type: 'openTutorial' });
     for (let i = 0; i < 5; i++) flow.frame(1000 / 60);
     const steps = frames.flatMap((f) => f.steps);
@@ -404,6 +405,11 @@ describe('app flow', () => {
     flow.handleAction('pause');
     flow.handleAction('chestPass');
     expect(pressed).toEqual(['chestPass']);
+  });
+
+  it('labels carry the glossary terms', () => {
+    expect(setup().flow.labels().glossary).toEqual(CONTENT.glossary.terms);
+    expect(CONTENT.glossary.terms.length).toBeGreaterThan(0);
   });
 
   it('labels carry the mastery threshold', () => {

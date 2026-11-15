@@ -78,6 +78,7 @@ function stepIndex(flow: AppFlow): number {
 describe('tutorial flow', () => {
   it('AC1: opens a tutorial session, idle input stays on step 1, the driver goes through 1..7', () => {
     const idle = setup(false);
+    idle.flow.send({ type: 'openTutorialMenu' });
     idle.flow.send({ type: 'openTutorial' });
     expect(idle.flow.tutorial()).not.toBeNull();
     expect(idle.flow.session()).toBeNull();
@@ -85,8 +86,9 @@ describe('tutorial flow', () => {
     expect(idle.flow.tutorial()!.state().stepIndex).toBe(0);
 
     const { flow, frames } = setup(true);
+    flow.send({ type: 'openTutorialMenu' });
     flow.send({ type: 'openTutorial' });
-    runUntil(flow, () => flow.state().screen === 'mainMenu' && frames.length > 0);
+    runUntil(flow, () => flow.state().screen === 'tutorialMenu' && frames.length > 0);
     const seen: number[] = [];
     for (const f of frames) {
       const n = Number(/Step (\d+) of/.exec(f.hud.objective)![1]);
@@ -97,6 +99,7 @@ describe('tutorial flow', () => {
 
   it('AC2: rebinding shoot changes the prompt', () => {
     const { flow, store, frames } = setup(true);
+    flow.send({ type: 'openTutorialMenu' });
     flow.send({ type: 'openTutorial' });
     flow.frame(FRAME_MS);
     expect(frames[frames.length - 1]!.prompt.headline).toContain('W/A/S/D');
@@ -119,25 +122,27 @@ describe('tutorial flow', () => {
   });
 
   it.each(TUTORIAL_STEPS.map((s, i) => [s.id, i] as const))(
-    'AC3: exits to the main menu from step %s',
+    'AC3: exits to the tutorial menu from step %s',
     (_id, index) => {
       for (const how of ['pause', 'back'] as const) {
         const { flow, counts } = setup(true);
+        flow.send({ type: 'openTutorialMenu' });
         flow.send({ type: 'openTutorial' });
         runUntil(flow, () => stepIndex(flow) === index);
         if (how === 'pause') flow.handleAction('pause');
         else flow.send({ type: 'back' });
-        expect(flow.state()).toEqual({ screen: 'mainMenu' });
+        expect(flow.state()).toEqual({ screen: 'tutorialMenu' });
         expect(flow.tutorial()).toBeNull();
         expect(counts.clear).toBe(1);
       }
     },
   );
 
-  it('AC3: finishing every step returns to the main menu on its own', () => {
+  it('AC3: finishing every step returns to the tutorial menu on its own', () => {
     const { flow, counts } = setup(true);
+    flow.send({ type: 'openTutorialMenu' });
     flow.send({ type: 'openTutorial' });
-    runUntil(flow, () => flow.state().screen === 'mainMenu');
+    runUntil(flow, () => flow.state().screen === 'tutorialMenu');
     expect(flow.tutorial()).toBeNull();
     expect(counts.clear).toBe(1);
   });
@@ -147,11 +152,12 @@ describe('tutorial flow', () => {
     const progress = structuredClone(store.get('progress'));
     const raw = new Map(storage.data);
 
+    flow.send({ type: 'openTutorialMenu' });
     flow.send({ type: 'openTutorial' });
     runUntil(flow, () => stepIndex(flow) === 3);
     flow.handleAction('pause');
     flow.send({ type: 'openTutorial' });
-    runUntil(flow, () => flow.state().screen === 'mainMenu');
+    runUntil(flow, () => flow.state().screen === 'tutorialMenu');
 
     expect(store.get('progress')).toEqual(progress);
     expect(storage.data).toEqual(raw);
@@ -161,6 +167,7 @@ describe('tutorial flow', () => {
     const { flow, presses } = setup(false);
     flow.handleAction('shoot');
     expect(presses).toEqual([]);
+    flow.send({ type: 'openTutorialMenu' });
     flow.send({ type: 'openTutorial' });
     flow.handleAction('shoot');
     expect(presses).toEqual(['shoot']);

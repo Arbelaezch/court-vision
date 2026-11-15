@@ -1,4 +1,6 @@
 // UI layer: menus, HUD, prompts, tutorial, settings.
+export { createConceptTooltipOverlay } from './conceptTooltip';
+export type { ConceptTooltipOverlay } from './conceptTooltip';
 export { createCuePromptOverlay } from './cuePrompt';
 export type { CuePromptOverlay } from './cuePrompt';
 export { createRunHud } from './runHud';

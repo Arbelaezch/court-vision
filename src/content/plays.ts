@@ -129,6 +129,8 @@ export interface Phase {
   readonly id: string;
   readonly transitions: readonly PhaseTransition[];
   readonly cues: PhaseCues;
+  /** Glossary term ids first introduced in this phase; shown once ever as tooltips. Default []. */
+  readonly concepts: readonly string[];
 }
 
 /**
@@ -236,7 +238,8 @@ const PLAY_KEYS = [
 const PLAY_KIND = ['play'] as const;
 const POINT_KEYS = ['x', 'z'] as const;
 const SETUP_KEYS = ['positions', 'ballHolder'] as const;
-const PHASE_KEYS = ['id', 'transitions', 'cues'] as const;
+const PHASE_KEYS = ['id', 'transitions', 'cues', 'concepts'] as const;
+const MAX_CONCEPTS_PER_PHASE = 2;
 const TRANSITION_KEYS = ['to', 'trigger'] as const;
 const TRACK_STEP_KEYS = ['phase', 'action', 'spot', 'target'] as const;
 const COVERAGE_KEYS = ['id', 'name', 'practiceStandard', 'script'] as const;
@@ -445,7 +448,24 @@ function readPhases(value: unknown, at: FieldPath): Phase[] {
     });
     const cuesField = getField(obj, 'cues', phaseAt);
     const cues = readCues(cuesField.value, cuesField.at);
-    return { id: ids[i] as string, transitions, cues };
+    const concepts = readConcepts(obj, phaseAt);
+    return { id: ids[i] as string, transitions, cues, concepts };
+  });
+}
+
+function readConcepts(obj: Record<string, unknown>, phaseAt: FieldPath): string[] {
+  if (!Object.hasOwn(obj, 'concepts')) return [];
+  const at = childPath(phaseAt, 'concepts');
+  const items = readArray(obj['concepts'], at);
+  if (items.length > MAX_CONCEPTS_PER_PHASE) {
+    fail(at, `expected at most ${MAX_CONCEPTS_PER_PHASE} concepts per phase`);
+  }
+  const seen = new Set<string>();
+  return items.map((item, i) => {
+    const id = readId(item, childPath(at, i));
+    if (seen.has(id)) fail(childPath(at, i), `duplicate concept "${id}"`);
+    seen.add(id);
+    return id;
   });
 }
 

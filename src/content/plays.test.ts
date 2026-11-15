@@ -319,6 +319,40 @@ describe('readPlay via loadScenario', () => {
     expect(error.message).toMatch(/unknown field/);
   });
 
+  describe('phase concepts', () => {
+    const phaseConcepts = (data: any): readonly string[] | undefined =>
+      (load(data) as PlayScenario).phases.find((p) => p.id === 'finish')?.concepts;
+
+    it('defaults to [] when the key is missing', () => {
+      const data = clone();
+      delete data.phases[2].concepts;
+      expect(phaseConcepts(data)).toEqual([]);
+    });
+
+    it('parses a concepts list', () => {
+      const data = clone();
+      data.phases[2].concepts = ['cut'];
+      expect(phaseConcepts(data)).toEqual(['cut']);
+    });
+
+    it.each([
+      ['a non-id string', ['Not An Id']],
+      ['a duplicate', ['cut', 'cut']],
+      ['3 items', ['cut', 'screen', 'lob']],
+      ['a non-array', 'cut'],
+    ])('rejects %s', (_name, value) => {
+      const data = clone();
+      data.phases[2].concepts = value;
+      const error = catchError(() => load(data));
+      expect(error.field).toMatch(/phases\[2\]\.concepts/);
+    });
+
+    it('gives the bundled cut phase its concepts', () => {
+      const cut = (scenario as PlayScenario).phases.find((p) => p.id === 'cut');
+      expect(cut?.concepts).toEqual(['cut']);
+    });
+  });
+
   it('rejects an invalid play id', () => {
     const data = clone();
     data.id = 'Give and go';

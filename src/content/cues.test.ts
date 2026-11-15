@@ -64,6 +64,7 @@ describe('visibleCues', () => {
     const synthetic: Phase = {
       id: 'x',
       transitions: [],
+      concepts: [],
       cues: {
         full: [
           { kind: 'spotMarker', spot: { x: 0, z: 0 } },

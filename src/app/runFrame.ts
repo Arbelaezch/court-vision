@@ -8,6 +8,7 @@ import {
   type Cue,
   type CuePrompt,
   type CueToggles,
+  type GlossaryEntry,
   type PlayScenario,
 } from '../content';
 import { SIM_HZ } from '../sim';
@@ -31,6 +32,8 @@ export interface RunFrame {
   readonly cues: readonly Cue[];
   readonly prompt: CuePrompt | null;
   readonly hud: RunHudModel;
+  /** First-time concept tooltips to show now; display only, never blocks the run. */
+  readonly tooltips: readonly GlossaryEntry[];
 }
 
 function bannerFor(controller: RunControllerState): RunBanner | null {
@@ -52,6 +55,7 @@ export function buildRunFrame(
   controller: RunControllerState,
   steps: readonly RunControllerStep[],
   cueToggles: CueToggles,
+  tooltips: readonly GlossaryEntry[] = [],
 ): RunFrame {
   const cues =
     controller.status === 'playing'
@@ -79,5 +83,6 @@ export function buildRunFrame(
       banner: bannerFor(controller),
       shotClockSeconds: shotClockTicks === null ? null : Math.ceil(shotClockTicks / SIM_HZ),
     },
+    tooltips,
   };
 }
