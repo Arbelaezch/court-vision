@@ -194,6 +194,7 @@ export function stepRunController(
   const ref = stepReferee(play, referee, {
     before: game,
     phaseId: run.phaseId,
+    nextPhaseId: next.run.phaseId,
     actions,
     after: next.game,
   });

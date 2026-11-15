@@ -351,3 +351,15 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: The issue's list plus DESIGN_DOC section 2 terms (21 entries); later modes Live Play and Free Play and the coverage examples drop/hedge/switch are left out
 - Decided by: assumed on 2026-11-15
 - Why: Live/Free Play are unreachable later modes; drop/hedge/switch are examples inside the Coverage entry, not section 2 terms
+
+## Horns Set (#38): which coverage is the Practice standard?
+- Kind: implementation
+- Decision: dropBoth (Drop both bigs); symmetric, so either side's screen is Great in Practice. Coverage ids: overplayLeft, overplayRight, dropBoth, cornerHelp. Left = -x from the PG facing the basket; PF is the left big, C the right big. Corner help comes from the corner on the side the PG attacks; the read is the kick to that corner.
+- Decided by: assumed on 2026-11-15
+- Why: Drop is the standard base defense (g1), matching High Pick-and-Roll's dropBig; issue #38 delegates the choice
+
+## How is Horns' side choice graded when the engine only grades passes, shoot and floater?
+- Kind: implementation
+- Decision: Add a generic route option to decisions (move: 'move' plus branch: '<phaseId>'), resolved when the run moves from the decision's phase into that phase and graded per coverage like other options; bots walk to the branch's trigger spot. Going into the overplay is graded Bad. Overplay is expressed with the existing sag defender action on shaded spots.
+- Decided by: assumed on 2026-11-15
+- Why: AC3 requires grading the screen choice and AC4 forbids Horns-specific engine logic; a play-agnostic route option is the smallest generic extension

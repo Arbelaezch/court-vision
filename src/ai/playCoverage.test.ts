@@ -136,6 +136,19 @@ describe('case discovery', () => {
     ]);
   });
 
+  it('lists the Horns Set cases', () => {
+    const ids = CASES.filter((c) => c.play.id === 'hornsSet').map(
+      (c) => `${c.mode.id}/${c.coverageId}`,
+    );
+    expect(ids).toEqual([
+      'practice/dropBoth',
+      'scrimmage/overplayLeft',
+      'scrimmage/overplayRight',
+      'scrimmage/dropBoth',
+      'scrimmage/cornerHelp',
+    ]);
+  });
+
   it('adds cases for an extra play source with no test edit', () => {
     const extended = casesFor(
       loadPlaybook(roles, [

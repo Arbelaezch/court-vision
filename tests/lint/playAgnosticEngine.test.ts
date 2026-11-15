@@ -111,6 +111,14 @@ describe('play-agnostic engine', () => {
         'switchOnScreen',
         'cornerHelp',
         'pickRead',
+        'hornsSet',
+        'HORNS_SET',
+        'overplayLeft',
+        'overplayRight',
+        'dropBoth',
+        'sideRead',
+        'leftRead',
+        'rightRead',
       ]),
     );
   });

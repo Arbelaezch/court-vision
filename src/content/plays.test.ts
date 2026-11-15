@@ -304,6 +304,96 @@ describe('readPlay via loadScenario', () => {
     expect(error.message).toMatch(/duplicate option for move "chestPass" to "SF"/);
   });
 
+  describe('route options', () => {
+    // Give-and-Go plus a PG reachedSpot transition entry -> cut and a decision at entry whose
+    // route option takes that transition.
+    function withRoute(): any {
+      const data = clone();
+      data.phases[0].transitions.push({
+        to: 'cut',
+        trigger: { kind: 'reachedSpot', role: 'PG', spot: { x: 3, z: 2 } },
+      });
+      data.decisions.push({
+        id: 'entryRoute',
+        role: 'PG',
+        phase: 'entry',
+        options: [
+          {
+            id: 'drift',
+            move: 'move',
+            branch: 'cut',
+            grades: { ballWatch: 'great', helpOnCut: 'great' },
+          },
+        ],
+      });
+      return data;
+    }
+    const ROUTE = 'giveAndGo.decisions[1].options[0]';
+
+    it('accepts a route option and keeps its branch', () => {
+      const play = load(withRoute()) as PlayScenario;
+      expect(play.decisions[1]?.options[0]).toEqual({
+        id: 'drift',
+        move: 'move',
+        branch: 'cut',
+        grades: { ballWatch: 'great', helpOnCut: 'great' },
+      });
+      expect(play.decisions[0]?.options[0]).not.toHaveProperty('branch');
+    });
+
+    it('rejects branch on a shoot option', () => {
+      const data = clone();
+      data.decisions[0].options[0].branch = 'finish';
+      const error = catchError(() => load(data));
+      expect(error.field).toBe('giveAndGo.decisions[0].options[0].branch');
+      expect(error.message).toMatch(/unexpected field for move "shoot"/);
+    });
+
+    it('rejects a move option without branch', () => {
+      const data = withRoute();
+      delete data.decisions[1].options[0].branch;
+      expect(catchError(() => load(data)).field).toBe(`${ROUTE}.branch`);
+    });
+
+    it('rejects target on a route option', () => {
+      const data = withRoute();
+      data.decisions[1].options[0].target = 'SG';
+      const error = catchError(() => load(data));
+      expect(error.field).toBe(`${ROUTE}.target`);
+      expect(error.message).toMatch(/unexpected field for move "move"/);
+    });
+
+    it('rejects a branch that is not a reachedSpot transition of the role from the phase', () => {
+      const elsewhere = withRoute();
+      elsewhere.decisions[1].options[0].branch = 'finish';
+      const error = catchError(() => load(elsewhere));
+      expect(error.field).toBe(`${ROUTE}.branch`);
+      expect(error.message).toMatch(
+        /expected a reachedSpot transition of PG from phase "entry" to "finish"/,
+      );
+
+      const passOnly = withRoute();
+      passOnly.phases[0].transitions.pop();
+      expect(catchError(() => load(passOnly)).field).toBe(`${ROUTE}.branch`);
+
+      const otherRole = withRoute();
+      otherRole.phases[0].transitions[1].trigger.role = 'SG';
+      expect(catchError(() => load(otherRole)).field).toBe(`${ROUTE}.branch`);
+
+      const unknown = withRoute();
+      unknown.decisions[1].options[0].branch = 'nowhere';
+      expect(catchError(() => load(unknown)).field).toBe(`${ROUTE}.branch`);
+    });
+
+    it('rejects two options with the same branch', () => {
+      const data = withRoute();
+      data.decisions[1].options.push({ ...data.decisions[1].options[0], id: 'driftAgain' });
+      const error = catchError(() => load(data));
+      expect(error.field).toBe('giveAndGo.decisions[1].options[1].branch');
+      expect(error.message).toMatch(/duplicate option for branch "cut"/);
+    });
+  });
+
   it('rejects a pass trigger to the passer', () => {
     const data = clone();
     data.phases[0].transitions[0].trigger.to = 'PG';

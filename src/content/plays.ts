@@ -9,7 +9,9 @@
 //   d. phases: ids first, then transitions and cues per phase, then a reachable terminal phase
 //   e. tracks
 //   f. coverages: count >= 2, each coverage, then exactly one practiceStandard
-//   g. decisions: role, phase (known, reachable), options, a great option per coverage
+//   g. decisions: role, phase (known, reachable), options, a great option per coverage. A route
+//      option (`move: 'move'`, `branch`) must name a phase the decision's phase reaches through a
+//      `reachedSpot` transition of the decision's role.
 //   h. at least one decision per playable role
 // Every field path is rooted at the play id (e.g. giveAndGo.tracks.SF), so errors name the play.
 
@@ -178,12 +180,18 @@ export interface Coverage {
 /**
  * An on-script option at a decision point, graded per coverage id. Any action not listed as an
  * option is off-script, which is a Bad outcome and resets the run. `target` is present exactly
- * when the move is in PASS_MOVES.
+ * when the move is in PASS_MOVES; `branch` exactly when the move is `move`.
  */
 export interface DecisionOption {
   readonly id: string;
   readonly move: MoveId;
   readonly target?: RoleId;
+  /**
+   * Only on a route option (`move: 'move'`): the phase the role takes by moving; the option
+   * resolves when the decision's phase takes its `reachedSpot` transition for the decision's role
+   * to this phase.
+   */
+  readonly branch?: string;
   readonly grades: Readonly<Record<string, DecisionGrade>>;
 }
 
@@ -246,7 +254,7 @@ const COVERAGE_KEYS = ['id', 'name', 'practiceStandard', 'script'] as const;
 const COVERAGE_STEP_KEYS = ['phase', 'defenders'] as const;
 const DEFENDER_STEP_KEYS = ['spot', 'action', 'guards'] as const;
 const DECISION_KEYS = ['id', 'role', 'phase', 'options'] as const;
-const OPTION_KEYS = ['id', 'move', 'target', 'grades'] as const;
+const OPTION_KEYS = ['id', 'move', 'target', 'branch', 'grades'] as const;
 
 const TRIGGER_KEYS: Readonly<Record<TriggerKind, readonly string[]>> = {
   reachedSpot: ['kind', 'role', 'spot'],
@@ -469,13 +477,14 @@ function readConcepts(obj: Record<string, unknown>, phaseAt: FieldPath): string[
   });
 }
 
-function reachablePhases(phases: readonly Phase[]): Set<string> {
+/**
+ * Ids of the phases reachable from `fromId` through one or more transitions. `fromId` itself is
+ * included only when a cycle leads back to it.
+ */
+export function phasesReachableFrom(phases: readonly Phase[], fromId: string): Set<string> {
   const byId = new Map(phases.map((p) => [p.id, p]));
-  const start = phases[0];
   const reached = new Set<string>();
-  if (start === undefined) return reached;
-  const queue = [start.id];
-  reached.add(start.id);
+  const queue = [fromId];
   while (queue.length > 0) {
     const id = queue.shift() as string;
     for (const t of byId.get(id)?.transitions ?? []) {
@@ -485,6 +494,14 @@ function reachablePhases(phases: readonly Phase[]): Set<string> {
       }
     }
   }
+  return reached;
+}
+
+function reachablePhases(phases: readonly Phase[]): Set<string> {
+  const start = phases[0];
+  if (start === undefined) return new Set();
+  const reached = phasesReachableFrom(phases, start.id);
+  reached.add(start.id);
   return reached;
 }
 
@@ -639,6 +656,14 @@ function readOption(
     fail(childPath(at, 'target'), `unexpected field for move "${move}"`);
   }
 
+  let branch: string | undefined;
+  if (move === 'move') {
+    const branchField = getField(obj, 'branch', at);
+    branch = readId(branchField.value, branchField.at);
+  } else if (hasValue(obj, 'branch')) {
+    fail(childPath(at, 'branch'), `unexpected field for move "${move}"`);
+  }
+
   const gradesField = getField(obj, 'grades', at);
   const gradesObj = readObject(gradesField.value, gradesField.at);
   rejectUnknownKeys(gradesObj, coverageIds, gradesField.at);
@@ -648,6 +673,7 @@ function readOption(
     grades[coverageId] = readEnum(f.value, DECISION_GRADES, f.at);
   }
 
+  if (branch !== undefined) return { id, move, branch, grades };
   return target === undefined ? { id, move, grades } : { id, move, target, grades };
 }
 
@@ -657,6 +683,7 @@ function readDecisions(
   ctx: {
     roles: RoleTable;
     playableRoles: readonly RoleId[];
+    phases: readonly Phase[];
     phaseIds: ReadonlySet<string>;
     reachable: ReadonlySet<string>;
     startPhase: string;
@@ -688,7 +715,8 @@ function readDecisions(
 
     const optionsField = getField(obj, 'options', decAt);
     const optionIds = new Set<string>();
-    // Each (move, target) pair must identify one option so grading is unambiguous.
+    const decisionPhase = ctx.phases.find((p) => p.id === phase);
+    // Each (move, target, branch) triple must identify one option so grading is unambiguous.
     const optionActions = new Set<string>();
     const options = readNonEmptyArray(optionsField.value, optionsField.at, 'option').map(
       (rawOpt, j) => {
@@ -698,8 +726,23 @@ function readDecisions(
           fail(childPath(optAt, 'id'), `duplicate option id "${option.id}"`);
         }
         optionIds.add(option.id);
-        const actionKey = `${option.move}:${option.target ?? ''}`;
+        const { branch } = option;
+        if (branch !== undefined) {
+          const routed = decisionPhase?.transitions.some(
+            (t) => t.to === branch && t.trigger.kind === 'reachedSpot' && t.trigger.role === role,
+          );
+          if (!routed) {
+            fail(
+              childPath(optAt, 'branch'),
+              `expected a reachedSpot transition of ${role} from phase "${phase}" to "${branch}"`,
+            );
+          }
+        }
+        const actionKey = `${option.move}:${option.target ?? ''}:${branch ?? ''}`;
         if (optionActions.has(actionKey)) {
+          if (branch !== undefined) {
+            fail(childPath(optAt, 'branch'), `duplicate option for branch "${branch}"`);
+          }
           const what = option.target
             ? `move "${option.move}" to "${option.target}"`
             : `move "${option.move}"`;
@@ -788,6 +831,7 @@ export function readPlay(
   const decisions = readDecisions(decField.value, decField.at, {
     roles,
     playableRoles,
+    phases,
     phaseIds,
     reachable,
     startPhase,

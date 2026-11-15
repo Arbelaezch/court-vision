@@ -1,10 +1,17 @@
-// Test-only play fixture for the play-run engine (./playRun.ts). It is not a bundled play (it is
-// not under src/content/data/plays/), so the playbook registry does not list it. It exercises the
-// triggers the Give-and-Go fixture lacks: reachedSpot (walkUp -> screen), screenSet (screen ->
-// roll, set automatically by the C, decision g4) and timeElapsed (roll -> finish).
-// Units and rules as in src/content/data/plays/giveAndGo.ts.
+// Test-only play fixtures for the play-run engine (./playRun.ts), the referee and the play bots.
+// They are not bundled plays (not under src/content/data/plays/), so the playbook registry does not
+// list them. Units and rules as in src/content/data/plays/giveAndGo.ts.
+//
+// - screenTest exercises the triggers the Give-and-Go fixture lacks: reachedSpot (walkUp ->
+//   screen), screenSet (screen -> roll, set automatically by the C, decision g4) and timeElapsed
+//   (roll -> finish).
+// - routeTest exercises route options (DecisionOption.branch): the PG picks a side by walking to
+//   it, and the side is graded per coverage. The left branch comes first in the phases array and
+//   ends on a pass, so a run going left only ends if "later decision" means reachable, not later in
+//   the array.
 
 export const SCREEN_TEST_PLAY_FILE = 'src/ai/testPlays.ts';
+export const ROUTE_TEST_PLAY_FILE = 'src/ai/testPlays.ts';
 
 const WALK_UP_DEFENDERS = {
   PG: { spot: { x: 0, z: 4 }, action: 'guard' },
@@ -132,6 +139,146 @@ export const SCREEN_TEST_PLAY_DATA = {
           grades: { standard: 'great', switchAll: 'good' },
         },
         { id: 'pullUp', move: 'shoot', grades: { standard: 'good', switchAll: 'great' } },
+      ],
+    },
+  ],
+};
+
+// Inside shooting range (8.5 m from the rim), so the right branch's pull-up is not out of range.
+const ROUTE_START_SPOT = { x: 0, z: 1.5 };
+const ROUTE_LEFT_SPOT = { x: -2, z: 1.5 };
+const ROUTE_RIGHT_SPOT = { x: 2, z: 1.5 };
+
+// Every defender guards its man; set off the passing lanes so the kick pass completes.
+const ROUTE_DEFENDERS = {
+  PG: { spot: { x: 0, z: 0.3 }, action: 'guard' },
+  SG: { spot: { x: 5.5, z: -2.5 }, action: 'guard' },
+  SF: { spot: { x: -5.5, z: -2.5 }, action: 'guard' },
+  PF: { spot: { x: 5.5, z: -5.5 }, action: 'guard' },
+  C: { spot: { x: -5.5, z: -5.5 }, action: 'guard' },
+};
+
+export const ROUTE_TEST_PLAY_DATA = {
+  kind: 'play',
+  id: 'routeTest',
+  name: 'Route Test',
+  difficulty: 1,
+  blurb: 'Pick a side by walking to it, then finish.',
+  concept: 'Go away from the side the defense protects.',
+  playableRoles: ['PG'],
+  setup: {
+    positions: {
+      PG: ROUTE_START_SPOT,
+      SG: { x: 5.5, z: -1 },
+      SF: { x: -5.5, z: -1 },
+      PF: { x: 6.5, z: -5.5 },
+      C: { x: -6.5, z: -5.5 },
+    },
+    ballHolder: 'PG',
+  },
+  phases: [
+    {
+      id: 'pick',
+      transitions: [
+        { to: 'goLeft', trigger: { kind: 'reachedSpot', role: 'PG', spot: ROUTE_LEFT_SPOT } },
+        { to: 'goRight', trigger: { kind: 'reachedSpot', role: 'PG', spot: ROUTE_RIGHT_SPOT } },
+      ],
+      cues: {
+        full: [
+          { kind: 'floorArrow', to: ROUTE_LEFT_SPOT },
+          { kind: 'floorArrow', to: ROUTE_RIGHT_SPOT },
+          { kind: 'prompt', text: 'Pick a side' },
+        ],
+        reduced: [],
+        none: [],
+      },
+    },
+    {
+      id: 'goLeft',
+      transitions: [],
+      cues: { full: [{ kind: 'prompt', text: 'Kick it' }], reduced: [], none: [] },
+    },
+    {
+      id: 'goRight',
+      transitions: [],
+      cues: { full: [{ kind: 'prompt', text: 'Pull up' }], reduced: [], none: [] },
+    },
+  ],
+  tracks: {
+    PG: [
+      { phase: 'pick', action: 'hold', spot: ROUTE_START_SPOT },
+      { phase: 'goLeft', action: 'hold', spot: ROUTE_LEFT_SPOT },
+      { phase: 'goRight', action: 'hold', spot: ROUTE_RIGHT_SPOT },
+    ],
+    SG: [{ phase: 'pick', action: 'space', spot: { x: 5.5, z: -1 } }],
+    SF: [{ phase: 'pick', action: 'space', spot: { x: -5.5, z: -1 } }],
+    PF: [{ phase: 'pick', action: 'space', spot: { x: 6.5, z: -5.5 } }],
+    C: [{ phase: 'pick', action: 'space', spot: { x: -6.5, z: -5.5 } }],
+  },
+  coverages: [
+    {
+      id: 'shadeLeft',
+      name: 'Shade the left side',
+      practiceStandard: true,
+      script: [{ phase: 'pick', defenders: ROUTE_DEFENDERS }],
+    },
+    {
+      id: 'shadeRight',
+      name: 'Shade the right side',
+      practiceStandard: false,
+      script: [{ phase: 'pick', defenders: ROUTE_DEFENDERS }],
+    },
+    {
+      // Neither side protected: left is a Good route, right the Great one.
+      id: 'even',
+      name: 'Even',
+      practiceStandard: false,
+      script: [{ phase: 'pick', defenders: ROUTE_DEFENDERS }],
+    },
+  ],
+  decisions: [
+    {
+      id: 'routePick',
+      role: 'PG',
+      phase: 'pick',
+      options: [
+        {
+          id: 'leanLeft',
+          move: 'move',
+          branch: 'goLeft',
+          grades: { shadeLeft: 'bad', shadeRight: 'great', even: 'good' },
+        },
+        {
+          id: 'leanRight',
+          move: 'move',
+          branch: 'goRight',
+          grades: { shadeLeft: 'great', shadeRight: 'bad', even: 'great' },
+        },
+      ],
+    },
+    {
+      id: 'leftFinish',
+      role: 'PG',
+      phase: 'goLeft',
+      options: [
+        {
+          id: 'kick',
+          move: 'chestPass',
+          target: 'SF',
+          grades: { shadeLeft: 'great', shadeRight: 'great', even: 'great' },
+        },
+      ],
+    },
+    {
+      id: 'rightFinish',
+      role: 'PG',
+      phase: 'goRight',
+      options: [
+        {
+          id: 'pullUp',
+          move: 'shoot',
+          grades: { shadeLeft: 'great', shadeRight: 'great', even: 'great' },
+        },
       ],
     },
   ],

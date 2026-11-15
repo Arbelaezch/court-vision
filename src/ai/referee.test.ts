@@ -125,6 +125,7 @@ function advanceRefereed(
     const ref = stepReferee(play, current.referee, {
       before: current.game,
       phaseId: current.run.phaseId,
+      nextPhaseId: next.run.phaseId,
       actions,
       after: next.game,
     });
@@ -228,6 +229,7 @@ describe('startReferee', () => {
       stepReferee(other, s.referee, {
         before: s.game,
         phaseId: s.run.phaseId,
+        nextPhaseId: s.run.phaseId,
         actions: [],
         after: s.game,
       }),
@@ -430,6 +432,7 @@ function refereeStep(
   return stepReferee(play, state.referee, {
     before: state.game,
     phaseId: state.run.phaseId,
+    nextPhaseId: state.run.phaseId,
     actions,
     after,
   });
@@ -581,6 +584,7 @@ describe('purity', () => {
       const ref = stepReferee(play, state.referee, {
         before: state.game,
         phaseId: state.run.phaseId,
+        nextPhaseId: next.run.phaseId,
         actions,
         after: next.game,
       });
