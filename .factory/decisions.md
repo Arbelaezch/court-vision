@@ -363,3 +363,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Add a generic route option to decisions (move: 'move' plus branch: '<phaseId>'), resolved when the run moves from the decision's phase into that phase and graded per coverage like other options; bots walk to the branch's trigger spot. Going into the overplay is graded Bad. Overplay is expressed with the existing sag defender action on shaded spots.
 - Decided by: assumed on 2026-11-15
 - Why: AC3 requires grading the screen choice and AC4 forbids Horns-specific engine logic; a play-agnostic route option is the smallest generic extension
+
+## Issue 39: the memory test must cover all five plays but only four exist, and node tests have no WebGL. How should it be tested?
+- Kind: implementation
+- Decision: Loop over every play in the registry (four today, picks up the fifth automatically). Verify in Vitest with a fake renderer that mimics three.js info.memory counting (+1 on first render of a geometry/texture, -1 on its dispose event); after 20 switches through every play both counts equal baseline.
+- Decided by: assumed on 2026-11-15
+- Why: Decision g11 and src/render/dispose.test.ts set stub-renderer, no-headless-WebGL testing as the convention; looping the registry meets the five-play criterion once the fifth play exists.

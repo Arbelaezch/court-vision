@@ -15,3 +15,4 @@ export * from './displaySettings';
 export * from './progressReset';
 export * from './tutorialSession';
 export * from './tutorialPrompt';
+export * from './playPreviewSession';

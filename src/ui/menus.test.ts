@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MenuLabels, ScreenEvent, ScreenState } from '../app';
+import { loadAppContent, sortPlayList } from '../app';
 import { createScreenMenus } from './menus';
 
 class FakeEl {
@@ -26,7 +27,10 @@ class FakeEl {
     (this.listeners[type] ??= []).push(fn);
   }
   click(): void {
-    for (const fn of this.listeners['click'] ?? []) fn();
+    this.fire('click');
+  }
+  fire(type: string): void {
+    for (const fn of this.listeners[type] ?? []) fn();
   }
   replaceChildren(): void {
     this.replaceCalls++;
@@ -327,5 +331,93 @@ describe('createScreenMenus', () => {
     expect(unmount).not.toHaveBeenCalled();
     menus.show({ screen: 'mainMenu' }, labels);
     expect(unmount).toHaveBeenCalledTimes(1);
+  });
+
+  describe('play preview', () => {
+    function setupPreview() {
+      const log: string[] = [];
+      let mounts = 0;
+      let unmounts = 0;
+      let maxLive = 0;
+      const playPreview = {
+        mount: () => {
+          mounts++;
+          maxLive = Math.max(maxLive, mounts - unmounts);
+          return {
+            show: (id: string) => log.push(id),
+            unmount: () => {
+              unmounts++;
+            },
+          };
+        },
+      };
+      const container = new FakeEl();
+      const events: ScreenEvent[] = [];
+      const doc = { createElement: (tag: string) => new FakeEl(tag) };
+      const menus = createScreenMenus({
+        container: container as unknown as HTMLElement,
+        doc: doc as unknown as Document,
+        onEvent: (e) => events.push(e),
+        playPreview,
+      });
+      return {
+        menus,
+        root: container.children[0]!,
+        events,
+        log,
+        counts: () => ({ mounts, unmounts, maxLive }),
+      };
+    }
+    const playSelect: ScreenState = { screen: 'playSelect', modeId: 'practice' };
+    const playButtons = (root: FakeEl): FakeEl[] =>
+      buttons(root).filter((b) => b.className === 'cv-play-button');
+
+    it('mounts once, shows the first play, and switches on hover and focus', () => {
+      const { menus, root, log, counts } = setupPreview();
+      menus.show(playSelect, labels);
+      expect(counts().mounts).toBe(1);
+      expect(log).toEqual(['a']);
+      const slot = find(root, (n) => n.className === 'cv-play-preview')!;
+      expect(slot.attrs['aria-label']).toBe('Play preview');
+      expect(slot.attrs['role']).toBe('img');
+      const [alpha, beta] = playButtons(root);
+      beta!.fire('mouseenter');
+      alpha!.fire('focus');
+      expect(log).toEqual(['a', 'b', 'a']);
+      expect(counts().mounts).toBe(1);
+    });
+
+    it('unmounts on leaving, remounts on re-entry, one live at a time, click still selects', () => {
+      const { menus, root, events, counts } = setupPreview();
+      menus.show(playSelect, labels);
+      menus.show({ screen: 'mainMenu' }, labels);
+      expect(counts().unmounts).toBe(1);
+      menus.show(playSelect, labels);
+      expect(counts().mounts).toBe(2);
+      expect(counts().maxLive).toBe(1);
+      playButtons(root)[0]!.click();
+      expect(events).toEqual([{ type: 'selectPlay', playId: 'a' }]);
+    });
+
+    it('renders no preview slot without a playPreview option', () => {
+      const { menus, root } = setup();
+      menus.show(playSelect, labels);
+      expect(find(root, (n) => n.className === 'cv-play-preview')).toBeUndefined();
+    });
+  });
+
+  it('AC2: every play blurb comes from the play data, in list order', () => {
+    const plays = sortPlayList(loadAppContent().plays);
+    expect(plays.length).toBeGreaterThan(0);
+    for (const p of plays) expect(p.blurb.length).toBeGreaterThan(0);
+    const { menus, root } = setup();
+    menus.show({ screen: 'playSelect', modeId: 'practice' }, { ...labels, plays });
+    const blurbs: string[] = [];
+    const walk = (n: FakeEl): void => {
+      if (n.className === 'cv-play-blurb') blurbs.push(n.textContent);
+      n.children.forEach(walk);
+    };
+    walk(root);
+    expect(blurbs).toEqual(plays.map((p) => p.blurb));
   });
 });

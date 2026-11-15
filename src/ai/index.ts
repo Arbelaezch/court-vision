@@ -66,6 +66,13 @@ export type {
   RunControllerStep,
 } from './runController';
 export {
+  PREVIEW_MAX_COVERAGE_STEPS,
+  previewCoverageName,
+  startPreviewLoop,
+  stepPreviewLoop,
+} from './previewLoop';
+export type { PreviewLoopState, PreviewLoopStep } from './previewLoop';
+export {
   correctReadMove,
   createCorrectReadBot,
   createWrongReadBot,
