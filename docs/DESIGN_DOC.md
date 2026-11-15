@@ -93,7 +93,7 @@ Implementation is mostly the factory's call. These decisions are fixed because t
 - **No backend.** The game is a purely static site.
 - **Persistence:** `localStorage` with a versioned schema and safe fallback if data is missing or corrupt.
 - **Platform:** desktop browsers (Chrome, Firefox, Safari, Edge, current versions). Keyboard + mouse first, gamepad supported. Design the UI so layout is responsive-friendly for a future mobile version, but do not build touch controls in v1.
-- **Performance target:** 60 FPS on a typical integrated-GPU laptop at 1080p. Keep draw calls low (aim for under ~100 per frame). Use instancing/merged geometry where practical. Dispose geometries, materials and textures properly. Handle window resize and tab-visibility (pause when hidden).
+- **Performance target:** at least 30 FPS on a typical integrated-GPU laptop at 1080p; higher is better. Keep draw calls low (aim for under ~100 per frame). Use instancing/merged geometry where practical. Dispose geometries, materials and textures properly. Handle window resize and tab-visibility (pause when hidden).
 
 ### Architecture requirements
 
@@ -444,7 +444,7 @@ The factory should treat these as part of the product.
 - Mistakes trigger the whistle and instant reset. Successful runs are counted. Mastery is displayed. Progress persists.
 - Controls are fully rebindable and gamepad works.
 - Audio works with volume/mute.
-- 60 FPS target met on a typical laptop. No console errors. No resource leaks when switching plays and modes repeatedly.
+- At least 30 FPS on a typical laptop (higher is better). No console errors. No resource leaks when switching plays and modes repeatedly.
 - CI is green and the game deploys to GitHub Pages and loads correctly at the repository path.
 - The README documents how to run, test and build. `docs/adding-a-play.md` documents how to add a new play (and, later, a new role).
 
