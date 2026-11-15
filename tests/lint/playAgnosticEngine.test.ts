@@ -104,6 +104,13 @@ describe('play-agnostic engine', () => {
         'underTheScreen',
         'switchOnHandoff',
         'handoffRead',
+        'highPickAndRoll',
+        'HIGH_PICK_AND_ROLL',
+        'dropBig',
+        'hedgeRecover',
+        'switchOnScreen',
+        'cornerHelp',
+        'pickRead',
       ]),
     );
   });
