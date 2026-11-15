@@ -10,6 +10,15 @@ export { bindVisibilityPause } from './visibilityPause';
 export type { VisibilityPauseOptions } from './visibilityPause';
 export { mountRenderer } from './mountRenderer';
 export type { MountedRenderer } from './mountRenderer';
+export { createPlayPreviewView } from './playPreview';
+export type { PlayPreviewView, PreviewRenderTarget } from './playPreview';
+export { PREVIEW_HEIGHT_PX, PREVIEW_WIDTH_PX, mountPlayPreview } from './mountPlayPreview';
+export type {
+  PlayPreviewHandle,
+  PlayPreviewMount,
+  PlayPreviewSource,
+  PreviewCanvasRenderer,
+} from './mountPlayPreview';
 export { createLiveRunView } from './liveRunView';
 export type { LiveDrawInput, LiveDrawStep, LiveRunView } from './liveRunView';
 export {

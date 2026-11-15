@@ -1,6 +1,7 @@
 import './style.css';
 import {
   bootApp,
+  createPlayPreviewSession,
   createAudioSettings,
   createControlSettings,
   createDisplaySettings,
@@ -8,10 +9,12 @@ import {
   createProgressReset,
   createSaveStore,
   handleMenuEvent,
+  loadAppContent,
 } from './app';
 import { bindUiClicks, mountAudio } from './audio';
+import { loadCastContent } from './content';
 import { mountInput } from './input';
-import { mountRenderer, parseDevView } from './render';
+import { mountPlayPreview, mountRenderer, parseDevView } from './render';
 import {
   createConceptTooltipOverlay,
   createControlsView,
@@ -99,9 +102,20 @@ if (dev === null) {
     stepSinks: [audio.engine.handleStep],
     onPress: human.press,
   });
+  const previewSession = createPlayPreviewSession({
+    content: loadAppContent(),
+    reducedMotion: () => store.get('settings').reduceMotion,
+  });
+  const playPreview = mountPlayPreview({
+    doc: document,
+    cast: loadCastContent(),
+    source: previewSession,
+    visibility: { target: document, isHidden: () => document.hidden },
+  });
   const menus = createScreenMenus({
     container: app,
     doc: document,
+    playPreview,
     settingsView: createControlsView({
       doc: document,
       controls,

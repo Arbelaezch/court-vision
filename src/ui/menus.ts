@@ -19,8 +19,9 @@ export function createScreenMenus(opts: {
   doc: Document;
   onEvent: (e: ScreenEvent) => void;
   settingsView?: { mount(parent: HTMLElement): () => void };
+  playPreview?: { mount(parent: HTMLElement): { show(playId: string): void; unmount(): void } };
 }): ScreenMenus {
-  const { container, doc, onEvent, settingsView } = opts;
+  const { container, doc, onEvent, settingsView, playPreview } = opts;
   let unmountView: (() => void) | null = null;
   const root = doc.createElement('div');
   root.className = 'cv-screens';
@@ -174,6 +175,11 @@ export function createScreenMenus(opts: {
       case 'playSelect': {
         const p = panel(`${modeName(state.modeId)}: pick a play`, 'h2');
         const list = el('ol', 'cv-play-list');
+        const slot = el('div', 'cv-play-preview');
+        slot.setAttribute('role', 'img');
+        slot.setAttribute('aria-label', 'Play preview');
+        const handle =
+          playPreview !== undefined && labels.plays.length > 0 ? playPreview.mount(slot) : null;
         for (const play of labels.plays) {
           const li = el('li');
           const b = el('button', 'cv-play-button');
@@ -192,10 +198,24 @@ export function createScreenMenus(opts: {
           b.addEventListener('click', () => {
             onEvent({ type: 'selectPlay', playId: play.id });
           });
+          if (handle !== null) {
+            const show = (): void => {
+              handle.show(play.id);
+            };
+            b.addEventListener('mouseenter', show);
+            b.addEventListener('focus', show);
+          }
           li.appendChild(b);
           list.appendChild(li);
         }
         p.appendChild(list);
+        if (handle !== null) {
+          p.appendChild(slot);
+          unmountView = () => {
+            handle.unmount();
+          };
+          handle.show(labels.plays[0]!.id);
+        }
         p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
         root.appendChild(p);
         return;
