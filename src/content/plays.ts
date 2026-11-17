@@ -179,8 +179,11 @@ export interface Coverage {
 
 /**
  * An on-script option at a decision point, graded per coverage id. Any action not listed as an
- * option is off-script, which is a Bad outcome and resets the run. `target` is present exactly
- * when the move is in PASS_MOVES; `branch` exactly when the move is `move`.
+ * option is off-script: a mistake (whistle) that resets the run, in every mode. A listed option
+ * graded Bad is not off-script: in Scrimmage it ends the run as unsuccessful without a reset; in
+ * Practice any option below Great is a mistake with whistle and reset (see `stepReferee` in
+ * src/ai/referee.ts). `target` is present exactly when the move is in PASS_MOVES; `branch`
+ * exactly when the move is `move`.
  */
 export interface DecisionOption {
   readonly id: string;
@@ -197,7 +200,7 @@ export interface DecisionOption {
 
 /**
  * A read the playable role makes in a phase. Only the listed options are on-script; anything
- * else the user does there is off-script (Bad, reset with whistle).
+ * else the user does there is off-script: a mistake with whistle and reset (not graded Bad).
  */
 export interface DecisionPoint {
   readonly id: string;
