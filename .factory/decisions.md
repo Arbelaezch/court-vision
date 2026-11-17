@@ -396,3 +396,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Drop every manual capture (grayscale screenshots in #33, the draw-call screenshot and the laptop FPS reading in #40); evidence is automated tests only: per-element non-color tests (#33), a Vitest draw-item count under 100 for a Horns Scrimmage frame, and a per-frame CPU time budget test for sim step plus render prep (#40). Frame-rate target is 30 FPS minimum on a typical laptop, higher is better; this replaces the 60 FPS target in DESIGN_DOC.md:96 and :447. Both issues may auto-merge.
 - Decided by: user on 2026-11-15
 - Why: No one should have to capture evidence by hand; 60 FPS was never a real requirement
+
+## Drive-and-Kick (#36): which coverage is the Practice standard?
+- Kind: implementation
+- Decision: helpSteps (help defender steps in); correct read is a chest or bounce kick-out to the right-corner SG. Coverage ids: helpSteps, noHelp, bigAtRim, aggressiveCloseout; one graded decision driveRead, sprint-by graded as shoot. Scrimmage cues: floor arrow on the drive, read prompt without reason.
+- Decided by: assumed on 2026-11-17
+- Why: Kicking out against help is the play's base lesson and the most standard placement (g1); issue #36 delegates the choice
