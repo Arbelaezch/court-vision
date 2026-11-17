@@ -425,3 +425,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Soft contact: a bump slows a player no faster than his braking limit and never speeds the other player up; a set screen holds and the runner slides around it; bodies still never overlap
 - Decided by: assumed on 2026-11-17
 - Why: Meets the issue's screen-holds criterion and DESIGN_DOC.md:382 physical limits; tuning lives in src/sim/collision.ts and is easy to change
+
+## Decide whether to end the leftover #95 run record so the #97 run can start.
+- Kind: process
+- Decision: Close old record, start work: End the leftover #95 run with harness run end --status aborted and start #97; #95 stays blocked and gets a new run when requeued, its branch and plan files stay on disk
+- Decided by: assumed on 2026-11-17
+- Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
