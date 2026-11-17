@@ -207,7 +207,7 @@ Each player has attributes (names are suggestions): **speed, acceleration, size/
 - **Size matters at the rim.** A taller defender at the rim contests layups, which is why a floater is sometimes the right choice.
 - **Passes can be intercepted** if the lane is crowded or the pass type is wrong for the situation (e.g. a chest pass through a defender's arms vs. a bounce pass around them; a lob to a covered roller).
 - **Spacing matters.** Teammates who are too close together or standing in the player's lane reduce the quality of the look and create help-defense options for the defense.
-- **Bad decisions are easy to explain.** Every negative outcome must map to a clear reason that could be shown as text (e.g. "Contested shot", "Passed into a crowded lane", "Missed the open teammate").
+- **Bad decisions are easy to explain.** Every negative outcome must map to a clear reason that could be shown as text (e.g. "Blocked shot", "Passed into a crowded lane", or, in the result banner for an unsuccessful run, "Missed the open teammate").
 
 ### Look quality (the heart of grading)
 
@@ -224,9 +224,9 @@ Each **decision point** in a play is graded when the player resolves it:
 
 - **Great**: the best read for this coverage.
 - **Good**: an acceptable read that still produces a good look.
-- **Bad**: a mistake, such as passing up an open teammate for a contested shot, forcing a pass into traffic, or settling for a bad look.
+- **Bad**: a poor read, such as passing up an open teammate for a contested shot, forcing a pass into traffic, or settling for a bad look. In Scrimmage a Bad read or Bad look ends the run as unsuccessful (no whistle, no reset); a wrong-teammate pass, off-script action or turnover is a mistake (whistle and reset).
 
-Grades drive (a) the on-screen mistake text, (b) the end-of-run result banner, and (c) whether a run counts as a success.
+Grades drive (a) the end-of-run result banner and (b) whether a run counts as a success. The whistle, reset and red mistake text come only from mistakes (wrong-teammate pass, off-script action, turnover incl. blocked shot and shot-clock violation), not from grades; in Scrimmage, a Bad read or Bad look ends the run as unsuccessful without them.
 
 ---
 
@@ -240,7 +240,7 @@ Grades drive (a) the on-screen mistake text, (b) the end-of-run result banner, a
 - **Cues:** `Full`.
 - **Clock:** none.
 - **Run ends:** after the player completes the play and takes the final shot (made or missed) or is graded on the final decision. The run counts as a **success** if the player followed the play's standard path (the best read for the Practice coverage) through the final shot, made or missed; Practice has no look grading (decision g1). The result banner shows briefly, then the game resets for another attempt.
-- **Mistakes:** a mistake (e.g. a wrong pass or turnover) gives the "bad" whistle sound, an optional short red text, then an **instant reset** to the half-court starting set.
+- **Mistakes:** a mistake (a wrong-teammate pass, an off-script action or a turnover) gives the "bad" whistle sound, an optional short red text, then an **instant reset** to the half-court starting set.
 
 ### 8.2 Scrimmage
 
@@ -248,14 +248,14 @@ Grades drive (a) the on-screen mistake text, (b) the end-of-run result banner, a
 - **Setup:** full **5-on-5**. Defenders follow a **coverage** chosen at random (seeded) for each run from the play's coverage list, so the best read changes between attempts.
 - **Pace:** slightly **slower game speed** than a real game (a configurable speed multiplier, default around 0.85x).
 - **Cues:** `Reduced`. Movement cues remain, and decision cues are subtler (e.g. a hint after a short delay, or a highlight on the open teammate only once the opening exists).
-- **Clock:** a generous shot clock (default 24 seconds, configurable). A violation is a mistake.
-- **Mistakes:** turnovers (interceptions, out of bounds, blocked shots), passes to the wrong teammate, off-script actions and shot-clock violations give the "bad" whistle, optional short red text, and an **instant reset** to the half-court start. A bad look or a bad read is an unsuccessful run: no whistle and no mistake reset. Mistakes are meaningful but never harsh.
+- **Clock:** a generous shot clock (default 24 seconds, configurable). A violation is a turnover: whistle and instant reset.
+- **Mistakes:** turnovers (interceptions, out of bounds, shot-clock violations, blocked shots), passes to the wrong teammate and off-script actions give the "bad" whistle, optional short red text, and an **instant reset** to the half-court start. In Scrimmage, a bad look or a bad read is **not** a mistake: it is an unsuccessful run with no whistle and no mistake reset (the result banner shows it, and it counts as an attempt, not a success). Mistakes are meaningful but never harsh.
 - **Run ends/success:** same end rule as Practice. A run succeeds when every read was Great or Good for the coverage faced and the final look was not Bad; a Good read continues and counts as a success, shown as Good rather than Perfect (decision g2). A pass of the wrong type to the correct teammate (e.g. a chest pass where the read is a bounce pass) is graded at most Good, so it continues and counts as a success. In Practice it still follows the standard path and may succeed.
 
 ### 8.3 Mistake feedback (both modes)
 
 - **Required:** a clear "bad" whistle sound effect the moment a mistake occurs, then instant reset. No modal dialog, no explanation screen.
-- **Should have (ship in v1 if feasible, otherwise v1.1):** a short, simple red text pop-up right after the mistake naming the problem, such as "Contested shot", "Turnover", "Shot clock", or "Missed open teammate".
+- **Should have (ship in v1 if feasible, otherwise v1.1):** a short, simple red text pop-up right after the mistake naming the problem, such as "Turnover", "Blocked shot", "Shot clock", "Wrong teammate" or "Off script". In Scrimmage, a Bad look or Bad read is not a mistake: it gets no whistle and no red text, and is shown only in the result banner as an unsuccessful run.
 - **Positive feedback:** on a successful run, a brief green result banner (e.g. "Great look: open shooter found").
 
 ### 8.4 Progress and Mastery
@@ -441,7 +441,7 @@ The factory should treat these as part of the product.
 
 - All five plays are playable in **Practice** and **Scrimmage** as the PG, with all listed coverages.
 - The tutorial and play-select blurbs and previews work for all five plays.
-- Mistakes trigger the whistle and instant reset. Successful runs are counted. Mastery is displayed. Progress persists.
+- Mistakes (wrong-teammate pass, off-script action, turnover) trigger the whistle and instant reset. In Scrimmage, a bad look or bad read is an unsuccessful run with no whistle. Successful runs are counted. Mastery is displayed. Progress persists.
 - Controls are fully rebindable and gamepad works.
 - Audio works with volume/mute.
 - At least 30 FPS on a typical laptop (higher is better). No console errors. No resource leaks when switching plays and modes repeatedly.
