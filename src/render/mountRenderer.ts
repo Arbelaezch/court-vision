@@ -10,6 +10,7 @@ import { collectCastLabels, createLabelAtlas } from './labelAtlas';
 import { createLiveRunView } from './liveRunView';
 import type { LiveRunView } from './liveRunView';
 import { createPassTargetBadgeAtlas } from './passTargetBadges';
+import { createStatsOverlay } from './statsOverlay';
 import { clientToNdc, fitTacticalCamera, screenToCourt } from './tacticalCamera';
 import { bindVisibilityPause } from './visibilityPause';
 import type { CourtPoint } from '../sim';
@@ -24,7 +25,7 @@ export interface MountedRenderer {
 
 export function mountRenderer(
   container: HTMLElement,
-  opts: { dev?: DevView | null } = {},
+  opts: { dev?: DevView | null; stats?: boolean } = {},
 ): MountedRenderer {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -66,6 +67,7 @@ export function mountRenderer(
     container.appendChild(overlay);
   }
   const promptOverlay = devScene ? createCuePromptOverlay({ container, doc: document }) : null;
+  const statsOverlay = opts.stats ? createStatsOverlay({ container, doc: document }) : null;
   let shownStatus: string | null = null;
 
   let loggedDrawCalls = false;
@@ -83,6 +85,7 @@ export function mountRenderer(
       }
     }
     renderer.render(scene, camera);
+    statsOverlay?.update(timeMs, renderer.info);
     if (devScene && !loggedDrawCalls) {
       loggedDrawCalls = true;
       console.info('[court-vision] draw calls:', renderer.info.render.calls);
@@ -109,6 +112,7 @@ export function mountRenderer(
       unbindVisibility();
       renderer.setAnimationLoop(null);
       overlay?.remove();
+      statsOverlay?.dispose();
       promptOverlay?.dispose();
       window.removeEventListener('resize', resize);
       run?.dispose();

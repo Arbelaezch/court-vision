@@ -14,7 +14,7 @@ import {
 import { bindUiClicks, mountAudio } from './audio';
 import { loadCastContent } from './content';
 import { mountInput } from './input';
-import { mountPlayPreview, mountRenderer, parseDevView } from './render';
+import { mountPlayPreview, mountRenderer, parseDevView, parseStatsFlag } from './render';
 import {
   createConceptTooltipOverlay,
   createControlsView,
@@ -28,8 +28,10 @@ const app = document.querySelector<HTMLDivElement>('#app');
 if (app === null) {
   throw new Error('Court Vision: #app element not found');
 }
-const dev = parseDevView(new URLSearchParams(window.location.search).get('dev'));
-const mounted = mountRenderer(app, { dev });
+const params = new URLSearchParams(window.location.search);
+const dev = parseDevView(params.get('dev'));
+const stats = parseStatsFlag(params.get('stats'));
+const mounted = mountRenderer(app, { dev, stats });
 const audio = mountAudio();
 const { input } = mountInput();
 
