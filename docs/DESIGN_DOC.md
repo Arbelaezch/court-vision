@@ -89,7 +89,7 @@ Implementation is mostly the factory's call. These decisions are fixed because t
 - **Language/tooling:** TypeScript, Vite, three.js, Vitest. ESLint and Prettier. Strict TypeScript.
 - **Rendering:** plain three.js. Default to the WebGL renderer. WebGPU is optional and out of scope for v1. **Pin the three.js version** in `package.json`.
 - **UI:** HTML/CSS overlay for menus, HUD, cues-as-text and prompts. No React or UI framework is required. World-space cues (floor arrows, target rings, cones) are drawn in three.js.
-- **Physics:** no physics engine. Movement and the ball are custom and kinematic. Basketball outcomes are rule- and situation-based (see section 7), not simulated by collision.
+- **Physics:** no physics engine. Movement and the ball are custom and kinematic. Basketball outcomes are rule- and situation-based (see section 7), not simulated by collision. Players do have simple circular bodies that cannot overlap (a deterministic push-apart in the sim; contact slows a player no faster than it can brake, and a set screener resists contact). Practice cones are markers, not bodies. Contact is physical only, never graded or whistled.
 - **No backend.** The game is a purely static site.
 - **Persistence:** `localStorage` with a versioned schema and safe fallback if data is missing or corrupt.
 - **Platform:** desktop browsers (Chrome, Firefox, Safari, Edge, current versions). Keyboard + mouse first, gamepad supported. Design the UI so layout is responsive-friendly for a future mobile version, but do not build touch controls in v1.
