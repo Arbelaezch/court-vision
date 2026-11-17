@@ -408,3 +408,20 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Fix wording, review again: Run another round: an engineer adds the Scrimmage-only wording to lines 229, 258 and 444, then the change is reviewed again before the pull request opens
 - Decided by: assumed on 2026-11-17
 - Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
+
+## Whether to end the leftover #97 run record so the #95 run can start
+- Kind: process
+- Decision: Close old record, start work: End the leftover #97 run with harness run end --status aborted and start #95; #97 stays blocked and gets a new run when requeued, its plan files stay on disk
+- Decided by: assumed on 2026-11-17
+- Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
+
+## After a shot that counts as a mistake, should the game wait under a second for the ball to reach the rim before resetting, instead of resetting instantly, and does the design document wording change in this issue?
+- Kind: product
+- Decision: Option 1: Wait for shot, update the doc. The whistle and red text stay immediate, the reset waits until the shot lands (about 0.4 to 1 s) for unblocked off-script shots only, and this issue rewords the design document to say the reset comes once a shot in flight lands.
+- Decided by: user on 2026-11-17
+
+## #95: How does body contact change a player's speed?
+- Kind: implementation
+- Decision: Soft contact: a bump slows a player no faster than his braking limit and never speeds the other player up; a set screen holds and the runner slides around it; bodies still never overlap
+- Decided by: assumed on 2026-11-17
+- Why: Meets the issue's screen-holds criterion and DESIGN_DOC.md:382 physical limits; tuning lives in src/sim/collision.ts and is easy to change
