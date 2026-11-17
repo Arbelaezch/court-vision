@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SIDELINE_X, createGame, resolveBodyCollisions, stepGame } from './index';
+import { FIXED_DT, SIDELINE_X, createGame, resolveBodyCollisions, stepGame } from './index';
 import type {
   CollisionSetup,
   CourtPoint,
@@ -53,9 +53,12 @@ function place(state: GameState, id: number, pos: CourtPoint, vel: CourtPoint = 
   p.vel = { ...vel };
 }
 
+/** Deepest overlap between two bodies; Practice cones are not bodies. */
 function maxPenetration(state: GameState): number {
   let worst = 0;
-  const { players } = state;
+  const players = state.players.filter(
+    (p) => !(state.defenseMode === 'cones' && p.side === 'defense'),
+  );
   for (let i = 0; i < players.length; i++) {
     for (let j = i + 1; j < players.length; j++) {
       const a = players[i]!;
@@ -65,6 +68,23 @@ function maxPenetration(state: GameState): number {
     }
   }
   return worst;
+}
+
+/** Pairs of bodies touching or overlapping (within 1 mm of contact). */
+function touchingPairs(state: GameState): number {
+  let count = 0;
+  const { players } = state;
+  for (let i = 0; i < players.length; i++) {
+    for (let j = i + 1; j < players.length; j++) {
+      const a = players[i]!;
+      const b = players[j]!;
+      const d = Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
+      if (d <= radius(state, a) + radius(state, b) + 0.001) {
+        count += 1;
+      }
+    }
+  }
+  return count;
 }
 
 function steerToward(state: GameState, id: number, target: CourtPoint): PlayerCommand {
@@ -82,6 +102,8 @@ interface ScreenRun {
   screener: CourtPoint;
   runner: CourtPoint;
   worstPenetration: number;
+  /** Highest screener speed seen on any step. */
+  screenerTopSpeed: number;
 }
 
 // A set C screener at the origin; a sprinting defender PG runs from 4 m in front at `target`.
@@ -90,14 +112,18 @@ function runIntoScreen(target: CourtPoint): ScreenRun {
   place(state, OFFENSE_C, { x: 0, z: 0 });
   place(state, DEFENSE_PG, { x: 0, z: 4 });
   let worst = 0;
+  let screenerTopSpeed = 0;
   for (let t = 0; t < 120; t++) {
     state = stepGame(state, [], [steerToward(state, DEFENSE_PG, target)]);
     worst = Math.max(worst, maxPenetration(state));
+    const { vel } = byId(state, OFFENSE_C);
+    screenerTopSpeed = Math.max(screenerTopSpeed, Math.hypot(vel.x, vel.z));
   }
   return {
     screener: byId(state, OFFENSE_C).pos,
     runner: byId(state, DEFENSE_PG).pos,
     worstPenetration: worst,
+    screenerTopSpeed,
   };
 }
 
@@ -132,6 +158,63 @@ describe('resolveBodyCollisions', () => {
     expect(run.runner.z).toBeGreaterThan(run.screener.z);
   });
 
+  it('a stationary body hit by a sprinter never gains speed', () => {
+    for (const target of [
+      { x: 0, z: -3 },
+      { x: 0.1, z: -3 },
+      { x: -0.3, z: -3 },
+    ]) {
+      expect(runIntoScreen(target).screenerTopSpeed).toBe(0);
+    }
+  });
+
+  it('keeps every player within its speed, braking and displacement limits in a crowd', () => {
+    let state = structuredClone(createGame({ seed: 3, movement: MOVEMENT }));
+    // Even ids sprint to a row of spots and stop there as set bodies; odd ids keep sprinting
+    // back and forth through the row on crossing lines, into the set bodies and each other.
+    let worst = 0;
+    let contactTicks = 0;
+    for (let t = 0; t < 600; t++) {
+      const forward = Math.floor(t / 90) % 2 === 0 ? 1 : -1;
+      const commands: PlayerCommand[] = state.players
+        .filter((p) => p.id !== state.controlledPlayerId)
+        .map((p) => {
+          if (p.id % 2 === 0) {
+            return steerToward(state, p.id, { x: (p.id - 5) * 0.6, z: 1 });
+          }
+          return steerToward(state, p.id, {
+            x: forward * (5 - p.id) * 0.4,
+            z: forward > 0 ? 4 : -2,
+          });
+        });
+      const zigzag = Math.floor(t / 50) % 2 === 0 ? 1 : -1;
+      const prev = state;
+      state = stepGame(prev, [{ type: 'move', x: zigzag * 0.6, z: 0.2 * zigzag }], commands);
+      worst = Math.max(worst, maxPenetration(state));
+      if (touchingPairs(state) > 0) {
+        contactTicks += 1;
+      }
+      const { sprintSpeedMultiplier, brakingMultiplier } = state.movementTuning;
+      prev.players.forEach((before, i) => {
+        const p = state.players[i]!;
+        const { speedMps, accelerationMps2 } = p.movement;
+        const speed = Math.hypot(p.vel.x, p.vel.z);
+        const prevSpeed = Math.hypot(before.vel.x, before.vel.z);
+        expect(speed).toBeLessThanOrEqual(speedMps * sprintSpeedMultiplier + 1e-9);
+        if (!p.sprinting && prevSpeed <= speedMps + 1e-9) {
+          expect(speed).toBeLessThanOrEqual(speedMps + 1e-9);
+        }
+        const dv = Math.hypot(p.vel.x - before.vel.x, p.vel.z - before.vel.z);
+        expect(dv).toBeLessThanOrEqual(accelerationMps2 * brakingMultiplier * FIXED_DT + 1e-9);
+        const moved = Math.hypot(p.pos.x - before.pos.x, p.pos.z - before.pos.z);
+        expect(moved).toBeLessThanOrEqual(speedMps * sprintSpeedMultiplier * FIXED_DT + 1e-9);
+      });
+    }
+    expect(worst).toBeLessThanOrEqual(0.01);
+    // The crowd really collides: bodies are in contact on many steps.
+    expect(contactTicks).toBeGreaterThan(100);
+  });
+
   it('a pivoting player resists like a set player', () => {
     const push = (pivotHeld: boolean): number => {
       const state = game();
@@ -151,27 +234,28 @@ describe('resolveBodyCollisions', () => {
     expect(pivoting).toBeLessThan(moving);
   });
 
-  it('a Practice cone never moves from contact; the offense player takes the whole push', () => {
+  it('Practice cones are not bodies; offense players still separate', () => {
     let state = game('cones');
     const cone = { x: 0, z: 0 };
     place(state, DEFENSE_PG, cone);
     place(state, OFFENSE_C, { x: 0, z: 3 });
-    state.controlledPlayerId = OFFENSE_PG;
-    let worst = 0;
     for (let t = 0; t < 120; t++) {
       state = stepGame(state, [], [steerToward(state, OFFENSE_C, { x: 0, z: -3 })]);
       expect(byId(state, DEFENSE_PG).pos).toEqual(cone);
-      worst = Math.max(worst, maxPenetration(state));
     }
-    expect(worst).toBeLessThanOrEqual(0.01);
-    expect(byId(state, OFFENSE_C).pos.z).toBeGreaterThan(0);
+    // The C walked straight through the cone to its spot.
+    expect(byId(state, OFFENSE_C).pos.z).toBeLessThan(-2);
 
     const single = game('cones');
     place(single, DEFENSE_PG, cone);
-    place(single, OFFENSE_C, { x: 0, z: 0.5 }, { x: 0, z: -3 });
+    place(single, OFFENSE_C, { x: 0, z: 0.1 }, { x: 0, z: -3 });
+    place(single, OFFENSE_PG, { x: 3, z: 0 });
+    place(single, 1, { x: 3.3, z: 0 });
     resolveBodyCollisions(single);
     expect(byId(single, DEFENSE_PG).pos).toEqual(cone);
-    expect(byId(single, OFFENSE_C).pos.z).toBeCloseTo(0.54, 12);
+    expect(byId(single, OFFENSE_C).pos).toEqual({ x: 0, z: 0.1 });
+    expect(byId(single, OFFENSE_C).vel).toEqual({ x: 0, z: -3 });
+    expect(maxPenetration(single)).toBeLessThanOrEqual(1e-12);
   });
 
   it('never pushes a ball holder past the sideline and emits no mistake', () => {

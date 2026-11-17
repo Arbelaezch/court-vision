@@ -5,7 +5,8 @@
 // before the actions. Actions set the controlled player's inputs (move intent, held sprint and
 // pivot); every player then moves kinematically with acceleration, sprint and stamina (./movement.ts),
 // and overlapping bodies are pushed apart when the game has a collision setup (./collision.ts;
-// physical only, never graded, and never pushes a player out of bounds). A pass action
+// physical only, never graded, slows a player no faster than it brakes, never pushes a player out of
+// bounds, and skips Practice cones). A pass action
 // releases the ball, which then flies to the receiver over later steps (./passing.ts). A shoot or
 // floater action resolves the shot instantly, before movement, from the positions the step starts
 // with (./takeShot.ts); its events are kept in this step's events.
@@ -193,12 +194,14 @@ export function stepGame(
   const holderBefore = holderId === null ? undefined : state.players.find((p) => p.id === holderId);
   const holderWasPastLine = holderBefore !== undefined && isPastSideOrBaseline(holderBefore.pos);
 
+  // Positions and velocities before movement: contact limits are measured from them.
+  const start = next.players.map((p) => ({ pos: { ...p.pos }, vel: { ...p.vel } }));
   for (const player of next.players) {
     stepPlayerMovement(player, next.movementTuning);
     applyBounds(player, player.id === holderId);
   }
   // Bodies are pushed apart before the out-of-bounds check and ball flight (./collision.ts).
-  resolveBodyCollisions(next);
+  resolveBodyCollisions(next, start);
 
   const holderAfter = holderId === null ? undefined : next.players.find((p) => p.id === holderId);
   if (holderAfter !== undefined && !holderWasPastLine && isPastSideOrBaseline(holderAfter.pos)) {
