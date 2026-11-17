@@ -454,3 +454,8 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Close leftover record, continue: End the leftover #41 run as aborted (its files stay in the run directory, #41 stays queued and gets a fresh run later), then start #95
 - Decided by: assumed on 2026-11-17
 - Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
+
+## Whether Dribble Handoff must show a defender running into the handoff screen in issue #95, which means redrawing that play's defender paths, or whether it can ship with the hold only.
+- Kind: product
+- Decision: Ship as is, no follow-up: drop the defender-touches-screener check for Dribble Handoff and leave the play as it is, with no follow-up issue
+- Decided by: user on 2026-11-17
