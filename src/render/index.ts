@@ -76,9 +76,11 @@ export { SIM_PLAYBACK_LOOP_HOLD_S, createSimPlayback } from './simPlayback';
 export type { SimFrame, SimPlayback } from './simPlayback';
 export {
   BALL_RADIUS_M,
+  SHOT_RELEASE_BLEND_FRACTION,
   ballRenderPosition,
   interpolatePlayers,
   shotArcPosition,
+  shotBallPosition,
 } from './simInterpolation';
 export type { ShotArc, SimSnapshot } from './simInterpolation';
 export { ANIM_ONE_SHOT_S, createSimAnimTracker } from './simAnimation';

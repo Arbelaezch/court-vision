@@ -2,9 +2,12 @@
 // It composes the play-run engine (startPracticeRun / stepPracticeRun) with the run referee
 // (startReferee / stepReferee) and adds the run lifecycle:
 // - a mistake (whistle) returns the end-of-run frame and its events; the next step rebuilds the run
-//   at the setup positions without simulating a tick (instant reset, spec 8.2);
+//   at the setup positions without simulating a tick (spec 8.2), except that after an unblocked
+//   shot (an off-script shot) the frozen frame holds until the ball reaches the rim. The whistle,
+//   outcome events and attempt are still on the outcome step;
 // - a success or an unsuccessful run holds the final frame for RESULT_HOLD_STEPS sim steps (the
-//   result banner), then resets the same way. The hold is counted in sim steps, so pausing or
+//   result banner; at least as long as the shot's flight), then resets the same way. The hold is
+//   counted in sim steps, so pausing or
 //   hiding the tab freezes it too (decision "Hidden tab behavior");
 // - restart and quit end the run without an outcome.
 //
@@ -24,6 +27,7 @@ import {
   SIM_HZ,
   createRng,
   pickOne,
+  shotFlightTicks,
   type GameEvent,
   type GameState,
   type MovementSetup,
@@ -80,7 +84,10 @@ export interface RunControllerState {
   run: PlayRunState;
   referee: RefereeState;
   status: RunControllerStatus;
-  /** Steps left in the result hold (0 unless showingResult). */
+  /**
+   * Steps left in the result hold (showingResult), or in the wait for an off-script shot to land
+   * (resetPending; 0 when the reset comes on the next step).
+   */
   resultStepsLeft: number;
 }
 
@@ -141,6 +148,21 @@ export function startRunController(
   return buildRun(play, mode, options, 0);
 }
 
+/**
+ * Sim steps until a shot released on this step reaches the rim on screen; 0 when the step has no
+ * unblocked shot. The shot resolves from the positions the step starts with (`before`).
+ */
+export function shotArcHoldSteps(before: GameState, events: readonly GameEvent[]): number {
+  for (const event of events) {
+    if (event.type === 'shotResolved' && event.blockerId === null) {
+      const shooter = before.players.find((p) => p.id === event.shooterId);
+      if (shooter === undefined) return 0;
+      return shotFlightTicks(event.shotType, shooter.pos, event.made);
+    }
+  }
+  return 0;
+}
+
 function nextRun(play: PlayScenario, controller: RunControllerState): RunControllerStep {
   return {
     controller: buildRun(play, controller.mode, controller.options, controller.runIndex + 1),
@@ -167,8 +189,18 @@ export function stepRunController(
   switch (controller.status) {
     case 'quit':
       throw new Error('Court Vision: run controller has quit');
-    case 'resetPending':
+    case 'resetPending': {
+      const left = controller.resultStepsLeft - 1;
+      if (left > 0) {
+        return {
+          controller: { ...controller, resultStepsLeft: left },
+          events: [],
+          attempt: null,
+          reset: false,
+        };
+      }
       return nextRun(play, controller);
+    }
     case 'showingResult': {
       const left = controller.resultStepsLeft - 1;
       if (left > 0) {
@@ -209,6 +241,7 @@ export function stepRunController(
     };
   }
   const resets = outcome.kind === 'mistake' || ref.resetRequested;
+  const arcHold = shotArcHoldSteps(game, next.game.events);
   return {
     controller: {
       ...controller,
@@ -216,7 +249,7 @@ export function stepRunController(
       run: next.run,
       referee: ref.referee,
       status: resets ? 'resetPending' : 'showingResult',
-      resultStepsLeft: resets ? 0 : RESULT_HOLD_STEPS,
+      resultStepsLeft: resets ? arcHold : Math.max(RESULT_HOLD_STEPS, arcHold),
     },
     events,
     attempt: {

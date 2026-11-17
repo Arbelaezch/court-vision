@@ -23,6 +23,12 @@ export interface SimAnimTracker {
   observe(prev: SimSnapshot, curr: SimSnapshot, extraEvents?: readonly GameEvent[]): void;
   animFor(player: DeepReadonly<SimSnapshot['players'][number]>, curr: SimSnapshot): AnimState;
   shotArc(): ShotArc | null;
+  /**
+   * Sim tick to evaluate the shot arc at: the arc's start tick plus the steps observed since the shot.
+   * Equals the snapshot tick on real steps and keeps advancing when the same snapshot is observed again
+   * (a held frame); null when there is no arc.
+   */
+  shotArcTick(): number | null;
   reset(): void;
 }
 
@@ -34,6 +40,7 @@ interface Timer {
 export function createSimAnimTracker(): SimAnimTracker {
   const timers = new Map<number, Timer>();
   let arc: ShotArc | null = null;
+  let arcSteps = 0;
 
   function start(id: number, state: OneShot): void {
     timers.set(id, { state, remainingS: ANIM_ONE_SHOT_S[state] });
@@ -49,28 +56,37 @@ export function createSimAnimTracker(): SimAnimTracker {
       if (timer.remainingS <= 0) timers.delete(id);
     }
 
-    if (prev.ball.kind === 'held' && curr.ball.kind === 'inFlight') {
-      start(curr.ball.fromId, 'pass');
-    } else if (prev.ball.kind === 'inFlight' && curr.ball.kind === 'held') {
-      start(curr.ball.holderId, 'catch');
-    }
+    if (arc) arcSteps += 1;
 
-    for (const event of curr.events) {
-      if (event.type === 'shotResolved') {
-        start(
-          event.shooterId,
-          event.shotType === 'layup' || event.shotType === 'floater' ? 'layup' : 'shoot',
-        );
-        arc = shotArcFromStep(prev, curr, event);
-      } else if (event.type === 'screenSet') {
-        start(event.screenerId, 'screen');
+    // The same snapshot again is a held frame: its events already played on the step that made it.
+    if (prev.tick !== curr.tick) {
+      if (prev.ball.kind === 'held' && curr.ball.kind === 'inFlight') {
+        start(curr.ball.fromId, 'pass');
+      } else if (prev.ball.kind === 'inFlight' && curr.ball.kind === 'held') {
+        start(curr.ball.holderId, 'catch');
+      }
+
+      for (const event of curr.events) {
+        if (event.type === 'shotResolved') {
+          start(
+            event.shooterId,
+            event.shotType === 'layup' || event.shotType === 'floater' ? 'layup' : 'shoot',
+          );
+          arc = shotArcFromStep(prev, curr, event);
+          arcSteps = 1;
+        } else if (event.type === 'screenSet') {
+          start(event.screenerId, 'screen');
+        }
       }
     }
     for (const event of extraEvents) {
       if (event.type === 'screenSet') start(event.screenerId, 'screen');
     }
 
-    if (curr.ball.kind !== 'dead') arc = null;
+    if (curr.ball.kind !== 'dead') {
+      arc = null;
+      arcSteps = 0;
+    }
   }
 
   function animFor(
@@ -89,9 +105,11 @@ export function createSimAnimTracker(): SimAnimTracker {
     observe,
     animFor,
     shotArc: () => arc,
+    shotArcTick: () => (arc ? arc.startTick + arcSteps : null),
     reset(): void {
       timers.clear();
       arc = null;
+      arcSteps = 0;
     },
   };
 }

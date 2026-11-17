@@ -10,14 +10,19 @@ import {
   type PlayScenario,
 } from '../content';
 import {
+  FLOATER_MIN_FLIGHT_TICKS,
+  RIM_CENTER,
   ROLE_ORDER,
   SIM_HZ,
+  shotFlightTicks,
   type CourtPoint,
   type GameEvent,
   type GameState,
   type RoleId,
+  type ShotType,
   type SimAction,
 } from '../sim';
+import { shotArcHoldSteps } from './runController';
 import {
   RESULT_HOLD_SECONDS,
   RESULT_HOLD_STEPS,
@@ -264,6 +269,83 @@ describe('Acceptance: a mistake resets on the next step', () => {
     expect(reset.reset).toBe(true);
     expect(reset.attempt).toBeNull();
     expectAtSetup(reset.controller, 1, 1);
+  });
+});
+
+describe('an off-script shot resets once the ball lands', () => {
+  it('an unblocked off-script shot resets once the ball lands', () => {
+    const c0 = start(1);
+    const shot = stepOnce(c0, [{ type: 'shoot' }]);
+    const resolved = ofType(shot.events, 'shotResolved')[0];
+    expect(resolved).toBeDefined();
+    expect(resolved?.blockerId).toBeNull();
+    expect(ofType(shot.events, 'mistake')).toHaveLength(1);
+    expect(shot.attempt?.outcome.kind).toBe('mistake');
+    expect(shot.controller.status).toBe('resetPending');
+    const hold = shotArcHoldSteps(c0.game, shot.controller.game.events);
+    expect(hold).toBeGreaterThan(1);
+    expect(shot.controller.resultStepsLeft).toBe(hold);
+
+    let current = shot.controller;
+    let attempts = shot.attempt === null ? 0 : 1;
+    let whistles = ofType(shot.events, 'mistake').length;
+    for (let i = 0; i < hold - 1; i += 1) {
+      const held = stepOnce(current, []);
+      expect(held.reset).toBe(false);
+      expect(held.attempt).toBeNull();
+      expect(held.events).toEqual([]);
+      expect(held.controller.game).toBe(shot.controller.game);
+      current = held.controller;
+    }
+    const reset = stepOnce(current, []);
+    expect(reset.reset).toBe(true);
+    expect(reset.attempt).toBeNull();
+    attempts += reset.attempt === null ? 0 : 1;
+    whistles += ofType(reset.events, 'mistake').length;
+    expectAtSetup(reset.controller, 1, 1);
+    expect(attempts).toBe(1);
+    expect(whistles).toBe(1);
+  });
+
+  describe('shotArcHoldSteps', () => {
+    const c = start(1);
+    const me = c.game.controlledPlayerId;
+    const placed = (pos: CourtPoint): GameState => ({
+      ...c.game,
+      players: c.game.players.map((p) => (p.id === me ? { ...p, pos } : p)),
+    });
+    const shotEvent = (shotType: ShotType, blockerId: number | null, made: boolean): GameEvent => ({
+      type: 'shotResolved',
+      tick: 1,
+      shooterId: me,
+      shotType,
+      zone: 'rim',
+      look: 'good',
+      makeChance: 0.5,
+      made,
+      blockerId,
+      reason: 'test',
+    });
+
+    it('returns the shot flight for an unblocked floater in the paint', () => {
+      const pos = { x: 0, z: RIM_CENTER.z + 2 };
+      const hold = shotArcHoldSteps(placed(pos), [shotEvent('floater', null, true)]);
+      expect(hold).toBe(shotFlightTicks('floater', pos, true));
+      expect(hold).toBeGreaterThanOrEqual(FLOATER_MIN_FLIGHT_TICKS);
+    });
+
+    it('is above the result hold for a long jumper', () => {
+      const pos = { x: 0, z: RIM_CENTER.z + 14 };
+      const hold = shotArcHoldSteps(placed(pos), [shotEvent('jumper', null, false)]);
+      expect(hold).toBe(shotFlightTicks('jumper', pos, false));
+      expect(hold).toBeGreaterThan(RESULT_HOLD_STEPS);
+    });
+
+    it('is 0 for a blocked shot or a step with no shot', () => {
+      const game = placed({ x: 0, z: RIM_CENTER.z + 2 });
+      expect(shotArcHoldSteps(game, [shotEvent('floater', 99, false)])).toBe(0);
+      expect(shotArcHoldSteps(game, [])).toBe(0);
+    });
   });
 });
 

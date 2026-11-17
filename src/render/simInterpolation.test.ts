@@ -21,6 +21,8 @@ import {
   interpolatePlayers,
   shotArcFromStep,
   shotArcPosition,
+  shotBallPosition,
+  SHOT_RELEASE_BLEND_FRACTION,
   type ShotResolvedEvent,
 } from './simInterpolation';
 
@@ -162,10 +164,41 @@ describe('shot arc', () => {
     const atStart = ballRenderPosition(prev, curr, 0, poses, arc);
     expect(atStart.y).toBeLessThanOrEqual(BALL_CARRY_HEIGHT_M + 1e-9);
     const atEnd = ballRenderPosition(prev, curr, 1, poses, arc);
-    const onArc = shotArcPosition(arc, arc.startTick + 1);
+    const onArc = shotBallPosition(arc, arc.startTick + 1);
     expect(atEnd.x).toBeCloseTo(onArc.x, 9);
     expect(atEnd.y).toBeCloseTo(onArc.y, 9);
     expect(atEnd.z).toBeCloseTo(onArc.z, 9);
+  });
+
+  it('eases the ball from the hand onto the arc and honours an explicit arc tick', () => {
+    const { states, event, k } = shotStates(false);
+    const prev = states[k - 1]!;
+    const curr = states[k]!;
+    const arc = shotArcFromStep(prev, curr, event)!;
+    expect(arc.hand).not.toBeNull();
+    const hand = arc.hand!;
+    const start = shotBallPosition(arc, arc.startTick);
+    expect(start.x).toBeCloseTo(hand.x, 9);
+    expect(start.y).toBeCloseTo(hand.y, 9);
+    expect(start.z).toBeCloseTo(hand.z, 9);
+    const blendTicks = Math.max(1, Math.round(arc.flightTicks * SHOT_RELEASE_BLEND_FRACTION));
+    for (const t of [arc.startTick + blendTicks, arc.startTick + arc.flightTicks]) {
+      const a = shotBallPosition(arc, t);
+      const b = shotArcPosition(arc, t);
+      expect(a.x).toBeCloseTo(b.x, 9);
+      expect(a.y).toBeCloseTo(b.y, 9);
+      expect(a.z).toBeCloseTo(b.z, 9);
+    }
+    const poses = posesOf(curr);
+    const t = arc.startTick + 7;
+    const drawn = ballRenderPosition(curr, curr, 0, poses, arc, t);
+    const expected = shotBallPosition(arc, t);
+    expect(drawn.x).toBeCloseTo(expected.x, 9);
+    expect(drawn.y).toBeCloseTo(expected.y, 9);
+    expect(drawn.z).toBeCloseTo(expected.z, 9);
+    // No hand when the shooter was not holding the ball on the previous tick.
+    const loose = { ...prev, ball: { kind: 'dead' as const, shooterId: event.shooterId } };
+    expect(shotArcFromStep(loose as unknown as GameState, curr, event)!.hand).toBeNull();
   });
 
   it('returns null for a blocked shot', () => {
