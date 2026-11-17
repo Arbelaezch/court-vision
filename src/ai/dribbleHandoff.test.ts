@@ -9,14 +9,16 @@ import {
   loadSimShooting,
   type PlayScenario,
 } from '../content';
-import type { GameEvent, SimAction } from '../sim';
+import { SIM_HZ, type GameEvent, type SimAction } from '../sim';
 import {
+  SCREEN_HOLD_TIMEOUT_S,
   createCorrectReadBot,
   startRunController,
   stepRunController,
   type PlayBot,
   type RunAttempt,
   type RunControllerState,
+  type ScreenHold,
 } from './index';
 
 const roles = loadCastContent().roles;
@@ -115,6 +117,55 @@ describe('the handoff is automatic', () => {
     const pg = offenseRole(start, 'PG');
     expect(handoffs[0]).toMatchObject({ passerId: c.id, receiverId: pg.id });
     expect(log.actions.filter((a) => a.type === 'pass' && a.passType === 'handOff')).toEqual([]);
+  });
+});
+
+describe('the C holds after the handoff', () => {
+  it('practice: C holds its handoff spot until the PG is past, within the timeout', () => {
+    const bot = createCorrectReadBot(PLAY);
+    let controller = startRunController(PLAY, PRACTICE, {
+      seed: 1,
+      ...SETUPS,
+      coverageId: PLAY.practiceCoverage,
+    });
+    const cId = offenseRole(controller, 'C').id;
+    const pgId = offenseRole(controller, 'PG').id;
+    const timeoutTicks = Math.round(SCREEN_HOLD_TIMEOUT_S * SIM_HZ);
+    let hold: ScreenHold | null = null;
+    let releaseTick: number | null = null;
+    for (let i = 0; i < MAX_STEPS && releaseTick === null; i++) {
+      const step = stepRunController(PLAY, controller, bot(controller));
+      controller = step.controller;
+      const handedOff = step.events.some(
+        (e) =>
+          e.type === 'passCompleted' &&
+          e.passType === 'handOff' &&
+          e.passerId === cId &&
+          e.receiverId === pgId,
+      );
+      if (handedOff) {
+        const started = controller.run.screenHolds.find((h) => h.role === 'C');
+        expect(started).toMatchObject({
+          role: 'C',
+          handler: 'PG',
+          startTick: controller.game.tick,
+        });
+        hold = started ?? null;
+        continue;
+      }
+      if (hold === null) continue;
+      if (controller.run.screenHolds.some((h) => h.role === 'C')) {
+        const c = offenseRole(controller, 'C');
+        expect(Math.hypot(c.pos.x - hold.spot.x, c.pos.z - hold.spot.z)).toBeLessThanOrEqual(0.05);
+      } else {
+        releaseTick = controller.game.tick;
+      }
+      expect(step.attempt).toBeNull();
+    }
+    expect(hold).not.toBeNull();
+    expect(releaseTick).not.toBeNull();
+    const startTick = (hold as unknown as ScreenHold).startTick;
+    expect((releaseTick as unknown as number) - startTick).toBeLessThanOrEqual(timeoutTicks);
   });
 });
 

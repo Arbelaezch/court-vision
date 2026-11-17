@@ -3,6 +3,8 @@
 export {
   ARRIVE_SLOW_RADIUS_M,
   REACHED_SPOT_RADIUS_M,
+  SCREEN_HOLD_CLEAR_M,
+  SCREEN_HOLD_TIMEOUT_S,
   SCREEN_SET_SPEED_MPS,
   startPracticeRun,
   stepPracticeRun,
@@ -46,7 +48,7 @@ export {
   isInKey,
 } from './defense';
 export type { DefenderBehavior, DefenderContext, DefenderIntent } from './defense';
-export type { PlayRunState, PracticeRunOptions } from './playRun';
+export type { PlayRunState, PracticeRunOptions, ScreenHold } from './playRun';
 export { OPENING_SEPARATION_M, isTeammateOpen } from './openings';
 export {
   COVERAGE_PICK_SALT,

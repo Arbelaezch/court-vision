@@ -24,6 +24,15 @@
 // deviated; screeners, cutters, drivers and receivers are exempt because their spots are
 // intentionally near the ball.
 //
+// Screen hold (decision 2026-11-17, all screen plays): when an AI screener emits screenSet, or an
+// AI handOff step's pass completes, the screener holds at the spot where it stood on that tick. A
+// held role steers with zero intent (no separation push, no lane clear, no pass), so the sim counts
+// it as set and defenders must go around it. The hold ends once its ballhandler has come within
+// SCREEN_HOLD_CLEAR_M of the spot and is now farther than that (he came past the screen), or
+// SCREEN_HOLD_TIMEOUT_S after it started; then the screener steers to its active step (it rolls).
+// Holds survive phase changes, so phase timing is unchanged and only the screener's move is
+// delayed. While deviated, holds are ignored and not updated; a reset starts with none.
+//
 // Deviation: a passCompleted between offense players whose roles match neither a passCompleted
 // trigger of the current phase, an active AI pass/handOff step, nor a decision option of the
 // current phase for the passer's role (a graded read is on script) sets `deviated`. While deviated
@@ -72,6 +81,10 @@ import { clearOfLane, separationPush } from './spacing';
 export const REACHED_SPOT_RADIUS_M = 0.75;
 /** A screener at its spot at or below this speed has set the screen, m/s. */
 export const SCREEN_SET_SPEED_MPS = 0.3;
+/** A held screener is released once its ballhandler, after coming this close, is farther away, m. */
+export const SCREEN_HOLD_CLEAR_M = 2.5;
+/** A held screener is released at the latest this long after the screen or hand-off, s. */
+export const SCREEN_HOLD_TIMEOUT_S = 1.5;
 /** AI steer magnitude ramps down linearly inside this distance of the spot, m. */
 export const ARRIVE_SLOW_RADIUS_M = 1.5;
 
@@ -80,6 +93,19 @@ const LANE_ACTIONS: readonly string[] = ['hold', 'moveTo', 'space'];
 
 /** Below this distance the AI stops steering toward its spot, m. */
 const ARRIVED_EPSILON_M = 0.05;
+
+/** An AI screener standing still at its screen until its ballhandler has come past (see header). */
+export interface ScreenHold {
+  /** The held screener (or hand-off giver). */
+  role: RoleId;
+  /** The ballhandler the screen or hand-off is for. */
+  handler: RoleId;
+  /** Where the screener stood on the screen or hand-off tick. */
+  spot: CourtPoint;
+  startTick: number;
+  /** Whether the handler has been within SCREEN_HOLD_CLEAR_M of `spot` since the hold started. */
+  handlerNear: boolean;
+}
 
 export interface PlayRunState {
   playId: string;
@@ -94,6 +120,8 @@ export interface PlayRunState {
   screensSet: RoleId[];
   /** Roles whose AI pass or hand-off was issued in this phase. */
   passesMade: RoleId[];
+  /** Screeners holding still after a screen or hand-off; survives phase changes (see header). */
+  screenHolds: ScreenHold[];
   /** A pass the play does not expect completed: the phase is frozen (see header). */
   deviated: boolean;
   /** Live coverage defenders (null = Practice cones): coverage id and the step each role runs. */
@@ -265,6 +293,7 @@ export function startPracticeRun(
     coneSpots,
     screensSet: [],
     passesMade: [],
+    screenHolds: [],
     deviated: false,
     liveDefense,
   };
@@ -296,6 +325,11 @@ function buildCommands(
     const self = playerFor(game, 'offense', role);
     const step = run.activeSteps[role];
     if (run.deviated && holds(game, self.id)) {
+      commands.push({ type: 'steer', playerId: self.id, x: 0, z: 0 });
+      continue;
+    }
+    // A held screener stands still with zero intent (no separation push, no pass), so it stays set.
+    if (!run.deviated && run.screenHolds.some((h) => h.role === role)) {
       commands.push({ type: 'steer', playerId: self.id, x: 0, z: 0 });
       continue;
     }
@@ -354,6 +388,54 @@ function setScreens(run: PlayRunState, next: GameState): RoleId[] {
     screensSet.push(role);
   }
   return screensSet;
+}
+
+/**
+ * Screen holds after this step: existing holds are released once their handler came within
+ * SCREEN_HOLD_CLEAR_M of the spot and is now farther, or after SCREEN_HOLD_TIMEOUT_S; then a hold
+ * starts for every screener new in `screensSet` and every AI hand-off completed this step (judged
+ * on the pre-transition active steps). A new hold for a role replaces its old one.
+ */
+function updateScreenHolds(run: PlayRunState, next: GameState, screensSet: RoleId[]): ScreenHold[] {
+  const timeoutTicks = Math.round(SCREEN_HOLD_TIMEOUT_S * SIM_HZ);
+  const kept: ScreenHold[] = [];
+  for (const hold of run.screenHolds) {
+    const handlerDist = distance(playerFor(next, 'offense', hold.handler).pos, hold.spot);
+    const near = handlerDist <= SCREEN_HOLD_CLEAR_M;
+    const handlerNear = hold.handlerNear || near;
+    if (handlerNear && !near) continue;
+    if (next.tick - hold.startTick >= timeoutTicks) continue;
+    kept.push({ ...hold, handlerNear });
+  }
+
+  const started: ScreenHold[] = [];
+  const start = (role: RoleId, handler: RoleId): void => {
+    const spot = { ...playerFor(next, 'offense', role).pos };
+    const handlerNear =
+      distance(playerFor(next, 'offense', handler).pos, spot) <= SCREEN_HOLD_CLEAR_M;
+    started.push({ role, handler, spot, startTick: next.tick, handlerNear });
+  };
+  for (const role of screensSet) {
+    if (run.screensSet.includes(role)) continue;
+    const step = run.activeSteps[role];
+    if (step === null || step.target === undefined) continue;
+    start(role, step.target);
+  }
+  for (const role of ROLE_ORDER) {
+    if (role === run.humanRole) continue;
+    const step = run.activeSteps[role];
+    if (step === null || step.action !== 'handOff' || step.target === undefined) continue;
+    if (step.phase !== run.phaseId) continue;
+    const giverId = playerFor(next, 'offense', role).id;
+    const receiverId = playerFor(next, 'offense', step.target).id;
+    const completed = next.events.some(
+      (e) => e.type === 'passCompleted' && e.passerId === giverId && e.receiverId === receiverId,
+    );
+    if (completed) start(role, step.target);
+  }
+
+  const replaced = new Set(started.map((h) => h.role));
+  return [...kept.filter((h) => !replaced.has(h.role)), ...started];
 }
 
 function triggerHolds(
@@ -452,10 +534,11 @@ export function stepPracticeRun(
     return { game: next, run: { ...run, deviated, passesMade } };
   }
   const screensSet = setScreens(run, next);
+  const screenHolds = updateScreenHolds(run, next, screensSet);
 
   const taken = phase.transitions.find((t) => triggerHolds(t.trigger, run, next, next.events));
   if (taken === undefined) {
-    return { game: next, run: { ...run, screensSet, passesMade } };
+    return { game: next, run: { ...run, screensSet, passesMade, screenHolds } };
   }
 
   const activeSteps = { ...run.activeSteps };
@@ -480,6 +563,7 @@ export function stepPracticeRun(
       coneSpots: practiceScriptSpots(play, taken.to) ?? run.coneSpots,
       screensSet: [],
       passesMade: [],
+      screenHolds,
     },
   };
 }
