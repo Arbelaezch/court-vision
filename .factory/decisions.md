@@ -402,3 +402,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: helpSteps (help defender steps in); correct read is a chest or bounce kick-out to the right-corner SG. Coverage ids: helpSteps, noHelp, bigAtRim, aggressiveCloseout; one graded decision driveRead, sprint-by graded as shoot. Scrimmage cues: floor arrow on the drive, read prompt without reason.
 - Decided by: assumed on 2026-11-17
 - Why: Kicking out against help is the play's base lesson and the most standard placement (g1); issue #36 delegates the choice
+
+## Whether to run one more fix-and-review round for the Scrimmage-only wording or open the pull request with the current text
+- Kind: process
+- Decision: Fix wording, review again: Run another round: an engineer adds the Scrimmage-only wording to lines 229, 258 and 444, then the change is reviewed again before the pull request opens
+- Decided by: assumed on 2026-11-17
+- Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
