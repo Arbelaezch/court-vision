@@ -9,8 +9,8 @@ import {
   loadSimShooting,
   type PlayScenario,
 } from '../content';
-import { isBeyondArc } from '../sim';
-import { GRADE_REASONS } from './grading';
+import { isBeyondArc, type GameEvent } from '../sim';
+import { GRADE_REASONS, classifyAction, type ResolvingAction } from './grading';
 import {
   createCorrectReadBot,
   startRunController,
@@ -34,13 +34,30 @@ const RIM = { x: 0, z: -5.425 };
 interface RunLog {
   readState: RunControllerState | null;
   attempt: RunAttempt | null;
+  controller: RunControllerState | null;
+  /** The state just before the step that releases the ball (the pass or shot). */
+  released: RunControllerState | null;
+  events: GameEvent[];
 }
 
-function run(coverageId: string, seed: number, readMove?: 'shoot' | 'floater'): RunLog {
+function run(
+  coverageId: string,
+  seed: number,
+  readMove?: 'shoot' | 'floater',
+  walk = false,
+): RunLog {
   const inner = createCorrectReadBot(PLAY);
-  const log: RunLog = { readState: null, attempt: null };
+  const log: RunLog = {
+    readState: null,
+    attempt: null,
+    controller: null,
+    released: null,
+    events: [],
+  };
   const bot: PlayBot = (view) => {
-    const actions = inner(view);
+    let actions = inner(view);
+    // A walking bot never sprints: the sprint action stays but is not held.
+    if (walk) actions = actions.map((a) => (a.type === 'sprint' ? { ...a, held: false } : a));
     if (readMove !== undefined && view.run.phaseId === 'read') {
       return actions.map((a) => (a.type === 'move' ? a : { type: readMove }));
     }
@@ -49,10 +66,16 @@ function run(coverageId: string, seed: number, readMove?: 'shoot' | 'floater'): 
   let controller = startRunController(PLAY, SCRIMMAGE, { seed, ...SETUPS, coverageId });
   for (let i = 0; i < MAX_STEPS; i++) {
     if (log.readState === null && controller.run.phaseId === 'read') log.readState = controller;
+    const before = controller;
     const step = stepRunController(PLAY, controller, bot(controller));
     controller = step.controller;
+    log.events.push(...step.events);
+    if (log.released === null && controller.game.ball.kind === 'inFlight') {
+      log.released = before;
+    }
     if (step.attempt !== null) {
       log.attempt = step.attempt;
+      log.controller = controller;
       return log;
     }
   }
@@ -94,13 +117,13 @@ describe('Drive-and-Kick data', () => {
 });
 
 describe('best reads', () => {
-  const decision = PLAY.decisions[0];
+  const decision = PLAY.decisions.find((d) => d.id === 'driveRead');
   if (decision === undefined) throw new Error('no decision');
   const expected: Record<string, string[]> = {
     helpSteps: ['kickOut', 'kickOutBounce'],
     noHelp: ['finishAtRim'],
     bigAtRim: ['floatOver'],
-    aggressiveCloseout: ['finishAtRim'],
+    aggressiveCloseout: ['dishToCorner', 'dishToCornerBounce'],
   };
 
   it.each(Object.entries(expected))('%s has the planned great options', (coverage, ids) => {
@@ -115,6 +138,87 @@ describe('best reads', () => {
       const notGreat = others.some((c) => option?.grades[c.id] !== 'great');
       expect(notGreat, id).toBe(true);
     }
+  });
+});
+
+describe('beatCloseout', () => {
+  const decision = PLAY.decisions.find((d) => d.id === 'beatCloseout');
+  if (decision === undefined) throw new Error('no beatCloseout');
+  const coverages = PLAY.coverages.map((c) => c.id);
+
+  it('sprintBy is great in every coverage', () => {
+    const option = decision.options.find((o) => o.id === 'sprintBy');
+    expect(option?.move).toBe('sprint');
+    for (const c of coverages) expect(option?.grades[c], c).toBe('great');
+  });
+
+  it('driveOn is good in aggressiveCloseout and great elsewhere', () => {
+    const option = decision.options.find((o) => o.id === 'driveOn');
+    for (const c of coverages) {
+      expect(option?.grades[c], c).toBe(c === 'aggressiveCloseout' ? 'good' : 'great');
+    }
+  });
+
+  it('aggressiveCloseout is graded differently from noHelp', () => {
+    const differs = PLAY.decisions.some((d) =>
+      d.options.some((o) => o.grades.aggressiveCloseout !== o.grades.noHelp),
+    );
+    expect(differs).toBe(true);
+    const sprintBy = decision.options.find((o) => o.id === 'sprintBy');
+    expect(sprintBy?.grades.aggressiveCloseout).toBe('great');
+  });
+});
+
+describe('aggressiveCloseout reads', () => {
+  const seeds = [1, 2, 3, 4, 5];
+  const classify = (action: ResolvingAction, targetRole: 'SG' | 'C' | null) =>
+    classifyAction(PLAY, {
+      role: 'PG',
+      phaseId: 'read',
+      coverageId: 'aggressiveCloseout',
+      action,
+      targetRole,
+    });
+
+  it.each(seeds)('a walking bot is graded driveOn good and the run continues (seed %i)', (seed) => {
+    const { attempt, controller, events } = run('aggressiveCloseout', seed, undefined, true);
+    expect(controller?.referee.graded[0]).toMatchObject({
+      decisionId: 'beatCloseout',
+      optionId: 'driveOn',
+      grade: 'good',
+    });
+    expect(events.some((e) => e.type === 'mistake' || e.type === 'runUnsuccessful')).toBe(false);
+    expect(attempt?.outcome).toMatchObject({ kind: 'success', quality: 'good' });
+  });
+
+  it.each(seeds)('the correct bot sprints by, then dishes to the corner (seed %i)', (seed) => {
+    const { attempt, controller, released } = run('aggressiveCloseout', seed);
+    expect(controller?.referee.graded.map((g) => g.optionId)).toEqual(['sprintBy', 'dishToCorner']);
+    expect(attempt?.outcome).toMatchObject({ kind: 'success', quality: 'great' });
+    if (released === null) throw new Error('no pass released');
+    // The pass leaves while the big is still stepping over, so this is a looser bound than 2.0 m.
+    expect(
+      dist(player(released, 'defense', 'C').pos, player(released, 'offense', 'PG').pos),
+    ).toBeLessThanOrEqual(3.0);
+    const corner = player(released, 'offense', 'C').pos;
+    for (const d of released.game.players.filter((p) => p.side === 'defense')) {
+      expect(dist(d.pos, corner), `${d.role} to the corner`).toBeGreaterThanOrEqual(3.0);
+    }
+  });
+
+  it('grades the dish great and scoring through good', () => {
+    const chest: ResolvingAction = { type: 'pass', passType: 'chestPass', targetId: 0 };
+    const bounce: ResolvingAction = { type: 'pass', passType: 'bouncePass', targetId: 0 };
+    expect(classify(chest, 'C')).toMatchObject({ grade: 'great', exactMove: true });
+    expect(classify(bounce, 'C')).toMatchObject({ grade: 'great' });
+    expect(classify({ type: 'shoot' }, null)).toMatchObject({
+      optionId: 'finishAtRim',
+      grade: 'good',
+    });
+    expect(classify({ type: 'floater' }, null)).toMatchObject({
+      optionId: 'floatOver',
+      grade: 'good',
+    });
   });
 });
 
@@ -215,6 +319,7 @@ describe('the other graded reads', () => {
   const cases: [string, 'shoot' | 'floater', 'good' | 'bad'][] = [
     ['noHelp', 'floater', 'good'],
     ['aggressiveCloseout', 'floater', 'good'],
+    ['aggressiveCloseout', 'shoot', 'good'],
   ];
   it.each(cases)('%s + %s is a %s-graded success', (coverage, move, quality) => {
     for (const seed of [1, 2, 3, 4, 5]) {

@@ -294,7 +294,7 @@ Positions: 1 = PG (the player), 2 = SG, 3 = SF, 4 = PF, 5 = C.
   - *Help defender steps in:* a defender leaves a shooter to stop the drive. Correct read: **kick out** to the now-open shooter (chest or bounce pass).
   - *No help (the big sags):* Correct read: finish at the rim.
   - *Big stays near the rim:* Correct read: a **floater** over the big.
-  - *Defender closes out too aggressively:* Correct read: **sprint** by the overplaying defender.
+  - *Defender closes out too aggressively:* Correct read: **sprint** by the overplaying defender; letting the closeout arrive and then recovering is a weaker read (Good in Scrimmage). If the big then switches onto the PG, the best read is the **dish** to the corner teammate the big left; scoring through is acceptable.
 - **Blurb:** "Drive at the rim and defenders have to react. Find who they leave open."
 
 ### 3. Dribble Handoff (DHO)

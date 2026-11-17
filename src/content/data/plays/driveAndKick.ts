@@ -7,8 +7,9 @@
 // decision option grades every coverage great/good/bad; anything not listed is off-script. Exactly
 // one coverage is the Practice standard, and its script places the Practice cones.
 // `concepts` lists glossary term ids (src/content/data/glossary.ts) introduced in a phase.
-// Sprint-by is graded as the `shoot` finish (user decision 2026-11-15, follow-up #92); helpSteps is
-// the Practice standard.
+// Sprint-by is the `sprintBy` sprint route of `beatCloseout` (#92). Walking the drive in
+// aggressiveCloseout is Good. After the C's defender switches onto the PG, the dish to the C is the
+// best read and scoring through is Good. helpSteps is the Practice standard.
 
 export const DRIVE_AND_KICK_FILE = 'src/content/data/plays/driveAndKick.ts';
 
@@ -75,7 +76,7 @@ export const DRIVE_AND_KICK_DATA = {
             kind: 'prompt',
             text: 'Read the defense',
             reason:
-              'Help steps in: kick it to the open shooter. No help: finish. Big at the rim: floater',
+              'Help steps in: kick it to the open shooter. No help: finish. Big at the rim: floater. Big switches onto you: dish to the corner',
           },
         ],
         reduced: [{ kind: 'prompt', text: 'Read the defense' }],
@@ -161,13 +162,52 @@ export const DRIVE_AND_KICK_DATA = {
           defenders: {
             ...START_DEFENDERS,
             PG: { spot: { x: -1.6, z: 0.4 }, action: 'closeoutHard' },
+            C: { spot: { x: 0.8, z: -4.9 }, action: 'sag' },
+            PF: { spot: { x: -4.2, z: -1.3 }, action: 'sag' },
           },
         },
-        { phase: 'read', defenders: { ...START_DEFENDERS, PG: TRAILING_PG_DEFENDER } },
+        {
+          phase: 'read',
+          defenders: {
+            ...START_DEFENDERS,
+            PG: TRAILING_PG_DEFENDER,
+            C: { spot: { x: 0.6, z: -3.9 }, action: 'switch', guards: 'PG' },
+            PF: { spot: { x: -4.2, z: -1.3 }, action: 'sag' },
+          },
+        },
       ],
     },
   ],
   decisions: [
+    {
+      id: 'beatCloseout',
+      role: 'PG',
+      phase: 'drive',
+      options: [
+        {
+          id: 'driveOn',
+          move: 'move',
+          branch: 'read',
+          grades: {
+            helpSteps: 'great',
+            noHelp: 'great',
+            bigAtRim: 'great',
+            aggressiveCloseout: 'good',
+          },
+        },
+        {
+          id: 'sprintBy',
+          move: 'sprint',
+          branch: 'read',
+          grades: {
+            helpSteps: 'great',
+            noHelp: 'great',
+            bigAtRim: 'great',
+            aggressiveCloseout: 'great',
+          },
+        },
+      ],
+    },
     {
       id: 'driveRead',
       role: 'PG',
@@ -202,7 +242,7 @@ export const DRIVE_AND_KICK_DATA = {
             helpSteps: 'bad',
             noHelp: 'great',
             bigAtRim: 'bad',
-            aggressiveCloseout: 'great',
+            aggressiveCloseout: 'good',
           },
         },
         {
@@ -213,6 +253,28 @@ export const DRIVE_AND_KICK_DATA = {
             noHelp: 'good',
             bigAtRim: 'great',
             aggressiveCloseout: 'good',
+          },
+        },
+        {
+          id: 'dishToCorner',
+          move: 'chestPass',
+          target: 'C',
+          grades: {
+            helpSteps: 'bad',
+            noHelp: 'bad',
+            bigAtRim: 'bad',
+            aggressiveCloseout: 'great',
+          },
+        },
+        {
+          id: 'dishToCornerBounce',
+          move: 'bouncePass',
+          target: 'C',
+          grades: {
+            helpSteps: 'bad',
+            noHelp: 'bad',
+            bigAtRim: 'bad',
+            aggressiveCloseout: 'great',
           },
         },
       ],
