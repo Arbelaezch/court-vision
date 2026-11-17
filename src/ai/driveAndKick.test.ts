@@ -292,6 +292,25 @@ describe('each coverage looks different', () => {
     expect(dist(player(n, 'defense', 'C').pos, RIM)).toBeGreaterThanOrEqual(1.5);
   });
 
+  it.each(seeds)('aggressiveCloseout: the C defender switches onto the PG (seed %i)', (seed) => {
+    const s = look('aggressiveCloseout', seed);
+    const gap = (st: typeof s) =>
+      dist(player(st, 'defense', 'C').pos, player(st, 'offense', 'PG').pos);
+    // Settled, the switched C defender sits on the PG (about 1.4 m); a sagging big stays above 1.5 m.
+    expect(gap(s)).toBeLessThan(1.5);
+    // A switch guards the PG from a cushion; it does not just walk to the scripted sag spot
+    // (0.6, -3.9), so removing the switch (a plain sag) would put it on that spot.
+    expect(dist(player(s, 'defense', 'C').pos, { x: 0.6, z: -3.9 })).toBeGreaterThan(1.0);
+    // The offense C stays open: at least 3.0 m from every defender.
+    for (const d of s.game.players.filter((p) => p.side === 'defense')) {
+      expect(dist(d.pos, player(s, 'offense', 'C').pos)).toBeGreaterThanOrEqual(3.0);
+    }
+    // Contrast: without the switch the C defender stays home, further from the PG.
+    for (const cov of ['noHelp', 'bigAtRim']) {
+      expect(gap(look(cov, seed)), cov).toBeGreaterThanOrEqual(1.5);
+    }
+  });
+
   // The closeout only shows during the drive: the PG defender's closest approach to the PG.
   const driveGap = (cov: string, seed: number): number => {
     const inner = createCorrectReadBot(PLAY);
