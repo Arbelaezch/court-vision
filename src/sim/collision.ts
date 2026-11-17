@@ -23,7 +23,8 @@
 //   the other body, so its tangential velocity is kept and a runner slides around a set body. A
 //   player in contact then changes velocity this step by at most its braking limit
 //   (accelerationMps2 * brakingMultiplier * FIXED_DT) from its velocity before movement, so it
-//   decelerates into a body instead of stopping dead. Players without contact are untouched.
+//   decelerates into a body instead of stopping dead. Players without contact are untouched. A
+//   contacted body on a court edge that stepGame's bounds check enforces loses its outward velocity.
 //
 // Contact is physical only and never graded or whistled: no events, no rng draws.
 
@@ -148,6 +149,20 @@ function settleVelocity(body: Body, brakingMultiplier: number): void {
   const len = Math.hypot(dx, dz);
   const scale = len > maxDv ? maxDv / len : 1;
   player.vel = { x: startVel.x + dx * scale, z: startVel.z + dz * scale };
+  // Never restore velocity out through an edge applyBounds enforces (the holder may leave the
+  // sideline and baseline, so only a body that started inside is held there).
+  const { pos, vel } = player;
+  if (pos.z >= HALF_COURT_LINE_Z && vel.z > 0) {
+    vel.z = 0;
+  }
+  if (body.inside) {
+    if ((pos.x >= SIDELINE_X && vel.x > 0) || (pos.x <= -SIDELINE_X && vel.x < 0)) {
+      vel.x = 0;
+    }
+    if (pos.z <= BASELINE_Z && vel.z < 0) {
+      vel.z = 0;
+    }
+  }
 }
 
 /**

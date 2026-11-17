@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { FIXED_DT, SIDELINE_X, createGame, resolveBodyCollisions, stepGame } from './index';
+import {
+  BASELINE_Z,
+  FIXED_DT,
+  SIDELINE_X,
+  createGame,
+  resolveBodyCollisions,
+  stepGame,
+} from './index';
 import type {
   CollisionSetup,
   CourtPoint,
@@ -270,6 +277,39 @@ describe('resolveBodyCollisions', () => {
     }
     // The defender did reach and push the holder toward the line.
     expect(byId(state, OFFENSE_PG).pos.x).toBeGreaterThan(SIDELINE_X - 0.3);
+  });
+
+  it('a contacted non-holder on the sideline keeps no velocity out through it', () => {
+    let state = game();
+    place(state, OFFENSE_C, { x: SIDELINE_X - 0.01, z: 0 }, { x: 2, z: 0 });
+    place(state, DEFENSE_PG, { x: SIDELINE_X - 0.3, z: 0 });
+    state = stepGame(state, [], [steerToward(state, OFFENSE_C, { x: SIDELINE_X + 2, z: 0 })]);
+    const c = byId(state, OFFENSE_C);
+    expect(touchingPairs(state)).toBeGreaterThan(0);
+    expect(c.pos.x).toBeLessThanOrEqual(SIDELINE_X);
+    expect(c.vel.x).toBeLessThanOrEqual(0);
+  });
+
+  it('a contacted non-holder on the baseline keeps no velocity out through it', () => {
+    let state = game();
+    place(state, OFFENSE_C, { x: 0, z: BASELINE_Z + 0.01 }, { x: 0, z: -2 });
+    place(state, DEFENSE_PG, { x: 0, z: BASELINE_Z + 0.3 });
+    state = stepGame(state, [], [steerToward(state, OFFENSE_C, { x: 0, z: BASELINE_Z - 2 })]);
+    const c = byId(state, OFFENSE_C);
+    expect(touchingPairs(state)).toBeGreaterThan(0);
+    expect(c.pos.z).toBeGreaterThanOrEqual(BASELINE_Z);
+    expect(c.vel.z).toBeGreaterThanOrEqual(0);
+  });
+
+  it('a contacted body away from any edge gets the braking-clamped velocity', () => {
+    const state = game();
+    place(state, OFFENSE_C, { x: 0, z: 0 }, { x: 2, z: 0 });
+    place(state, DEFENSE_PG, { x: 0.4, z: 0 });
+    resolveBodyCollisions(state);
+    const { accelerationMps2 } = byId(state, OFFENSE_C).movement;
+    const maxDv = accelerationMps2 * state.movementTuning.brakingMultiplier * FIXED_DT;
+    expect(byId(state, OFFENSE_C).vel.x).toBeCloseTo(2 - Math.min(2, maxDv), 12);
+    expect(byId(state, OFFENSE_C).vel.z).toBe(0);
   });
 
   it('separates coincident centres deterministically', () => {
