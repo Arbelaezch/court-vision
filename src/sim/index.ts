@@ -35,7 +35,10 @@ export {
 } from './state';
 export type {
   BallState,
+  BodyProfile,
   CatchRecord,
+  CollisionSetup,
+  CollisionTuning,
   CourtPoint,
   CreateGameOptions,
   DefenseMode,
@@ -64,6 +67,7 @@ export type {
   Vec3,
 } from './state';
 export { SHOT_CLOCK_VIOLATION_REASON, stepGame } from './step';
+export { resolveBodyCollisions } from './collision';
 export { PASS_TURNOVER_REASONS, passHeightAt } from './passing';
 export {
   AIM_CONE_HALF_ANGLE_DEG,

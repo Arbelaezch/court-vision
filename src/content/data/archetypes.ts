@@ -5,6 +5,8 @@
 // catchAndShootWindowTicks in ticks, rangeRatingFloor a 0-100 rating, the rest unitless.
 // Movement tuning (MOVEMENT_TUNING_DATA): sprintSpeedMultiplier and brakingMultiplier are unitless
 // multipliers, sprintDurationS and staminaRefillS are in seconds.
+// Collision tuning (COLLISION_TUNING_DATA): radiusM in m, mass is a unitless relative push
+// resistance, setSpeedMps in m/s, setMassMultiplier a unitless multiplier, iterations a count.
 // Units: speedMps in m/s, accelerationMps2 in m/s^2, reachM is standing reach in meters.
 // strength, shooting.{rim,midRange,three}, passing, ballSecurity and defensiveAwareness are
 // integer ratings 0-100, higher is better.
@@ -79,6 +81,19 @@ export const MOVEMENT_TUNING_DATA = {
   sprintDurationS: 4,
   // Seconds to refill stamina from empty to full when not sprinting.
   staminaRefillS: 5,
+};
+
+// Body collision tuning, keyed by body type. Every player is a circle on the court plane; overlapping
+// bodies are pushed apart, split by inverse resistance. Contact is physical only, never graded.
+export const COLLISION_TUNING_DATA = {
+  bodies: {
+    guard: { radiusM: 0.24, mass: 1.0 }, // radiusM in m; mass unitless relative push resistance
+    wing: { radiusM: 0.27, mass: 1.2 }, // radiusM in m; mass unitless relative push resistance
+    big: { radiusM: 0.29, mass: 1.5 }, // radiusM in m; mass unitless relative push resistance
+  },
+  setSpeedMps: 0.3, // m/s, a player at or below this speed (and not pressing to move) counts as set
+  setMassMultiplier: 20, // unitless, a set player's mass is multiplied by this (a set screen holds)
+  iterations: 4, // count, push-apart passes over every pair per step
 };
 
 // Pass tuning shared by every player. Heights and radii are in m, speeds in m/s, the rest unitless.

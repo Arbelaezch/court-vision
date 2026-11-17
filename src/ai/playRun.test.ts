@@ -20,6 +20,8 @@ import {
 } from '../sim';
 import {
   REACHED_SPOT_RADIUS_M,
+  SCREEN_HOLD_CLEAR_M,
+  SCREEN_HOLD_TIMEOUT_S,
   startPracticeRun,
   stepPracticeRun,
   type PlayRunState,
@@ -329,6 +331,85 @@ describe('AC2: screens are set automatically', () => {
     );
     expect(screens).toHaveLength(1);
     expect(after.state.run.screensSet).toEqual([]);
+  });
+});
+
+describe('screen hold', () => {
+  const ROLL_SPOT = { x: 0.5, z: -4 };
+  const PAST_SPOT = { x: -1.5, z: -1 };
+  const timeoutTicks = Math.round(SCREEN_HOLD_TIMEOUT_S * SIM_HZ);
+
+  /** screenTest: PG walks up and stands still until the step the C's screen is set. */
+  function toScreenSet(): { state: Run; setTick: number } {
+    const play = SCREEN_TEST;
+    const walked = advance(play, start(play), 1200, walkTo(WALK_UP_SPOT), {
+      stop: inPhase('screen'),
+    });
+    const set = advance(play, walked.state, 1200, standStill, {
+      stop: (s) => s.game.events.some((e) => e.type === 'screenSet'),
+    });
+    expect(set.state.game.events.some((e) => e.type === 'screenSet')).toBe(true);
+    return { state: set.state, setTick: set.state.game.tick };
+  }
+
+  it('startPracticeRun starts with no holds', () => {
+    expect(start(SCREEN_TEST).run.screenHolds).toEqual([]);
+  });
+
+  it('screenTest: C holds its set spot until the timeout when the PG stands still, then rolls', () => {
+    const play = SCREEN_TEST;
+    const { state, setTick } = toScreenSet();
+    const cPos = offense(state.game, 'C').pos;
+    expect(state.run.screenHolds).toEqual([
+      { role: 'C', handler: 'PG', spot: cPos, startTick: setTick, handlerNear: true },
+    ]);
+    expect(state.run.phaseId).toBe('roll');
+    const spot = cPos;
+
+    let releaseTick: number | null = null;
+    const held = advance(play, state, timeoutTicks, standStill, {
+      onStep: (_prev, s) => {
+        const c = offense(s.game, 'C');
+        if (s.game.tick < setTick + timeoutTicks) {
+          expect(s.run.screenHolds.map((h) => h.role)).toEqual(['C']);
+          expect(dist(c.pos, spot)).toBeLessThanOrEqual(0.05);
+          expect(c.moveIntent.x).toBe(0);
+          expect(c.moveIntent.z).toBe(0);
+        } else if (releaseTick === null && s.run.screenHolds.length === 0) {
+          releaseTick = s.game.tick;
+        }
+      },
+    });
+    expect(releaseTick).toBe(setTick + timeoutTicks);
+
+    const atRelease = dist(offense(held.state.game, 'C').pos, ROLL_SPOT);
+    const rolled = advance(play, held.state, 30, standStill);
+    expect(dist(offense(rolled.state.game, 'C').pos, ROLL_SPOT)).toBeLessThan(atRelease);
+    expect(rolled.state.run.screenHolds).toEqual([]);
+  });
+
+  it('screenTest: the hold drops the first tick the PG is past SCREEN_HOLD_CLEAR_M, before the timeout', () => {
+    const play = SCREEN_TEST;
+    const { state, setTick } = toScreenSet();
+    const spot = state.run.screenHolds[0]?.spot as CourtPoint;
+    expect(dist(PAST_SPOT, spot)).toBeGreaterThan(SCREEN_HOLD_CLEAR_M);
+
+    let pastTick: number | null = null;
+    let releaseTick: number | null = null;
+    advance(play, state, timeoutTicks, walkTo(PAST_SPOT), {
+      onStep: (_prev, s) => {
+        if (pastTick === null && dist(offense(s.game, 'PG').pos, spot) > SCREEN_HOLD_CLEAR_M) {
+          pastTick = s.game.tick;
+        }
+        if (releaseTick === null && s.run.screenHolds.length === 0) releaseTick = s.game.tick;
+        if (releaseTick === null) {
+          expect(dist(offense(s.game, 'C').pos, spot)).toBeLessThanOrEqual(0.05);
+        }
+      },
+    });
+    expect(pastTick).not.toBeNull();
+    expect(releaseTick).toBe(pastTick);
+    expect(releaseTick as unknown as number).toBeLessThan(setTick + timeoutTicks);
   });
 });
 
