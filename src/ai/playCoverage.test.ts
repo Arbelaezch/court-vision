@@ -111,6 +111,19 @@ describe('case discovery', () => {
     expect(ids).toEqual(['practice/ballWatch', 'scrimmage/ballWatch', 'scrimmage/helpOnCut']);
   });
 
+  it('lists the Drive-and-Kick cases', () => {
+    const ids = CASES.filter((c) => c.play.id === 'driveAndKick').map(
+      (c) => `${c.mode.id}/${c.coverageId}`,
+    );
+    expect(ids).toEqual([
+      'practice/helpSteps',
+      'scrimmage/helpSteps',
+      'scrimmage/noHelp',
+      'scrimmage/bigAtRim',
+      'scrimmage/aggressiveCloseout',
+    ]);
+  });
+
   it('lists the Dribble Handoff cases', () => {
     const ids = CASES.filter((c) => c.play.id === 'dribbleHandoff').map(
       (c) => `${c.mode.id}/${c.coverageId}`,

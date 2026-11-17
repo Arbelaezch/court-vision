@@ -3,6 +3,7 @@
 // play file is missing from the registry or the names disagree.
 
 import { DRIBBLE_HANDOFF_DATA, DRIBBLE_HANDOFF_FILE } from './data/plays/dribbleHandoff';
+import { DRIVE_AND_KICK_DATA, DRIVE_AND_KICK_FILE } from './data/plays/driveAndKick';
 import { GIVE_AND_GO_DATA, GIVE_AND_GO_FILE } from './data/plays/giveAndGo';
 import { HIGH_PICK_AND_ROLL_DATA, HIGH_PICK_AND_ROLL_FILE } from './data/plays/highPickAndRoll';
 import { HORNS_SET_DATA, HORNS_SET_FILE } from './data/plays/hornsSet';
@@ -12,6 +13,7 @@ import type { ContentSource } from './validate';
 
 export const BUNDLED_PLAY_SOURCES: readonly ContentSource[] = [
   { file: GIVE_AND_GO_FILE, data: GIVE_AND_GO_DATA },
+  { file: DRIVE_AND_KICK_FILE, data: DRIVE_AND_KICK_DATA },
   { file: DRIBBLE_HANDOFF_FILE, data: DRIBBLE_HANDOFF_DATA },
   { file: HIGH_PICK_AND_ROLL_FILE, data: HIGH_PICK_AND_ROLL_DATA },
   { file: HORNS_SET_FILE, data: HORNS_SET_DATA },
