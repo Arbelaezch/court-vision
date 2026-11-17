@@ -54,6 +54,7 @@ interface RunObjects {
 }
 
 // Draws the live run straight from the controller state: one pose per sim step, no interpolation.
+// The shot arc runs on the tracker's arc clock, so it keeps playing while the controller holds the frame.
 export function createLiveRunView(opts: {
   scene: THREE.Scene;
   cast: CastContent;
@@ -125,7 +126,16 @@ export function createLiveRunView(opts: {
     const poses = interpolatePlayers(game, game, 0, (p) => tracker.animFor(p, game));
     const dtSec = input.steps.length * FIXED_DT;
     objects.layer.sync(poses, game.controlledPlayerId, dtSec);
-    objects.ball.sync(ballRenderPosition(game, game, 0, poses, tracker.shotArc()));
+    objects.ball.sync(
+      ballRenderPosition(
+        game,
+        game,
+        0,
+        poses,
+        tracker.shotArc(),
+        tracker.shotArcTick() ?? undefined,
+      ),
+    );
     objects.badges.sync(poses, passTargetBadges(input.game));
     objects.cones?.sync(defenseSpots(game));
 

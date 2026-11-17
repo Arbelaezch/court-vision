@@ -93,6 +93,14 @@ export {
   shotZoneAt,
 } from './shooting';
 export type { LookRating } from './shooting';
+export {
+  FLOATER_MIN_FLIGHT_TICKS,
+  SHOT_MIN_FLIGHT_TICKS,
+  SHOT_MISS_OFFSET_M,
+  SHOT_SPEED_MPS,
+  shotFlightTicks,
+  shotTargetPoint,
+} from './shotFlight';
 export { takeShot } from './takeShot';
 export type { GameEvent, GameEventSink, MistakeKind, RunGrade } from './events';
 export {

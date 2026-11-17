@@ -134,6 +134,33 @@ describe('createSimAnimTracker', () => {
     }
   });
 
+  it('keeps one arc and one shot clip when the same snapshot is observed again', () => {
+    const game = newGame();
+    const pg = game.controlledPlayerId;
+    game.players.find((q) => q.id === pg)!.pos = { x: RIM_CENTER.x, z: RIM_CENTER.z + 1 };
+    const states = run(game, 10, (i) => (i === 5 ? [{ type: 'shoot' }] : []));
+    const t = createSimAnimTracker();
+    let shotState: GameState | null = null;
+    for (let k = 1; k < states.length && !shotState; k++) {
+      t.observe(states[k - 1]!, states[k]!);
+      if (states[k]!.events.some((e) => e.type === 'shotResolved')) shotState = states[k]!;
+    }
+    expect(shotState).not.toBeNull();
+    const s = shotState!;
+    const arc = t.shotArc()!;
+    expect(t.shotArcTick()).toBe(arc.startTick + 1);
+    const clipSteps = Math.ceil(ANIM_ONE_SHOT_S.layup / FIXED_DT);
+    for (let n = 1; n <= 5; n++) {
+      t.observe(s, s);
+      expect(t.shotArc()).toBe(arc);
+      expect(t.shotArcTick()).toBe(arc.startTick + 1 + n);
+    }
+    for (let n = 6; n <= clipSteps + 2; n++) t.observe(s, s);
+    expect(t.animFor(player(s, pg), s)).not.toBe('layup');
+    t.reset();
+    expect(t.shotArcTick()).toBeNull();
+  });
+
   it('plays screen from extra events, and reset clears timers and arc', () => {
     const game = newGame();
     const screener = game.players.find((p) => p.role === 'C' && p.side === 'offense')!;
