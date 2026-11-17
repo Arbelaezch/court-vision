@@ -53,10 +53,36 @@ export interface MovementTuning {
   staminaRefillS: number;
 }
 
+/** Per-role body numbers for collision (./collision.ts). Filled in by the content layer. */
+export interface BodyProfile {
+  /** Body circle radius on the court plane, m, > 0. */
+  radiusM: number;
+  /** Relative push resistance, unitless, > 0 (a heavier body moves less on contact). */
+  mass: number;
+}
+
+/** Global collision numbers shared by every player. */
+export interface CollisionTuning {
+  /** A player at or below this post-movement speed (or holding pivot) is set, m/s, >= 0. */
+  setSpeedMps: number;
+  /** A set player's mass is multiplied by this, unitless, >= 1. */
+  setMassMultiplier: number;
+  /** Passes over every player pair per step, an integer >= 1. */
+  iterations: number;
+}
+
+export interface CollisionSetup {
+  /** Both sides use the role's profile. */
+  profiles: Record<RoleId, BodyProfile>;
+  tuning: CollisionTuning;
+}
+
 export interface MovementSetup {
   /** Both sides use the role's profile. */
   profiles: Record<RoleId, MovementProfile>;
   tuning: MovementTuning;
+  /** Body collision numbers; absent means players pass through each other. */
+  collision?: CollisionSetup;
 }
 
 export interface PlayerState {
@@ -286,6 +312,11 @@ export interface GameState {
   /** Remaining shot clock in ticks, or null when the mode has no shot clock. */
   shotClockTicks: number | null;
   movementTuning: MovementTuning;
+  /**
+   * Body collision numbers, or null when the movement setup has none: players then pass through
+   * each other.
+   */
+  collision: CollisionSetup | null;
   /** Passing numbers, or null when the game was created without them (pass actions then throw). */
   passing: PassingSetup | null;
   /** Shooting numbers, or null when the game was created without them. */
@@ -390,6 +421,26 @@ function validateMovement(movement: MovementSetup): void {
       throw new Error(`Court Vision: ${key} must be a finite number > 0, got ${tuning[key]}`);
     }
   }
+}
+
+function validateCollision(setup: CollisionSetup): void {
+  for (const role of ROLE_ORDER) {
+    const profile = setup.profiles[role] as BodyProfile | undefined;
+    if (profile === undefined) {
+      throw new Error(`Court Vision: collision setup has no profile for role ${role}`);
+    }
+    requireNumber(`${role} radiusM`, profile.radiusM, (v) => v > 0, '> 0');
+    requireNumber(`${role} mass`, profile.mass, (v) => v > 0, '> 0');
+  }
+  const { tuning } = setup;
+  requireNumber('collision setSpeedMps', tuning.setSpeedMps, (v) => v >= 0, '>= 0');
+  requireNumber('collision setMassMultiplier', tuning.setMassMultiplier, (v) => v >= 1, '>= 1');
+  requireNumber(
+    'collision iterations',
+    tuning.iterations,
+    (v) => Number.isInteger(v) && v >= 1,
+    'that is an integer >= 1',
+  );
 }
 
 const NON_NEGATIVE_PASS_TUNING_KEYS = [
@@ -615,6 +666,9 @@ export function createGame({
     );
   }
   validateMovement(movement);
+  if (movement.collision !== undefined) {
+    validateCollision(movement.collision);
+  }
   if (passing !== undefined) {
     validatePassing(passing);
   }
@@ -644,6 +698,7 @@ export function createGame({
       sprintDurationS: movement.tuning.sprintDurationS,
       staminaRefillS: movement.tuning.staminaRefillS,
     },
+    collision: movement.collision === undefined ? null : structuredClone(movement.collision),
     passing: passing === undefined ? null : structuredClone(passing),
     shooting: shooting === undefined ? null : structuredClone(shooting),
     lastCatch: null,
