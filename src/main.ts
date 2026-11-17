@@ -37,7 +37,14 @@ if (dev === null) {
   const store = createSaveStore();
   const controls = createControlSettings({ store, input });
   const audioSettings = createAudioSettings({ store, output: audio.engine });
-  const display = createDisplaySettings({ store, output: createReduceMotionOutput(document) });
+  const motionClass = createReduceMotionOutput(document);
+  const motionOutput = {
+    setReduceMotion(on: boolean): void {
+      motionClass.setReduceMotion(on);
+      mounted.run?.setReduceMotion(on);
+    },
+  };
+  const display = createDisplaySettings({ store, output: motionOutput });
   const progressReset = createProgressReset({ store });
   bindUiClicks(app, () => {
     audio.engine.play('uiClick');

@@ -145,6 +145,46 @@ describe('mountInput', () => {
     });
   });
 
+  describe('native keys on focused controls', () => {
+    const buttonTarget = { tagName: 'BUTTON', getAttribute: () => null };
+    const focusable = { getAttribute: (k: string) => (k === 'tabindex' ? '0' : null) };
+
+    function keydownOn(s: ReturnType<typeof setup>, t: unknown, code: string): Event {
+      const e = new Event('keydown', { cancelable: true });
+      Object.defineProperty(e, 'target', { value: t });
+      Object.defineProperty(e, 'code', { value: code });
+      Object.defineProperty(e, 'repeat', { value: false });
+      s.target.dispatchEvent(e);
+      return e;
+    }
+
+    it('does not prevent Space, Enter or ArrowDown on a button', () => {
+      const s = setup([
+        { action: 'shoot' as const, input: 'Space' },
+        { action: 'moveDown' as const, input: 'ArrowDown' },
+        { action: 'sprint' as const, input: 'Enter' },
+      ]);
+      for (const code of ['Space', 'Enter', 'ArrowDown']) {
+        expect(keydownOn(s, buttonTarget, code).defaultPrevented).toBe(false);
+      }
+    });
+
+    it('does not prevent ArrowDown on a tabindex target', () => {
+      const s = setup([{ action: 'moveDown' as const, input: 'ArrowDown' }]);
+      expect(keydownOn(s, focusable, 'ArrowDown').defaultPrevented).toBe(false);
+    });
+
+    it('still prevents Space on a plain target', () => {
+      expect(keydownOn(setup(), new EventTarget(), 'Space').defaultPrevented).toBe(true);
+    });
+
+    it('prevents Space on a button while capturing a rebind', () => {
+      const s = setup();
+      s.mounted.input.startCapture(() => {});
+      expect(keydownOn(s, buttonTarget, 'Space').defaultPrevented).toBe(true);
+    });
+  });
+
   it('unmount stops listening and is safe twice', () => {
     const { mounted, actions, fire } = setup();
     mounted.unmount();

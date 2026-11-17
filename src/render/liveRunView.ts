@@ -39,6 +39,8 @@ export interface LiveRunView {
   drawGame(input: LiveDrawInput): void;
   /** Hides and disposes the run objects (on quit). The next draw rebuilds them. */
   clear(): void;
+  /** Stops the target-ring pulse when on. */
+  setReduceMotion(on: boolean): void;
   dispose(): void;
 }
 
@@ -66,6 +68,7 @@ export function createLiveRunView(opts: {
   const tracker = createSimAnimTracker();
   let prevGame: SimSnapshot | null = null;
   let objects: RunObjects | null = null;
+  let reduceMotion = false;
 
   const teardown = (): void => {
     if (!objects) return;
@@ -128,11 +131,20 @@ export function createLiveRunView(opts: {
 
     const offense: Partial<Record<RoleId, { x: number; z: number }>> = {};
     for (const p of game.players) if (p.side === 'offense') offense[p.role] = p.pos;
-    objects.cues.sync({ cues: input.cues, offense, humanRole: input.humanRole, dtSec });
+    objects.cues.sync({
+      cues: input.cues,
+      offense,
+      humanRole: input.humanRole,
+      dtSec,
+      reduceMotion,
+    });
   }
 
   return {
     drawGame,
+    setReduceMotion(on) {
+      reduceMotion = on;
+    },
     draw(controller, frame) {
       drawGame({
         game: controller.game,

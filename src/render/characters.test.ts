@@ -112,6 +112,51 @@ describe('character layer', () => {
     }
   });
 
+  it('draws the controlled marker as a 4-sided cone (shape channel)', () => {
+    const marker = find<THREE.Mesh>(build(), 'controlled-marker');
+    expect(marker.geometry).toBeInstanceOf(THREE.ConeGeometry);
+    expect((marker.geometry as THREE.ConeGeometry).parameters.radialSegments).toBe(4);
+  });
+
+  it('maps each side team tag to its atlas cell so the sides read differently', () => {
+    const layer = build();
+    const cells = new Map<string, number[]>();
+    for (const [side, label] of [
+      ['offense', 'OFF'],
+      ['defense', 'DEF'],
+    ] as const) {
+      const uv = find<THREE.InstancedMesh>(layer, `team-tag-${side}`).geometry.getAttribute('uv');
+      const cell = labels.cell(label);
+      const values = Array.from({ length: uv.count * 2 }, (_, i) => uv.array[i]!);
+      const want = [cell.u0, cell.v1, cell.u1, cell.v1, cell.u0, cell.v0, cell.u1, cell.v0];
+      expect(values).toEqual(want.map(Math.fround));
+      cells.set(side, values);
+    }
+    expect(cells.get('offense')).not.toEqual(cells.get('defense'));
+  });
+
+  it('places each player tag at the player x and floor height after sync', () => {
+    const hiddenLayer = createCharacterLayer({ cast, roster, labels });
+    const hiddenTag = find<THREE.InstancedMesh>(hiddenLayer, 'team-tag-offense');
+    expect(instanceBox(hiddenTag, 0).getSize(new THREE.Vector3()).x).toBe(0);
+
+    const layer = build();
+    const next = { offense: 0, defense: 0 };
+    for (const p of game.players) {
+      const mesh = find<THREE.InstancedMesh>(layer, `team-tag-${p.side}`);
+      const box = instanceBox(mesh, next[p.side]++);
+      const size = box.getSize(new THREE.Vector3());
+      expect(size.x).toBeGreaterThan(0);
+      expect(size.z).toBeGreaterThan(0);
+      const center = box.getCenter(new THREE.Vector3());
+      expect(center.x).toBeCloseTo(p.pos.x, 5);
+      expect(center.y).toBeGreaterThan(0);
+      expect(center.y).toBeLessThan(0.02);
+      expect(center.z).toBeGreaterThan(p.pos.z);
+    }
+    expect(find<THREE.InstancedMesh>(layer, 'team-tag-backings').count).toBe(roster.length);
+  });
+
   it('shows the controlled marker above the controlled player and hides it on null', () => {
     const layer = build();
     const marker = find<THREE.Mesh>(layer, 'controlled-marker');

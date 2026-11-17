@@ -22,6 +22,8 @@ export interface CueLayerInput {
   readonly offense: Readonly<Partial<Record<RoleId, CourtPoint>>>;
   readonly humanRole: RoleId;
   readonly dtSec: number;
+  /** True stops the target-ring pulse: the ring stays static at scale 1. */
+  readonly reduceMotion: boolean;
 }
 
 export interface CueLayer {
@@ -162,10 +164,11 @@ export function createCueLayer(): CueLayer {
             if (!at) break;
             const ring = rings[ringCount] ?? makeRing();
             ringCount += 1;
-            const pulse =
-              1 +
-              CUE_RING_PULSE_AMPLITUDE *
-                Math.sin((2 * Math.PI * elapsedS) / CUE_RING_PULSE_PERIOD_S);
+            const pulse = input.reduceMotion
+              ? 1
+              : 1 +
+                CUE_RING_PULSE_AMPLITUDE *
+                  Math.sin((2 * Math.PI * elapsedS) / CUE_RING_PULSE_PERIOD_S);
             ring.position.set(at.x, CUE_FLOOR_Y_M, at.z);
             ring.scale.set(pulse, 1, pulse);
             ring.visible = true;

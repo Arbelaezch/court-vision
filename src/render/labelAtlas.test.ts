@@ -54,7 +54,7 @@ describe('createLabelAtlas', () => {
 describe('collectCastLabels', () => {
   it('has jersey numbers and role ids without duplicates', () => {
     const labels = collectCastLabels(loadCastContent().teams);
-    for (const l of ['3', '50', '44', 'PG', 'C']) expect(labels).toContain(l);
+    for (const l of ['3', '50', '44', 'PG', 'C', 'OFF', 'DEF']) expect(labels).toContain(l);
     expect(new Set(labels).size).toBe(labels.length);
   });
 });

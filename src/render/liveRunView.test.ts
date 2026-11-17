@@ -73,6 +73,34 @@ describe('live run view', () => {
     expect(all).toContain('ball');
   });
 
+  it('keeps the target ring at scale 1 under reduce motion', () => {
+    const { scene, view } = setup();
+    view.setReduceMotion(true);
+    const game = createGame({
+      seed: 1,
+      movement: CONTENT.movement,
+      passing: CONTENT.passing,
+      shooting: CONTENT.shooting,
+      defenseMode: 'cones',
+    });
+    const input = {
+      game,
+      humanRole: 'PG' as const,
+      steps: [
+        { game, events: [], reset: false },
+        { game, events: [], reset: false },
+      ],
+      cues: [{ kind: 'targetRing' as const, role: 'SG' as const }],
+    };
+    for (let i = 0; i < 2; i++) {
+      view.drawGame(input);
+      const ring = scene.getObjectByName('cue-target-ring-0')!;
+      expect(ring.visible).toBe(true);
+      expect(ring.scale.x).toBe(1);
+      expect(ring.scale.z).toBe(1);
+    }
+  });
+
   it('handles a reset step', () => {
     const { view } = setup();
     const controller = start();

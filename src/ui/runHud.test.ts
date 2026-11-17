@@ -114,3 +114,23 @@ describe('run HUD', () => {
     expect(root.hidden).toBe(true);
   });
 });
+
+describe('non-color channel', () => {
+  it('states the banner outcome as text for both tones', () => {
+    const { hud, banner } = setup();
+    hud.update(model({ banner: { tone: 'success', text: 'Perfect run!' } }));
+    expect(banner.textContent).toBe('Perfect run!');
+    hud.update(model({ banner: { tone: 'neutral', text: 'Not quite. Try again.' } }));
+    expect(banner.textContent).toBe('Not quite. Try again.');
+  });
+
+  it('shows stamina as a fill width percentage and aria-valuenow', () => {
+    const { hud, meter, fill } = setup();
+    hud.update(model({ stamina: 0.25 }));
+    expect(fill.style['width']).toBe('25%');
+    expect(meter.attrs['aria-valuenow']).toBe('0.25');
+    hud.update(model({ stamina: 0.8 }));
+    expect(fill.style['width']).toBe('80%');
+    expect(meter.attrs['aria-valuenow']).toBe('0.8');
+  });
+});

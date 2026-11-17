@@ -23,6 +23,8 @@ export interface TeamColors {
 export interface Team {
   readonly side: TeamSide;
   readonly name: string;
+  /** Short text that tells the teams apart without color. */
+  readonly tag: string;
   readonly colors: TeamColors;
   readonly jerseyNumbers: Readonly<Record<RoleId, number>>;
 }
@@ -30,7 +32,7 @@ export interface Team {
 export type TeamCast = Readonly<Record<TeamSide, Team>>;
 
 const SIDES: readonly TeamSide[] = ['offense', 'defense'];
-const TEAM_KEYS = ['name', 'colors', 'jerseyNumbers'] as const;
+const TEAM_KEYS = ['name', 'tag', 'colors', 'jerseyNumbers'] as const;
 
 function loadTeam(side: TeamSide, value: unknown, at: FieldPath): Team {
   const obj = readObject(value, at);
@@ -38,6 +40,10 @@ function loadTeam(side: TeamSide, value: unknown, at: FieldPath): Team {
 
   const nameField = getField(obj, 'name', at);
   const name = readString(nameField.value, nameField.at);
+
+  const tagField = getField(obj, 'tag', at);
+  const tag = readString(tagField.value, tagField.at);
+  if (!/^[A-Z]{2,4}$/.test(tag)) fail(tagField.at, 'must be 2 to 4 uppercase letters');
 
   const colorsField = getField(obj, 'colors', at);
   const colorsObj = readObject(colorsField.value, colorsField.at);
@@ -63,7 +69,7 @@ function loadTeam(side: TeamSide, value: unknown, at: FieldPath): Team {
     jerseyNumbers[id] = n;
   }
 
-  return { side, name, colors, jerseyNumbers: jerseyNumbers as Record<RoleId, number> };
+  return { side, name, tag, colors, jerseyNumbers: jerseyNumbers as Record<RoleId, number> };
 }
 
 export function loadTeams(source: ContentSource): TeamCast {
@@ -83,6 +89,9 @@ export function loadTeams(source: ContentSource): TeamCast {
       { file: source.file, field: 'teams.defense.colors.primary' },
       'must differ from offense primary color',
     );
+  }
+  if (cast.defense.tag === cast.offense.tag) {
+    fail({ file: source.file, field: 'teams.defense.tag' }, 'must differ from offense tag');
   }
   return cast;
 }

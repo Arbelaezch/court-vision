@@ -124,3 +124,25 @@ describe('practice cones', () => {
     ).toThrow(/duplicate/);
   });
 });
+
+describe('non-color channel', () => {
+  it('draws defenders as cone shapes, not plain color blobs', () => {
+    expect(bodies().geometry).toBeInstanceOf(THREE.ConeGeometry);
+  });
+
+  it('gives every cone a role label whose uv maps to that role in the atlas', () => {
+    const cones = createPracticeCones({ teams: cast.teams, cones: spots, labels });
+    for (const spot of spots) {
+      const label = cones.object.getObjectByName(`cone-label-${spot.role}`) as THREE.Mesh;
+      expect(label).toBeDefined();
+      const cell = labels.cell(spot.role);
+      const uv = label.geometry.getAttribute('uv');
+      const us = Array.from({ length: uv.count }, (_, i) => uv.getX(i));
+      const vs = Array.from({ length: uv.count }, (_, i) => uv.getY(i));
+      expect(Math.min(...us)).toBeCloseTo(cell.u0, 6);
+      expect(Math.max(...us)).toBeCloseTo(cell.u1, 6);
+      expect(Math.min(...vs)).toBeCloseTo(cell.v0, 6);
+      expect(Math.max(...vs)).toBeCloseTo(cell.v1, 6);
+    }
+  });
+});

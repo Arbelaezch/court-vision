@@ -26,6 +26,9 @@ class FakeEl {
   addEventListener(type: string, fn: () => void): void {
     (this.listeners[type] ??= []).push(fn);
   }
+  hasListener(type: string): boolean {
+    return (this.listeners[type]?.length ?? 0) > 0;
+  }
   click(): void {
     this.fire('click');
   }
@@ -250,6 +253,40 @@ describe('createScreenMenus', () => {
     expect(events).toEqual([{ type: 'back' }]);
   });
 
+  describe('non-color channel', () => {
+    function expectBadge(badge: FakeEl): void {
+      const icon = find(badge, (n) => n.className === 'cv-mastered-icon')!;
+      expect(icon.textContent).toBe('✓');
+      expect(icon.attrs['aria-hidden']).toBe('true');
+      expect(find(badge, (n) => n.className === 'cv-mastered-text')!.textContent).toBe('Mastered');
+    }
+
+    it('marks a mastered progress row with a check icon and Mastered text', () => {
+      const { menus, root } = setup();
+      menus.show({ screen: 'progress' }, progressLabels);
+      const tbody = find(root, (n) => n.tagName === 'tbody')!;
+      const cells = tbody.children.map((tr) => tr.children[4]!);
+      expectBadge(find(cells[2]!, (n) => n.className === 'cv-mastered-badge')!);
+    });
+
+    it('says Not yet in non-mastered progress rows', () => {
+      const { menus, root } = setup();
+      menus.show({ screen: 'progress' }, progressLabels);
+      const tbody = find(root, (n) => n.tagName === 'tbody')!;
+      for (const i of [0, 1, 3]) {
+        expect(tbody.children[i]!.children[4]!.textContent).toBe('Not yet');
+      }
+    });
+
+    it('puts the same badge in a mastered play button on play select', () => {
+      const { menus, root } = setup();
+      menus.show({ screen: 'playSelect', modeId: 'practice' }, progressLabels);
+      const ol = find(root, (n) => n.tagName === 'ol')!;
+      const button = ol.children[1]!.children[0]!;
+      expectBadge(find(button, (n) => n.className === 'cv-mastered-badge')!);
+    });
+  });
+
   it('renders the paused dialog with a focused Resume', () => {
     const { menus, root, events } = setup();
     menus.show({ screen: 'paused', modeId: 'practice', playId: 'a' }, labels);
@@ -331,6 +368,79 @@ describe('createScreenMenus', () => {
     expect(unmount).not.toHaveBeenCalled();
     menus.show({ screen: 'mainMenu' }, labels);
     expect(unmount).toHaveBeenCalledTimes(1);
+  });
+
+  describe('keyboard operability', () => {
+    const screens: ScreenState[] = [
+      { screen: 'mainMenu' },
+      { screen: 'tutorialMenu' },
+      { screen: 'glossary' },
+      { screen: 'settings' },
+      { screen: 'progress' },
+      { screen: 'playSelect', modeId: 'practice' },
+      { screen: 'paused', modeId: 'practice', playId: 'a' },
+      { screen: 'tutorial' },
+    ];
+
+    function clickable(el: FakeEl): FakeEl[] {
+      const out: FakeEl[] = [];
+      const walk = (n: FakeEl): void => {
+        if (n.hasListener('click')) out.push(n);
+        n.children.forEach(walk);
+      };
+      walk(el);
+      return out;
+    }
+
+    it.each(screens.map((s) => [s.screen, s] as const))(
+      '%s: every clickable element is a type=button button',
+      (_name, state) => {
+        const { menus, root } = setup();
+        menus.show(state, labels);
+        const items = clickable(root);
+        expect(items.length).toBeGreaterThan(0);
+        for (const n of items) {
+          expect(n.tagName).toBe('button');
+          expect(n.attrs['type']).toBe('button');
+        }
+      },
+    );
+
+    it('makes the glossary list a labelled, focusable region', () => {
+      const { menus, root } = setup();
+      menus.show({ screen: 'glossary' }, labels);
+      const dl = find(root, (n) => n.tagName === 'dl')!;
+      expect(dl.attrs['tabindex']).toBe('0');
+      expect(dl.attrs['role']).toBe('region');
+      expect(dl.attrs['aria-label']).toBeTruthy();
+    });
+
+    it('focuses the expected element after show', () => {
+      const first = (state: ScreenState, pred: (n: FakeEl) => boolean): FakeEl => {
+        const { menus, root } = setup();
+        menus.show(state, labels);
+        return find(root, pred)!;
+      };
+      expect(first({ screen: 'mainMenu' }, (n) => n.tagName === 'button').focused).toBe(true);
+      expect(first({ screen: 'tutorialMenu' }, (n) => n.tagName === 'button').focused).toBe(true);
+      expect(first({ screen: 'glossary' }, (n) => n.tagName === 'dl').focused).toBe(true);
+      expect(
+        first({ screen: 'progress' }, (n) => n.tagName === 'button' && n.textContent === 'Back')
+          .focused,
+      ).toBe(true);
+      const play = first(
+        { screen: 'playSelect', modeId: 'practice' },
+        (n) => n.className === 'cv-play-button',
+      );
+      expect(play.focused).toBe(true);
+      expect(play.children[0]!.textContent).toBe('Alpha');
+    });
+
+    it('focuses Back on play select when there are no plays', () => {
+      const { menus, root } = setup();
+      menus.show({ screen: 'playSelect', modeId: 'practice' }, { ...labels, plays: [] });
+      expect(buttons(root).map((b) => [b.textContent, b.focused])).toEqual([['Back', true]]);
+    });
   });
 
   describe('play preview', () => {

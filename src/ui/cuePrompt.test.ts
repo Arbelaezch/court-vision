@@ -93,3 +93,13 @@ describe('createCuePromptOverlay', () => {
     expect(root.removed).toBe(true);
   });
 });
+
+describe('non-color channel', () => {
+  it('puts the headline text in a role=status element', () => {
+    const { overlay, root, headline } = setup();
+    overlay.show({ headline: 'Cut to the rim!', reason: null });
+    expect(root.attrs['role']).toBe('status');
+    expect(headline.textContent).not.toBe('');
+    expect(headline.textContent).toBe('Cut to the rim!');
+  });
+});

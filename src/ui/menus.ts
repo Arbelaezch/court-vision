@@ -27,6 +27,7 @@ export function createScreenMenus(opts: {
   root.className = 'cv-screens';
   container.appendChild(root);
   let last: ScreenState | null = null;
+  let initialFocus: HTMLElement | null = null;
 
   function el(tag: string, className?: string, text?: string): HTMLElement {
     const node = doc.createElement(tag);
@@ -84,13 +85,19 @@ export function createScreenMenus(opts: {
           ['Settings', { type: 'openSettings' }],
           ['Progress', { type: 'openProgress' }],
         ];
-        for (const [label, event] of items) p.appendChild(button('cv-menu-button', label, event));
+        for (const [label, event] of items) {
+          const b = button('cv-menu-button', label, event);
+          initialFocus ??= b;
+          p.appendChild(b);
+        }
         root.appendChild(p);
         return;
       }
       case 'tutorialMenu': {
         const p = panel('Tutorial', 'h2');
-        p.appendChild(button('cv-menu-button', 'Controls tutorial', { type: 'openTutorial' }));
+        const first = button('cv-menu-button', 'Controls tutorial', { type: 'openTutorial' });
+        initialFocus = first;
+        p.appendChild(first);
         p.appendChild(button('cv-menu-button', 'Glossary', { type: 'openGlossary' }));
         p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
         root.appendChild(p);
@@ -99,6 +106,10 @@ export function createScreenMenus(opts: {
       case 'glossary': {
         const p = panel('Glossary', 'h2');
         const list = el('dl', 'cv-glossary-list');
+        list.setAttribute('tabindex', '0');
+        list.setAttribute('role', 'region');
+        list.setAttribute('aria-label', 'Glossary terms');
+        initialFocus = list;
         for (const entry of labels.glossary) {
           list.appendChild(el('dt', undefined, entry.term));
           list.appendChild(el('dd', undefined, entry.text));
@@ -168,7 +179,9 @@ export function createScreenMenus(opts: {
         }
         table.appendChild(tbody);
         p.appendChild(table);
-        p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
+        const back = button('cv-menu-button', 'Back', { type: 'back' });
+        initialFocus = back;
+        p.appendChild(back);
         root.appendChild(p);
         return;
       }
@@ -205,6 +218,7 @@ export function createScreenMenus(opts: {
             b.addEventListener('mouseenter', show);
             b.addEventListener('focus', show);
           }
+          initialFocus ??= b;
           li.appendChild(b);
           list.appendChild(li);
         }
@@ -216,7 +230,9 @@ export function createScreenMenus(opts: {
           };
           handle.show(labels.plays[0]!.id);
         }
-        p.appendChild(button('cv-menu-button', 'Back', { type: 'back' }));
+        const back = button('cv-menu-button', 'Back', { type: 'back' });
+        initialFocus ??= back;
+        p.appendChild(back);
         root.appendChild(p);
         return;
       }
@@ -263,7 +279,10 @@ export function createScreenMenus(opts: {
         state.screen === 'inRun' || state.screen === 'tutorial'
           ? 'cv-screens'
           : 'cv-screens cv-screens-backdrop';
+      initialFocus = null;
       build(state, labels);
+      // build() assigns initialFocus through closures, which control-flow analysis cannot see.
+      (initialFocus as HTMLElement | null)?.focus();
     },
     dispose() {
       unmountView?.();

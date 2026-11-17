@@ -16,6 +16,16 @@ import {
 const ASPECTS = [21 / 9, 16 / 9, 4 / 3, 1, 3 / 4, 9 / 16, 0.4];
 
 describe('fitTacticalCamera', () => {
+  it('has no time-based motion: the same inputs give the same pose', () => {
+    const camera = new THREE.PerspectiveCamera();
+    fitTacticalCamera(camera, 16 / 9, PLAYER_HEAD_HEIGHT);
+    const position = camera.position.clone();
+    const quaternion = camera.quaternion.clone();
+    fitTacticalCamera(camera, 16 / 9, PLAYER_HEAD_HEIGHT);
+    expect(camera.position.equals(position)).toBe(true);
+    expect(camera.quaternion.equals(quaternion)).toBe(true);
+  });
+
   it.each(ASPECTS)('fits the half court at aspect %f', (aspect) => {
     const camera = new THREE.PerspectiveCamera();
     fitTacticalCamera(camera, aspect);
