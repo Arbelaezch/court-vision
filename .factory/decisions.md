@@ -431,3 +431,14 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Close old record, start work: End the leftover #95 run with harness run end --status aborted and start #97; #95 stays blocked and gets a new run when requeued, its branch and plan files stay on disk
 - Decided by: assumed on 2026-11-17
 - Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
+
+## How should a screen hold in the real plays: engine-wide hold, an authored hold phase per play, or leave the plays as they are and narrow the criterion?
+- Kind: product
+- Decision: Option 1: Screener waits for ballhandler. Engine, all screen plays: after a screen is set the screener stays still until the ballhandler has passed it or a short timeout runs out, then rolls. Changes timing in High Pick-and-Roll, Horns and possibly Dribble Handoff; bot tests and spots are retuned in this issue.
+- Decided by: user on 2026-11-17
+
+## Decide whether passing checks on the branch are enough before merge, with the main branch run confirmed after the merge.
+- Kind: process
+- Decision: Check main after the merge: Accept this branch's passing gates as pre-merge evidence, and have the supervisor confirm the CI and deploy run on main after the merge before closing #41
+- Decided by: assumed on 2026-11-17
+- Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
