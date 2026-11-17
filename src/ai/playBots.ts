@@ -9,9 +9,10 @@
 // graded `great` for the run's coverage. With no decision, make the on-path pass (the human's
 // active pass/handOff track step, else the phase's passCompleted trigger from the human), once the
 // target has reached its own active spot (the gate the AI uses). Otherwise walk toward the
-// human's active step spot (or setup spot when it has no step yet). A route option (move `move`
-// with a `branch`) is "played" by walking to its branch's reachedSpot transition spot, whether or
-// not the human holds the ball.
+// human's active step spot (or setup spot when it has no step yet). A route option (move `move` or
+// `sprint`, with a `branch`) is "played" by walking to its branch's reachedSpot transition spot,
+// whether or not the human holds the ball, holding sprint exactly when its move is `sprint`. The
+// bots emit sprint nowhere else.
 //
 // Wrong read: act like the correct-read bot until the human holds the ball at a decision, then
 // pick the first of: an option graded `bad` for this coverage, a pass to a teammate the referee
@@ -203,7 +204,10 @@ function createBot(
     if (decision !== null && (holds || decision.options.some((o) => o.branch !== undefined))) {
       const move = pick(decision, referee);
       if (move.branch !== undefined) {
-        return [moveToward(game, routeSpot(play, decision, move.branch))];
+        return [
+          { type: 'sprint', held: move.move === 'sprint' },
+          moveToward(game, routeSpot(play, decision, move.branch)),
+        ];
       }
       if (holds) return [toSimAction(game, move)];
     }

@@ -14,8 +14,11 @@
 //   passes to it in that phase; otherwise it is a wrong teammate.
 // - A shoot or floater matches an option with the same move, then the first shoot/floater option,
 //   else it is off script.
-// - A route option (move `move`, `branch`) matches when the run leaves the decision's phase for
-//   `branch` (classifyRoute). Other movement is never graded.
+// - A route option (move `move` or `sprint`, plus `branch`) matches when the run leaves the
+//   decision's phase for `branch` (classifyRoute). Of the options for that branch, a `sprint` one
+//   matches when the role sprinted during the decision phase and a `move` one when it did not;
+//   failing that, the first option for the branch is graded (flagged `exactMove: false`, not
+//   capped). Other movement is never graded.
 import { PASS_MOVES } from '../content';
 import type { DecisionGrade, DecisionOption, DecisionPoint, PlayScenario } from '../content';
 import type { CourtPoint, RoleId, SimAction } from '../sim';
@@ -141,18 +144,32 @@ export function classifyAction(
 /**
  * The route option `role` took by leaving `phaseId` for `nextPhaseId`, graded for `coverageId`;
  * null when the phase did not change, there is no decision there, or no option routes to it.
+ * `sprinted` (default false) says whether the role sprinted during `phaseId`: it prefers the
+ * branch's `sprint` option, otherwise its `move` option. Without that match it falls back to the
+ * first option for the branch with `exactMove: false`; the referee does not cap route grades.
  */
 export function classifyRoute(
   play: PlayScenario,
-  input: { role: RoleId; phaseId: string; nextPhaseId: string; coverageId: string },
+  input: {
+    role: RoleId;
+    phaseId: string;
+    nextPhaseId: string;
+    coverageId: string;
+    sprinted?: boolean;
+  },
 ): Extract<ActionClass, { kind: 'option' }> | null {
-  const { role, phaseId, nextPhaseId, coverageId } = input;
+  const { role, phaseId, nextPhaseId, coverageId, sprinted = false } = input;
   if (nextPhaseId === phaseId) return null;
   const decision = findDecisionPoint(play, role, phaseId);
   if (decision === null) return null;
-  const option = decision.options.find((o) => o.branch === nextPhaseId);
+  const routes = decision.options.filter((o) => o.branch === nextPhaseId);
+  const preferred = routes.find((o) => o.move === (sprinted ? 'sprint' : 'move'));
+  const option = preferred ?? routes[0];
   if (option === undefined) return null;
-  return optionClass(play, decision, option, coverageId);
+  return {
+    ...optionClass(play, decision, option, coverageId),
+    exactMove: preferred !== undefined,
+  };
 }
 
 /** The spot of the decision phase's `reachedSpot` transition (for the decision's role) to `branch`. */
