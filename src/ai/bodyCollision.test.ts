@@ -130,8 +130,12 @@ describe('bodies never overlap in the preview loop', () => {
 const CONTACT_SLACK_M = 0.02;
 /** Most a held screener may be moved off its hold spot while touching a defender, m. */
 const HOLD_DISPLACEMENT_M = 0.15;
-/** Plays that must show a defender meeting a held screen (the check is not vacuous). */
-const CONTACT_PLAYS = ['highPickAndRoll', 'hornsSet', 'dribbleHandoff'];
+/**
+ * Plays that must show a defender meeting a held screen (the check is not vacuous).
+ * Dribble Handoff is a screen play whose defenders never reach the handoff spot, so it is checked
+ * for hold displacement and overlap only (decision 2026-11-17).
+ */
+const CONTACT_PLAYS = ['highPickAndRoll', 'hornsSet'];
 
 const SCREEN_PLAYS = PLAYS.filter((play) =>
   Object.values(play.tracks).some((track) =>

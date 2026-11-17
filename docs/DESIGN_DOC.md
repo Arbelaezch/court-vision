@@ -89,7 +89,7 @@ Implementation is mostly the factory's call. These decisions are fixed because t
 - **Language/tooling:** TypeScript, Vite, three.js, Vitest. ESLint and Prettier. Strict TypeScript.
 - **Rendering:** plain three.js. Default to the WebGL renderer. WebGPU is optional and out of scope for v1. **Pin the three.js version** in `package.json`.
 - **UI:** HTML/CSS overlay for menus, HUD, cues-as-text and prompts. No React or UI framework is required. World-space cues (floor arrows, target rings, cones) are drawn in three.js.
-- **Physics:** no physics engine. Movement and the ball are custom and kinematic. Basketball outcomes are rule- and situation-based (see section 7), not simulated by collision. Players do have simple circular bodies that cannot overlap (a deterministic push-apart in the sim; contact slows a player no faster than it can brake, and a set screener resists contact). Practice cones are markers, not bodies. Contact is physical only, never graded or whistled.
+- **Physics:** no physics engine. Movement and the ball are custom and kinematic. Basketball outcomes are rule- and situation-based (see section 7), not simulated by collision. Players do have simple circular bodies that cannot overlap (a deterministic push-apart in the sim; contact slows a player no faster than it can brake, and a holding screener resists contact, so defenders must go around it). Practice cones are markers, not bodies. Contact is physical only, never graded or whistled.
 - **No backend.** The game is a purely static site.
 - **Persistence:** `localStorage` with a versioned schema and safe fallback if data is missing or corrupt.
 - **Platform:** desktop browsers (Chrome, Firefox, Safari, Edge, current versions). Keyboard + mouse first, gamepad supported. Design the UI so layout is responsive-friendly for a future mobile version, but do not build touch controls in v1.
@@ -236,7 +236,7 @@ Grades drive (a) the end-of-run result banner and (b) whether a run counts as a 
 
 - **Purpose:** go through the motions of a play with no pressure.
 - **Setup:** the player's five-person offense on the half court. **No defenders.** Cones mark where defenders would be. Cones follow the play's script (they may reposition at each phase to show how defenders would slide) but **never contest, steal, or block**.
-- **Teammates:** AI teammates run their part of the play. The play advances in **phases, triggered by events** (player reached a spot, pass completed, screen set), not just by a timer, so a slow beginner never gets left behind.
+- **Teammates:** AI teammates run their part of the play. The play advances in **phases, triggered by events** (player reached a spot, pass completed, screen set), not just by a timer, so a slow beginner never gets left behind. After an AI teammate sets a screen or makes a handoff, he holds that spot until the ballhandler has come past him (within 2.5 m, then farther than 2.5 m away), or for at most 1.5 s, then rolls or cuts. The same rule applies in Scrimmage.
 - **Cues:** `Full`.
 - **Clock:** none.
 - **Run ends:** after the player completes the play and takes the final shot (made or missed) or is graded on the final decision. The run counts as a **success** if the player followed the play's standard path (the best read for the Practice coverage) through the final shot, made or missed; Practice has no look grading (decision g1). The result banner shows briefly, then the game resets for another attempt.

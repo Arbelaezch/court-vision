@@ -131,9 +131,11 @@ describe('the C holds after the handoff', () => {
     const cId = offenseRole(controller, 'C').id;
     const pgId = offenseRole(controller, 'PG').id;
     const timeoutTicks = Math.round(SCREEN_HOLD_TIMEOUT_S * SIM_HZ);
-    let hold: ScreenHold | null = null;
-    let releaseTick: number | null = null;
-    for (let i = 0; i < MAX_STEPS && releaseTick === null; i++) {
+    const seen: { hold: ScreenHold | null; releaseTick: number | null } = {
+      hold: null,
+      releaseTick: null,
+    };
+    for (let i = 0; i < MAX_STEPS && seen.releaseTick === null; i++) {
       const step = stepRunController(PLAY, controller, bot(controller));
       controller = step.controller;
       const handedOff = step.events.some(
@@ -150,22 +152,24 @@ describe('the C holds after the handoff', () => {
           handler: 'PG',
           startTick: controller.game.tick,
         });
-        hold = started ?? null;
+        seen.hold = started ?? null;
         continue;
       }
+      const hold = seen.hold;
       if (hold === null) continue;
       if (controller.run.screenHolds.some((h) => h.role === 'C')) {
         const c = offenseRole(controller, 'C');
         expect(Math.hypot(c.pos.x - hold.spot.x, c.pos.z - hold.spot.z)).toBeLessThanOrEqual(0.05);
       } else {
-        releaseTick = controller.game.tick;
+        seen.releaseTick = controller.game.tick;
       }
       expect(step.attempt).toBeNull();
     }
-    expect(hold).not.toBeNull();
-    expect(releaseTick).not.toBeNull();
-    const startTick = (hold as unknown as ScreenHold).startTick;
-    expect((releaseTick as unknown as number) - startTick).toBeLessThanOrEqual(timeoutTicks);
+    expect(seen.hold).not.toBeNull();
+    expect(seen.releaseTick).not.toBeNull();
+    if (seen.hold === null || seen.releaseTick === null)
+      throw new Error('hold never started or released');
+    expect(seen.releaseTick - seen.hold.startTick).toBeLessThanOrEqual(timeoutTicks);
   });
 });
 
