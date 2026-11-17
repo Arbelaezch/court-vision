@@ -442,3 +442,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Check main after the merge: Accept this branch's passing gates as pre-merge evidence, and have the supervisor confirm the CI and deploy run on main after the merge before closing #41
 - Decided by: assumed on 2026-11-17
 - Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
+
+## What counts as enough proof that the live site works for the v1 release check (AC3 of #41)?
+- Kind: product
+- Decision: Option 1: Automated checks, gap noted in PR. Accept the HTTP 200 check plus the headless release smoke test as AC3 evidence and state the real-browser gap in the PR.
+- Decided by: user on 2026-11-17
+- Why: The user opened the live site themselves and confirmed that both a Practice and a Scrimmage run work.
