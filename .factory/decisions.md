@@ -448,3 +448,9 @@ Questions about the product or its implementation and how they were settled. Rec
 - Decision: Option 1: Automated checks, gap noted in PR. Accept the HTTP 200 check plus the headless release smoke test as AC3 evidence and state the real-browser gap in the PR.
 - Decided by: user on 2026-11-17
 - Why: The user opened the live site themselves and confirmed that both a Practice and a Scrimmage run work.
+
+## Decide whether to end the leftover #41 run as aborted so #95 can start, or stop #95 until you look at it.
+- Kind: process
+- Decision: Close leftover record, continue: End the leftover #41 run as aborted (its files stay in the run directory, #41 stays queued and gets a fresh run later), then start #95
+- Decided by: assumed on 2026-11-17
+- Why: A minor process question: the factory took its recommended option ([factory] auto_accept).
