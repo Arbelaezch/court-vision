@@ -24,8 +24,8 @@ v1 ships five point guard plays: Give-and-Go, Drive-and-Kick, Dribble Handoff, H
 |---|---|
 | [`docs/DESIGN_DOC.md`](docs/DESIGN_DOC.md) | **The design spec and source of truth.** Vision, terminology, scope, mechanics, plays, data system, testing, milestones. |
 | [`.factory/decisions.md`](.factory/decisions.md) | Log of significant decisions made during implementation. |
-| [`docs/adding-a-play.md`](docs/adding-a-play.md) | How to add a new play or role *(written during M10)*. |
-| [`docs/assets.md`](docs/assets.md) | Licenses and sources for any third-party assets *(created when needed)*. |
+| [`docs/adding-a-play.md`](docs/adding-a-play.md) | How to add a play, its coverages and cues, its bot tests, and a new role, with a tested worked example. |
+| [`docs/assets.md`](docs/assets.md) | Sources and licenses for assets. Today all sound is generated at runtime. |
 
 ## Tech
 
@@ -36,9 +36,13 @@ TypeScript, Vite, three.js (version pinned), Vitest. No backend: it's a static s
 Requires Node 24 (see `.nvmrc`; minimum 22.13).
 
 ```bash
-npm install
+git clone https://github.com/Arbelaezch/court-vision.git
+cd court-vision
+nvm use               # optional: reads .nvmrc (Node 24)
+npm ci                # install exactly what package-lock.json says (npm install also works)
 npm run dev           # local dev server
 npm run test          # unit tests (Vitest)
+npm run test:watch    # unit tests in watch mode
 npm run typecheck     # TypeScript checks
 npm run lint          # ESLint
 npm run format        # format with Prettier
@@ -47,7 +51,19 @@ npm run build         # production build into dist/
 npm run preview       # serve the production build locally
 ```
 
-Because Vite `base` is `/court-vision/`, `npm run dev` serves at `http://localhost:5173/court-vision/`.
+Because Vite `base` is `/court-vision/`, `npm run dev` serves at `http://localhost:5173/court-vision/`. After `npm run build`, `npm run preview` serves the production build at `http://localhost:4173/court-vision/`.
+
+### Tests
+
+Tests are Vitest and run headless; there are no browser tests.
+
+- `src/**/*.test.ts`: co-located unit tests, including the per-play bot tests in `src/ai/`.
+- `tests/config/`: project and CI config checks.
+- `tests/lint/`: architecture rules.
+- `tests/smoke/`: headless app boot and release runs.
+- `tests/docs/`: checks that the README and `docs/adding-a-play.md` stay accurate.
+
+Run one file with `npm run test -- <path>`. CI runs typecheck, lint, test and build.
 
 ### Project layout
 
