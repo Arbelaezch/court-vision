@@ -183,16 +183,18 @@ export interface Coverage {
  * graded Bad is not off-script: in Scrimmage it ends the run as unsuccessful without a reset; in
  * Practice any option below Great is a mistake with whistle and reset (see `stepReferee` in
  * src/ai/referee.ts). `target` is present exactly when the move is in PASS_MOVES; `branch`
- * exactly when the move is `move`.
+ * exactly when the move is `move` or `sprint`.
  */
 export interface DecisionOption {
   readonly id: string;
   readonly move: MoveId;
   readonly target?: RoleId;
   /**
-   * Only on a route option (`move: 'move'`): the phase the role takes by moving; the option
-   * resolves when the decision's phase takes its `reachedSpot` transition for the decision's role
-   * to this phase.
+   * Only on a route option (`move: 'move'` or `move: 'sprint'`): the phase the role takes by
+   * moving; the option resolves when the decision's phase takes its `reachedSpot` transition for
+   * the decision's role to this phase. A `sprint` route matches when the role sprinted during the
+   * decision phase, a `move` route when it did not; a `move` and a `sprint` option may share a
+   * branch.
    */
   readonly branch?: string;
   readonly grades: Readonly<Record<string, DecisionGrade>>;
@@ -629,6 +631,9 @@ function readCoverages(
   return { coverages, practiceCoverage: standard.id };
 }
 
+/** Moves of a route option: these and only these carry a `branch`. */
+const ROUTE_MOVES: readonly MoveId[] = ['move', 'sprint'];
+
 function readOption(
   value: unknown,
   at: FieldPath,
@@ -660,7 +665,7 @@ function readOption(
   }
 
   let branch: string | undefined;
-  if (move === 'move') {
+  if (ROUTE_MOVES.includes(move)) {
     const branchField = getField(obj, 'branch', at);
     branch = readId(branchField.value, branchField.at);
   } else if (hasValue(obj, 'branch')) {

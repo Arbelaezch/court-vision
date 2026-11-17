@@ -392,6 +392,39 @@ describe('readPlay via loadScenario', () => {
       expect(error.field).toBe('giveAndGo.decisions[1].options[1].branch');
       expect(error.message).toMatch(/duplicate option for branch "cut"/);
     });
+
+    it('accepts a sprint route option and keeps its branch', () => {
+      const data = withRoute();
+      data.decisions[1].options[0].move = 'sprint';
+      const play = load(data) as PlayScenario;
+      expect(play.decisions[1]?.options[0]).toEqual({
+        id: 'drift',
+        move: 'sprint',
+        branch: 'cut',
+        grades: { ballWatch: 'great', helpOnCut: 'great' },
+      });
+    });
+
+    it('rejects a sprint option without branch', () => {
+      const data = withRoute();
+      data.decisions[1].options[0].move = 'sprint';
+      delete data.decisions[1].options[0].branch;
+      expect(catchError(() => load(data)).field).toBe(`${ROUTE}.branch`);
+    });
+
+    it('accepts a move and a sprint option on the same branch', () => {
+      const data = withRoute();
+      data.decisions[1].options.push({
+        ...data.decisions[1].options[0],
+        id: 'burst',
+        move: 'sprint',
+      });
+      const play = load(data) as PlayScenario;
+      expect(play.decisions[1]?.options.map((o) => [o.id, o.move, o.branch])).toEqual([
+        ['drift', 'move', 'cut'],
+        ['burst', 'sprint', 'cut'],
+      ]);
+    });
   });
 
   it('rejects a pass trigger to the passer', () => {

@@ -9,9 +9,12 @@
 //   it, and the side is graded per coverage. The left branch comes first in the phases array and
 //   ends on a pass, so a run going left only ends if "later decision" means reachable, not later in
 //   the array.
+// - sprintTest exercises sprint route options: a `move` and a `sprint` option share one branch,
+//   and the referee grades the one matching whether the PG sprinted on the way.
 
 export const SCREEN_TEST_PLAY_FILE = 'src/ai/testPlays.ts';
 export const ROUTE_TEST_PLAY_FILE = 'src/ai/testPlays.ts';
+export const SPRINT_TEST_PLAY_FILE = 'src/ai/testPlays.ts';
 
 const WALK_UP_DEFENDERS = {
   PG: { spot: { x: 0, z: 4 }, action: 'guard' },
@@ -278,6 +281,114 @@ export const ROUTE_TEST_PLAY_DATA = {
           id: 'pullUp',
           move: 'shoot',
           grades: { shadeLeft: 'great', shadeRight: 'great', even: 'great' },
+        },
+      ],
+    },
+  ],
+};
+
+// One route to `finish`, taken walking (`walkIn`) or sprinting (`sprintIn`). `rushes` wants the
+// sprint (walking is Good), `sits` takes either, and `walls` punishes the sprint (Bad).
+export const SPRINT_TEST_PLAY_DATA = {
+  kind: 'play',
+  id: 'sprintTest',
+  name: 'Sprint Test',
+  difficulty: 1,
+  blurb: 'Get to the spot, sprinting when the defense rushes you, then kick it out.',
+  concept: 'Beat a rushing defender with speed.',
+  playableRoles: ['PG'],
+  setup: {
+    positions: {
+      PG: ROUTE_START_SPOT,
+      SG: { x: 5.5, z: -1 },
+      SF: { x: -5.5, z: -1 },
+      PF: { x: 6.5, z: -5.5 },
+      C: { x: -6.5, z: -5.5 },
+    },
+    ballHolder: 'PG',
+  },
+  phases: [
+    {
+      id: 'approach',
+      transitions: [
+        { to: 'finish', trigger: { kind: 'reachedSpot', role: 'PG', spot: ROUTE_RIGHT_SPOT } },
+      ],
+      cues: {
+        full: [
+          { kind: 'floorArrow', to: ROUTE_RIGHT_SPOT },
+          { kind: 'prompt', text: 'Get to the spot' },
+        ],
+        reduced: [],
+        none: [],
+      },
+    },
+    {
+      id: 'finish',
+      transitions: [],
+      cues: { full: [{ kind: 'prompt', text: 'Kick it' }], reduced: [], none: [] },
+    },
+  ],
+  tracks: {
+    PG: [
+      { phase: 'approach', action: 'hold', spot: ROUTE_START_SPOT },
+      { phase: 'finish', action: 'hold', spot: ROUTE_RIGHT_SPOT },
+    ],
+    SG: [{ phase: 'approach', action: 'space', spot: { x: 5.5, z: -1 } }],
+    SF: [{ phase: 'approach', action: 'space', spot: { x: -5.5, z: -1 } }],
+    PF: [{ phase: 'approach', action: 'space', spot: { x: 6.5, z: -5.5 } }],
+    C: [{ phase: 'approach', action: 'space', spot: { x: -6.5, z: -5.5 } }],
+  },
+  coverages: [
+    {
+      id: 'rushes',
+      name: 'Rushes the ball',
+      practiceStandard: true,
+      script: [{ phase: 'approach', defenders: ROUTE_DEFENDERS }],
+    },
+    {
+      id: 'sits',
+      name: 'Sits back',
+      practiceStandard: false,
+      script: [{ phase: 'approach', defenders: ROUTE_DEFENDERS }],
+    },
+    {
+      id: 'walls',
+      name: 'Walls off the sprint',
+      practiceStandard: false,
+      script: [{ phase: 'approach', defenders: ROUTE_DEFENDERS }],
+    },
+  ],
+  decisions: [
+    {
+      id: 'approachRead',
+      role: 'PG',
+      phase: 'approach',
+      options: [
+        {
+          id: 'walkIn',
+          move: 'move',
+          branch: 'finish',
+          grades: { rushes: 'good', sits: 'great', walls: 'great' },
+        },
+        {
+          id: 'sprintIn',
+          move: 'sprint',
+          branch: 'finish',
+          grades: { rushes: 'great', sits: 'great', walls: 'bad' },
+        },
+      ],
+    },
+    {
+      // A kick, not a pull-up: a jump shot straight out of a sprint is off balance (a Bad look).
+      id: 'finishKick',
+      role: 'PG',
+      phase: 'finish',
+      options: [
+        {
+          id: 'kick',
+          move: 'chestPass',
+          target: 'SG',
+          grades: { rushes: 'great', sits: 'great', walls: 'great' },
         },
       ],
     },

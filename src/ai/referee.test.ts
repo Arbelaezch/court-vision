@@ -199,6 +199,7 @@ describe('startReferee', () => {
       humanRole: 'PG',
       graded: [],
       pendingFinalPassTo: null,
+      sprintedThisPhase: false,
       outcome: null,
     });
   });

@@ -21,9 +21,11 @@
 // OUTCOME_RULES is the single place where mode-dependent outcomes live: each entry is a one-line
 // change between 'mistake' (whistle, reset) and 'unsuccessful' (no whistle, no reset).
 //
-// Route options (a decision option with move `move` and a `branch`): when the run leaves a decision
-// phase for an option's branch, that option is graded through the same rules as a ball action
-// (Practice: not great is off path; Scrimmage: bad is a Bad read, good continues as Good).
+// Route options (a decision option with move `move` or `sprint` and a `branch`): when the run
+// leaves a decision phase for an option's branch, that option is graded through the same rules as
+// a ball action (Practice: not great is off path; Scrimmage: bad is a Bad read, good continues as
+// Good). A `sprint` route is matched when the human sprinted on any step of the decision phase
+// (`sprintedThisPhase`), a `move` route when they did not.
 //
 // A run ends on the first of: an unblocked human shot resolving, the human's final-decision pass
 // completing, any mistake, or a rule outcome of 'unsuccessful'. After that the referee ignores the
@@ -86,6 +88,8 @@ export interface RefereeState {
   graded: GradedDecision[];
   /** Receiver player id of the human's final-decision pass in flight, or null. */
   pendingFinalPassTo: number | null;
+  /** Whether the human sprinted on any step of the current phase (reset on a phase change). */
+  sprintedThisPhase: boolean;
   outcome: RunOutcome | null;
 }
 
@@ -133,6 +137,7 @@ export function startReferee(play: PlayScenario, options: RefereeOptions): Refer
     humanRole,
     graded: [],
     pendingFinalPassTo: null,
+    sprintedThisPhase: false,
     outcome: null,
   };
 }
@@ -288,11 +293,14 @@ export function stepReferee(
   }
 
   // Route options: the run left the decision's phase for an option's branch.
+  const sprinted =
+    referee.sprintedThisPhase || after.players.find((p) => p.id === humanId)?.sprinting === true;
   const route = classifyRoute(play, {
     role: referee.humanRole,
     phaseId,
     nextPhaseId,
     coverageId: referee.coverageId,
+    sprinted,
   });
   if (route !== null) {
     if (referee.mode === 'practice' && route.grade !== 'great') {
@@ -309,7 +317,12 @@ export function stepReferee(
     const { decisionId, optionId, grade, reason } = route;
     graded = [...graded, { tick, decisionId, optionId, grade, reason }];
   }
-  const updated: RefereeState = { ...referee, graded, pendingFinalPassTo };
+  const updated: RefereeState = {
+    ...referee,
+    graded,
+    pendingFinalPassTo,
+    sprintedThisPhase: nextPhaseId === phaseId ? sprinted : false,
+  };
 
   // 4. Sim turnovers: the sim already emitted the mistake, so record it and request the reset.
   if (turnover !== undefined) return recordTurnover(updated, turnover);
