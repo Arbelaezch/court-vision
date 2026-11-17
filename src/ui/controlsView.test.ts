@@ -37,6 +37,9 @@ class FakeEl {
   addEventListener(type: string, fn: Handler, capture: boolean | undefined = false): void {
     (this.listeners[type] ??= []).push({ fn, capture });
   }
+  hasClickListener(): boolean {
+    return (this.listeners['click'] ?? []).length > 0;
+  }
   dispatch(type: string, event?: unknown): void {
     const all = this.listeners[type] ?? [];
     for (const l of all.filter((x) => x.capture)) l.fn(event);
@@ -474,6 +477,27 @@ describe('createControlsView display and progress sections', () => {
     expect(last).toBe(status[status.length - 1]);
     const headings = all(root, (n) => n.tagName === 'h3').map((h) => h.textContent);
     expect(headings[headings.length - 1]).toBe('Progress');
+  });
+
+  it('keyboard: every clickable element is a native button or input, confirmations open', () => {
+    const { root, state, fire } = setupExtras();
+    const check = (): void => {
+      const clickable = all(root, (n) => n !== root && n.hasClickListener());
+      expect(clickable.length).toBeGreaterThan(0);
+      for (const n of clickable) {
+        expect(['button', 'input']).toContain(n.tagName);
+        if (n.tagName === 'button') expect(n.attrs['type']).toBe('button');
+      }
+    };
+    check();
+    state.cuePending = { kind: 'cueOff', cue: 'floorArrows' };
+    state.resetPending = true;
+    fire();
+    check();
+    const audioView = setup(true);
+    const clickable = all(audioView.root, (n) => n !== audioView.root && n.hasClickListener());
+    expect(clickable.length).toBeGreaterThan(0);
+    for (const n of clickable) expect(n.tagName).toBe('button');
   });
 
   it('cleanup unsubscribes and cancels display and reset confirmations', () => {

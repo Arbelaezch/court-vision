@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { loadCastContent, loadSimMovement } from '../content';
-import { PASS_TARGET_KEYS, createGame, passTargetBadges } from '../sim';
+import { PASS_TARGET_KEYS, createGame, passTargetBadgeLabel, passTargetBadges } from '../sim';
 import { characterFitHeight } from './characters';
 import type { CharacterPose } from './characters';
 import {
@@ -78,5 +78,24 @@ describe('createPassTargetBadgeLayer', () => {
   it('disposes without throwing', () => {
     const { layer } = setup();
     expect(() => layer.dispose()).not.toThrow();
+  });
+});
+
+describe('non-color channel', () => {
+  it('maps each badge uv to the atlas cell of its non-empty text label', () => {
+    const { atlas, layer } = setup();
+    const seen = new Set<string>();
+    for (const key of PASS_TARGET_KEYS) {
+      const label = passTargetBadgeLabel(key);
+      expect(label.trim()).not.toBe('');
+      const cell = atlas.cell(label);
+      const uv = badgeMesh(layer, key).geometry.getAttribute('uv');
+      expect(uv.getX(0)).toBeCloseTo(cell.u0, 6);
+      expect(uv.getY(0)).toBeCloseTo(cell.v1, 6);
+      expect(uv.getX(3)).toBeCloseTo(cell.u1, 6);
+      expect(uv.getY(3)).toBeCloseTo(cell.v0, 6);
+      seen.add(`${cell.u0},${cell.v0},${cell.u1},${cell.v1}`);
+    }
+    expect(seen.size).toBe(PASS_TARGET_KEYS.length);
   });
 });

@@ -54,6 +54,13 @@ const MARKER_GAP_M = 0.25;
 const MARKER_RADIUS_M = 0.22;
 const MARKER_HEIGHT_M = 0.4;
 const MARKER_OUTLINE_SCALE = 1.2;
+// Floor team tag (OFF / DEF): the non-color offense-vs-defense channel. Lies flat between the
+// court lines (0.01) and the cues (0.02), offset toward the camera (+z).
+const TEAM_TAG_SIZE_M = 0.45;
+const TEAM_TAG_OFFSET_M = 0.45;
+const TEAM_TAG_Y_M = 0.015;
+const TEAM_TAG_BACKING_SCALE = 1.25;
+const TEAM_TAG_BACKING_DROP_M = 0.003;
 
 // Fixed shared ratios: all variation between body types comes from the spec (content data).
 export function bodyProportions(spec: BodyTypeSpec): BodyProportions {
@@ -93,6 +100,8 @@ interface Slot {
   index: number;
   props: BodyProportions;
   jersey: THREE.Mesh;
+  /** Index of this slot's instance within its side's team-tag mesh. */
+  tagIndex: number;
   animator: Animator | null;
 }
 
@@ -187,6 +196,40 @@ export function createCharacterLayer(opts: {
     defense: createLabelMaterial(labels, cast.teams.defense.colors.secondary),
   };
 
+  // Team tags: one text mesh per side plus one shared dark backing.
+  const sideCounts: Record<TeamSide, number> = { offense: 0, defense: 0 };
+  for (const entry of roster) sideCounts[entry.side]++;
+  const tagMeshes = {} as Record<TeamSide, THREE.InstancedMesh>;
+  for (const side of ['offense', 'defense'] as const) {
+    const cell = labels.cell(cast.teams[side].tag);
+    const plane = new THREE.PlaneGeometry(TEAM_TAG_SIZE_M, TEAM_TAG_SIZE_M);
+    plane.setAttribute(
+      'uv',
+      new THREE.Float32BufferAttribute(
+        [cell.u0, cell.v1, cell.u1, cell.v1, cell.u0, cell.v0, cell.u1, cell.v0],
+        2,
+      ),
+    );
+    const material = new THREE.MeshBasicMaterial({
+      map: labels.texture,
+      transparent: true,
+      alphaTest: 0.4,
+      color: '#ffffff',
+    });
+    tagMeshes[side] = createInstanced(`team-tag-${side}`, plane, material, sideCounts[side]);
+  }
+  const tagBackings = createInstanced(
+    'team-tag-backings',
+    new THREE.PlaneGeometry(
+      TEAM_TAG_SIZE_M * TEAM_TAG_BACKING_SCALE,
+      TEAM_TAG_SIZE_M * TEAM_TAG_BACKING_SCALE,
+    ),
+    new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.75 }),
+    n,
+  );
+  group.add(tagBackings, tagMeshes.offense, tagMeshes.defense);
+  const nextTagIndex: Record<TeamSide, number> = { offense: 0, defense: 0 };
+
   const skin = new THREE.Color(SKIN_COLOR);
   const color = new THREE.Color();
   const slots: Slot[] = [];
@@ -216,7 +259,14 @@ export function createCharacterLayer(opts: {
     jersey.visible = false;
     group.add(jersey);
 
-    const slot: Slot = { entry, index, props, jersey, animator: null };
+    const slot: Slot = {
+      entry,
+      index,
+      props,
+      jersey,
+      tagIndex: nextTagIndex[entry.side]++,
+      animator: null,
+    };
     slots.push(slot);
     slotById.set(entry.id, slot);
   });
@@ -251,6 +301,9 @@ export function createCharacterLayer(opts: {
   const axisY = new THREE.Vector3(0, 1, 0);
   const one = new THREE.Vector3(1, 1, 1);
   const pos = new THREE.Vector3();
+  const tagPos = new THREE.Vector3();
+  const tagMatrix = new THREE.Matrix4();
+  const tagFlat = new THREE.Quaternion().setFromAxisAngle(axisX, -Math.PI / 2);
 
   // part = base * T(x, y, z) * S(size); the outline twin grows the same part by the hull factor.
   function setPart(
@@ -367,11 +420,20 @@ export function createCharacterLayer(opts: {
       setLimb(limbs, lo, l + 2, upper, armRHinge, -1, armRSwingRad, armRSpreadRad, al, armR);
       setLimb(limbs, lo, l + 3, upper, armLHinge, 1, armLSwingRad, armLSpreadRad, al, armR);
 
+      // Floor tag: flat (text reads upright from the +z camera), just above the court lines.
+      tagPos.set(pose.pos.x, TEAM_TAG_Y_M, pose.pos.z + TEAM_TAG_OFFSET_M);
+      tagMatrix.compose(tagPos, tagFlat, one);
+      tagMeshes[entry.side].setMatrixAt(slot.tagIndex, tagMatrix);
+      tagPos.y -= TEAM_TAG_BACKING_DROP_M;
+      tagMatrix.compose(tagPos, tagFlat, one);
+      tagBackings.setMatrixAt(index, tagMatrix);
+
       slot.jersey.visible = true;
       slot.jersey.matrix.copy(upper);
       slot.jersey.matrixWorldNeedsUpdate = true;
     }
-    for (const mesh of [heads, bodies, limbs, headsOutline, bodiesOutline, limbsOutline]) {
+    const updated = [heads, bodies, limbs, headsOutline, bodiesOutline, limbsOutline];
+    for (const mesh of [...updated, tagMeshes.offense, tagMeshes.defense, tagBackings]) {
       mesh.instanceMatrix.needsUpdate = true;
     }
 

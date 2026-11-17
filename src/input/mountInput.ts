@@ -67,6 +67,30 @@ function isRangeInput(t: EventTarget | null): boolean {
   );
 }
 
+const NATIVE_KEY_TAGS = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA']);
+
+/**
+ * Focused controls keep native keys (Space and Enter activate buttons, arrows scroll a focused
+ * region or move a slider). During a run nothing is focused, because the menu DOM that held focus
+ * is replaced, so the game keys are still swallowed there.
+ */
+function keepsNativeKeys(t: EventTarget | null): boolean {
+  if (t === null) return false;
+  if (isRangeInput(t)) return true;
+  if (
+    'tagName' in t &&
+    typeof t.tagName === 'string' &&
+    NATIVE_KEY_TAGS.has(t.tagName.toUpperCase())
+  ) {
+    return true;
+  }
+  return (
+    'getAttribute' in t &&
+    typeof t.getAttribute === 'function' &&
+    (t as Element).getAttribute('tabindex') !== null
+  );
+}
+
 export function mountInput(options: MountInputOptions = {}): MountedInput {
   const target = options.target ?? window;
   const { gamepad: gamepadOptions, ...mapperOptions } = options;
@@ -85,7 +109,8 @@ export function mountInput(options: MountInputOptions = {}): MountedInput {
         if (readRepeat(e)) return;
         if (code === null) return;
         if (hasShortcutModifier(e)) return;
-        if (input.isCapturing() || (isBound(code) && !isRangeInput(e.target))) e.preventDefault();
+        if (input.isCapturing() || (isBound(code) && !keepsNativeKeys(e.target)))
+          e.preventDefault();
         input.press(code);
         return;
       }

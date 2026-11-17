@@ -28,7 +28,17 @@ describe('loadTeams', () => {
     expect(teams.offense.colors.primary).not.toBe(teams.defense.colors.primary);
   });
 
+  it('loads the offense and defense tags from data', () => {
+    expect(teams.offense.tag).toBe('OFF');
+    expect(teams.defense.tag).toBe('DEF');
+  });
+
   const cases: [string, (d: any) => void, string][] = [
+    ['missing tag', (d) => delete d.offense.tag, 'teams.offense.tag'],
+    ['lowercase tag', (d) => (d.offense.tag = 'off'), 'teams.offense.tag'],
+    ['5-letter tag', (d) => (d.defense.tag = 'ABCDE'), 'teams.defense.tag'],
+    ['same tag', (d) => (d.defense.tag = d.offense.tag), 'teams.defense.tag'],
+    ['unknown team key', (d) => (d.offense.extra = 1), 'teams.offense.extra'],
     ['bad color', (d) => (d.offense.colors.primary = 'blue'), 'teams.offense.colors.primary'],
     ['missing jersey', (d) => delete d.defense.jerseyNumbers.C, 'teams.defense.jerseyNumbers.C'],
     [

@@ -91,6 +91,29 @@ describe('buildRunFrame', () => {
   });
 });
 
+describe('non-color channel', () => {
+  it('gives success and neutral outcomes non-empty, disjoint banner texts', () => {
+    const banner = (status: RunControllerState['status'], outcome: RunOutcome) =>
+      buildRunFrame(PLAY, withOutcome(start(), status, outcome), [], DEFAULT_CUE_TOGGLES).hud
+        .banner;
+    const successes = [
+      banner('showingResult', { kind: 'success', tick: 1, quality: 'great' }),
+      banner('showingResult', { kind: 'success', tick: 1, quality: 'good' }),
+    ];
+    const neutrals = [banner('showingResult', { kind: 'unsuccessful', tick: 1, reason: 'x' })];
+    const successTexts = successes.map((b) => {
+      expect(b?.tone).toBe('success');
+      return b!.text;
+    });
+    const neutralTexts = neutrals.map((b) => {
+      expect(b?.tone).toBe('neutral');
+      return b!.text;
+    });
+    for (const t of [...successTexts, ...neutralTexts]) expect(t.trim()).not.toBe('');
+    for (const t of successTexts) expect(neutralTexts).not.toContain(t);
+  });
+});
+
 const SCRIMMAGE: ModeConfig = {
   ...loadMode('practice'),
   id: 'scrimmageTest',

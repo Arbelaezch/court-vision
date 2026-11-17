@@ -151,7 +151,7 @@ export function createDevScene(
         play.phases[Math.floor(cueElapsedS / CUE_DEV_PHASE_HOLD_S) % play.phases.length];
       if (!phase) throw new Error(`Court Vision: play ${play.id} has no phases`);
       const cues = phaseCues(play, phase.id, cueLevel, cueToggles);
-      cueLayer.sync({ cues, offense, humanRole, dtSec });
+      cueLayer.sync({ cues, offense, humanRole, dtSec, reduceMotion: false });
       cuePrompt = promptForCues(cues);
     };
     syncCues(0);

@@ -19,6 +19,13 @@ describe('result banner reduce-motion CSS', () => {
     );
   });
 
+  it('turns off every animation and transition under .cv-reduce-motion *', () => {
+    const m = css.match(/\.cv-reduce-motion\s+\*\s*,[^{]*\{([^}]*)\}/);
+    expect(m).not.toBeNull();
+    expect(m![1]).toMatch(/animation:\s*none/);
+    expect(m![1]).toMatch(/transition:\s*none/);
+  });
+
   it('turns the animation off under prefers-reduced-motion', () => {
     expect(css).toMatch(
       /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[^@]*\.cv-result-banner\s*\{[^}]*animation:\s*none/,

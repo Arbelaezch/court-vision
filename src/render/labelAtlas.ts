@@ -91,10 +91,11 @@ export function createLabelAtlas(
   };
 }
 
-// Jersey numbers of both teams plus the role ids (cone labels), deduped.
+// Jersey numbers and team tags of both teams plus the role ids (cone labels), deduped.
 export function collectCastLabels(teams: TeamCast): string[] {
   const labels: string[] = [];
   for (const side of ['offense', 'defense'] as const) {
+    labels.push(teams[side].tag);
     for (const role of ROLE_ORDER) labels.push(String(teams[side].jerseyNumbers[role]));
   }
   for (const role of ROLE_ORDER) labels.push(role);
